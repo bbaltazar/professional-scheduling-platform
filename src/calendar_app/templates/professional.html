@@ -343,74 +343,104 @@
         </div>
 
         <div class="sections-grid">
-            <!-- Verification Section -->
+            {% if not authenticated %}
+            <!-- Verification Section - Show when not authenticated -->
             <div class="section" id="verificationSection">
-                <h2><span class="section-icon">🔐</span>Secure Verification</h2>
+                <h2><span class="section-icon">🔐</span>Secure Verification Required</h2>
                 <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
-                    To ensure the security of our elite platform, we require verification before you can create or access your professional profile.
+                    To ensure the security of our elite platform, please sign in or register to access your professional
+                    dashboard and manage your services and availability.
                 </p>
-                
+
+                <div
+                    style="margin-bottom: 30px; padding: 20px; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 12px;">
+                    <h3 style="color: #FFD700; margin-bottom: 15px; font-size: 1.1rem;">New Professional?</h3>
+                    <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 15px;">Register for your elite account by
+                        providing your professional details below.</p>
+                </div>
+
                 <form id="verificationForm">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="verifyEmail">Professional Email *</label>
-                            <input type="email" id="verifyEmail" name="email" required placeholder="alexandra@eliteclinic.com">
-                        </div>
-                        <div class="form-group">
-                            <label for="verifyPhone">Contact Number (Optional)</label>
-                            <input type="tel" id="verifyPhone" name="phone" placeholder="+1 (555) 123-4567">
+                    <!-- Registration Fields (shown initially) -->
+                    <div id="registrationFields">
+                        <h3 style="color: #FFD700; margin-bottom: 20px;">Professional Registration</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="regName">Distinguished Name *</label>
+                                <input type="text" id="regName" name="name" required
+                                    placeholder="Dr. Alexandra Sterling">
+                            </div>
+                            <div class="form-group">
+                                <label for="verifyEmail">Professional Email *</label>
+                                <input type="email" id="verifyEmail" name="email" required
+                                    placeholder="alexandra@eliteclinic.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="regBio">Professional Bio (Optional)</label>
+                                <input type="text" id="regBio" name="bio"
+                                    placeholder="Luxury wellness specialist with 10+ years experience">
+                            </div>
+                            <div class="form-group">
+                                <label for="verifyPhone">Contact Number (Optional)</label>
+                                <input type="tel" id="verifyPhone" name="phone" placeholder="+1 (555) 123-4567">
+                            </div>
                         </div>
                     </div>
-                    
-                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                        <button type="button" class="btn" onclick="sendVerification('email')">Send Email Code</button>
-                        <button type="button" class="btn btn-add" onclick="sendVerification('sms')">Send SMS Code</button>
+
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="sendVerification('email', 'registration')">Register
+                            with Email Verification</button>
+                        <button type="button" class="btn btn-add" onclick="toggleLoginMode()">Already Have Account? Sign
+                            In</button>
                     </div>
-                    
+
+                    <!-- Sign In Mode -->
+                    <div id="loginFields" style="display: none;">
+                        <h3 style="color: #FFD700; margin-bottom: 20px;">Professional Sign In</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="loginEmail">Professional Email *</label>
+                                <input type="email" id="loginEmail" name="loginEmail" required
+                                    placeholder="alexandra@eliteclinic.com">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                            <button type="button" class="btn" onclick="sendVerification('email', 'login')">Send Login
+                                Code</button>
+                            <button type="button" class="btn btn-add" onclick="toggleLoginMode()">New User?
+                                Register</button>
+                        </div>
+                    </div>
+
                     <div id="codeSection" style="display: none; margin-top: 30px;">
                         <div class="form-group">
                             <label for="verificationCode">Enter 6-Digit Verification Code</label>
-                            <input type="text" id="verificationCode" maxlength="6" placeholder="123456" style="text-align: center; font-size: 1.5rem; letter-spacing: 8px;">
+                            <input type="text" id="verificationCode" maxlength="6" placeholder="123456"
+                                style="text-align: center; font-size: 1.5rem; letter-spacing: 8px;">
                         </div>
-                        <button type="button" class="btn" onclick="verifyCode()">Verify & Proceed</button>
+                        <button type="button" class="btn" onclick="verifyCode()">Verify & Access Dashboard</button>
                     </div>
-                    
+
                     <div id="verificationResponse" class="response"></div>
                 </form>
             </div>
-
-            <!-- Professional Profile Section -->
-            <div class="section" id="profileSection" style="display: none;">
-                <h2><span class="section-icon">👑</span>Distinguished Profile</h2>
-                <form id="professionalForm">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="name">Distinguished Name *</label>
-                            <input type="text" id="name" name="name" required placeholder="Dr. Alexandra Sterling">
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Professional Email *</label>
-                            <input type="email" id="email" name="email" required
-                                placeholder="alexandra@eliteclinic.com" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Contact Number</label>
-                            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="bio">Professional Biography</label>
-                        <textarea id="bio" name="bio" rows="4"
-                            placeholder="Share your expertise, credentials, and what makes your practice exceptional..."></textarea>
-                    </div>
-                    <button type="submit" class="btn">Establish Profile</button>
-                    <div id="profileResponse" class="response"></div>
-                </form>
+            {% else %}
+            <!-- Authenticated Dashboard -->
+            <div class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><span class="section-icon">👑</span>Welcome, {{ specialist.name if specialist else
+                        'Professional' }}</h2>
+                    <button type="button" class="btn btn-add" onclick="logout()" style="padding: 10px 20px;">Sign
+                        Out</button>
+                </div>
+                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
+                    Manage your professional services and availability from your secure dashboard.
+                </p>
             </div>
 
+            <!-- Professional Profile Section -->
             <!-- Premium Services Section -->
             <div class="section">
-                <h2><span class="section-icon">💎</span>Premium Services Portfolio</h2>
+                <h2><span class="section-icon">�</span>Premium Services Portfolio</h2>
                 <div id="servicesContainer">
                     <div class="dynamic-item">
                         <div class="form-grid">
@@ -459,11 +489,17 @@
                 <button type="button" class="btn" onclick="saveAvailability()">Set Availability</button>
                 <div id="availabilityResponse" class="response"></div>
             </div>
+            {% endif %}
         </div>
     </div>
 
     <script>
+        {% if authenticated and specialist %}
+        let currentSpecialistId = {{ specialist.id }};
+        {% else %}
         let currentSpecialistId = null;
+        {% endif %}
+        let isLoginMode = false;
 
         // Set default dates
         document.addEventListener('DOMContentLoaded', function () {
@@ -474,31 +510,39 @@
             }
         });
 
-        // Professional profile form
-        document.getElementById('professionalForm').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
+        // Toggle between registration and login modes
+        function toggleLoginMode() {
+            isLoginMode = !isLoginMode;
+            const regFields = document.getElementById('registrationFields');
+            const loginFields = document.getElementById('loginFields');
 
+            if (isLoginMode) {
+                regFields.style.display = 'none';
+                loginFields.style.display = 'block';
+            } else {
+                regFields.style.display = 'block';
+                loginFields.style.display = 'none';
+            }
+        }
+
+        // Logout function
+        async function logout() {
             try {
-                const response = await fetch('/specialist/', {
+                const response = await fetch('/auth/logout', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
-                const result = await response.json();
-
                 if (response.ok) {
-                    currentSpecialistId = result.id;
-                    showResponse('profileResponse', `✨ Profile established successfully! Your Élite ID: ${result.id}`, 'success');
+                    window.location.reload();
                 } else {
-                    showResponse('profileResponse', `❌ Profile creation failed: ${result.detail}`, 'error');
+                    alert('Logout failed. Please try again.');
                 }
             } catch (error) {
-                showResponse('profileResponse', `❌ Connection error: ${error.message}`, 'error');
+                console.error('Logout error:', error);
+                alert('Logout failed. Please try again.');
             }
-        });
+        }
 
         function addServiceField() {
             const container = document.getElementById('servicesContainer');
@@ -650,10 +694,20 @@
         // Verification Functions
         let verifiedEmail = null;
         let verifiedPhone = null;
+        let currentVerificationType = 'registration';
 
-        async function sendVerification(method) {
-            const email = document.getElementById('verifyEmail').value;
-            const phone = document.getElementById('verifyPhone').value;
+        async function sendVerification(method, verificationType) {
+            currentVerificationType = verificationType || 'registration';
+
+            let email, phone;
+
+            if (isLoginMode) {
+                email = document.getElementById('loginEmail').value;
+                phone = null;
+            } else {
+                email = document.getElementById('verifyEmail').value;
+                phone = document.getElementById('verifyPhone').value;
+            }
 
             if (method === 'email' && !email) {
                 showResponse('verificationResponse', '❌ Please enter your email address', 'error');
@@ -666,7 +720,7 @@
             }
 
             const requestData = {
-                verification_type: 'registration'
+                verification_type: currentVerificationType
             };
 
             if (method === 'email') {
@@ -687,7 +741,7 @@
                 if (response.ok) {
                     showResponse('verificationResponse', `✨ ${result.message}`, 'success');
                     document.getElementById('codeSection').style.display = 'block';
-                    
+
                     // Store which method was used for verification
                     if (method === 'email') {
                         verifiedEmail = email;
@@ -712,13 +766,29 @@
 
             const requestData = {
                 code: code,
-                verification_type: 'registration'
+                verification_type: currentVerificationType
             };
 
             if (verifiedEmail) {
                 requestData.email = verifiedEmail;
             } else if (verifiedPhone) {
                 requestData.phone = verifiedPhone;
+            }
+
+            // Add registration data if this is a registration
+            if (currentVerificationType === 'registration') {
+                const name = document.getElementById('regName').value;
+                const bio = document.getElementById('regBio').value;
+                const phone = document.getElementById('verifyPhone').value;
+
+                if (!name) {
+                    showResponse('verificationResponse', '❌ Please enter your name for registration', 'error');
+                    return;
+                }
+
+                requestData.name = name;
+                requestData.bio = bio;
+                requestData.specialist_phone = phone;
             }
 
             try {
@@ -731,25 +801,16 @@
                 const result = await response.json();
 
                 if (response.ok && result.verified) {
-                    showResponse('verificationResponse', '✨ Verification successful! Proceeding to profile setup...', 'success');
-                    
-                    // Hide verification section and show profile section
+                    showResponse('verificationResponse', '✨ Verification successful! Redirecting to dashboard...', 'success');
+
+                    // Set the current specialist ID for API calls
+                    if (result.specialist) {
+                        currentSpecialistId = result.specialist.id;
+                    }
+
+                    // Redirect to refresh the page and show authenticated state
                     setTimeout(() => {
-                        document.getElementById('verificationSection').style.display = 'none';
-                        document.getElementById('profileSection').style.display = 'block';
-                        
-                        // Pre-fill the email and phone fields
-                        if (verifiedEmail) {
-                            document.getElementById('email').value = verifiedEmail;
-                        }
-                        if (verifiedPhone) {
-                            document.getElementById('phone').value = verifiedPhone;
-                        }
-                        
-                        // Scroll to profile section
-                        document.getElementById('profileSection').scrollIntoView({ 
-                            behavior: 'smooth' 
-                        });
+                        window.location.reload();
                     }, 2000);
 
                 } else {

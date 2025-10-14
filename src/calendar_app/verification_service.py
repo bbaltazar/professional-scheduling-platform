@@ -8,7 +8,10 @@ from typing import Optional, Literal
 from sqlalchemy.orm import Session
 import os
 
-from .database import VerificationCode
+try:
+    from .database import VerificationCode
+except ImportError:
+    from database import VerificationCode
 
 
 class VerificationService:
@@ -18,12 +21,12 @@ class VerificationService:
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.smtp_username = os.getenv("SMTP_USERNAME", "")
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
-        
+
         # Twilio configuration (you'll need to set these environment variables)
         self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
         self.twilio_phone_number = os.getenv("TWILIO_PHONE_NUMBER", "")
-        
+
         # Twilio client will be None for now (can be implemented later)
         self.twilio_client = None
 
@@ -32,16 +35,16 @@ class VerificationService:
         return str(random.randint(100000, 999999))
 
     async def send_email_verification(
-        self, 
+        self,
         db: Session,
-        email: str, 
-        verification_type: Literal["registration", "login"] = "registration"
+        email: str,
+        verification_type: Literal["registration", "login"] = "registration",
     ) -> bool:
         """Send verification code via email"""
         try:
             # Generate verification code
             code = self.generate_verification_code()
-            
+
             # Store in database
             expires_at = datetime.utcnow() + timedelta(minutes=10)  # 10 minute expiry
             verification = VerificationCode(
@@ -50,14 +53,14 @@ class VerificationService:
                 verification_type=f"email_{verification_type}",
                 created_at=datetime.utcnow(),
                 expires_at=expires_at,
-                is_used=False
+                is_used=False,
             )
             db.add(verification)
             db.commit()
-            
+
             # Prepare email content
             subject = "Élite Platform - Verification Code"
-            
+
             html_content = f"""
             <html>
                 <body style="font-family: 'Inter', Arial, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: #ffffff; margin: 0; padding: 40px;">
@@ -89,27 +92,27 @@ class VerificationService:
                 </body>
             </html>
             """
-            
+
             # For development - just print the code (replace with real email sending in production)
             print(f"🔐 EMAIL VERIFICATION CODE for {email}: {code}")
             print(f"📧 Email would be sent with subject: {subject}")
             return True
-                
+
         except Exception as e:
             print(f"Error sending email verification: {e}")
             return False
 
     async def send_sms_verification(
-        self, 
+        self,
         db: Session,
-        phone: str, 
-        verification_type: Literal["registration", "login"] = "registration"
+        phone: str,
+        verification_type: Literal["registration", "login"] = "registration",
     ) -> bool:
         """Send verification code via SMS"""
         try:
             # Generate verification code
             code = self.generate_verification_code()
-            
+
             # Store in database
             expires_at = datetime.utcnow() + timedelta(minutes=10)  # 10 minute expiry
             verification = VerificationCode(
@@ -118,11 +121,11 @@ class VerificationService:
                 verification_type=f"sms_{verification_type}",
                 created_at=datetime.utcnow(),
                 expires_at=expires_at,
-                is_used=False
+                is_used=False,
             )
             db.add(verification)
             db.commit()
-            
+
             # Prepare SMS content
             message_body = f"""
 Élite Platform 👑
@@ -133,23 +136,23 @@ This code expires in 10 minutes.
 
 If you didn't request this, please ignore.
             """.strip()
-            
+
             # For development - just print the code (replace with real SMS sending in production)
             print(f"📱 SMS VERIFICATION CODE for {phone}: {code}")
             print(f"📲 SMS content preview: {message_body}")
             return True
-                
+
         except Exception as e:
             print(f"Error sending SMS verification: {e}")
             return False
 
     def verify_code(
-        self, 
+        self,
         db: Session,
         email: Optional[str] = None,
         phone: Optional[str] = None,
         code: str = "",
-        verification_type: str = ""
+        verification_type: str = "",
     ) -> bool:
         """Verify the provided code"""
         try:
@@ -157,26 +160,28 @@ If you didn't request this, please ignore.
             query = db.query(VerificationCode).filter(
                 VerificationCode.code == code,
                 VerificationCode.is_used == False,
-                VerificationCode.expires_at > datetime.utcnow()
+                VerificationCode.expires_at > datetime.utcnow(),
             )
-            
+
             if email:
                 query = query.filter(VerificationCode.email == email)
             if phone:
                 query = query.filter(VerificationCode.phone == phone)
             if verification_type:
-                query = query.filter(VerificationCode.verification_type.like(f"%{verification_type}%"))
-            
+                query = query.filter(
+                    VerificationCode.verification_type.like(f"%{verification_type}%")
+                )
+
             verification = query.first()
-            
+
             if verification:
                 # Mark as used
                 verification.is_used = True
                 db.commit()
                 return True
-            
+
             return False
-            
+
         except Exception as e:
             print(f"Error verifying code: {e}")
             return False
