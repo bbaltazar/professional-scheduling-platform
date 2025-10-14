@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Élite Professional Suite</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #FFD700;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateX(-5px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 120px 40px 60px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .sections-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+        }
+
+        .section h2 {
+            font-family: 'Playfair Display', serif;
+            color: #ffffff;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+            filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #FFD700;
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.3);
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-left: 15px;
+            padding: 12px 25px;
+            font-size: 0.9rem;
+        }
+
+        .btn-add:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .dynamic-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 15px;
+            border-left: 4px solid #FFD700;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .dynamic-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .response.success {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .response.error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        /* Floating particles effect */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            animation: float-particle 15s infinite linear;
+        }
+
+        @keyframes float-particle {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-10vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 100px 20px 40px;
+            }
+
+            .header h1 {
+                font-size: 2.2rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 30px 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 10s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 12s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 14s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 16s;"></div>
+    </div>
+
+    <a href="/" class="back-link">← Return to Élite Home</a>
+
+    <div class="container">
+        <div class="header">
+            <h1>Professional Suite</h1>
+            <p class="subtitle">Curate your professional presence with sophisticated elegance</p>
+        </div>
+
+        <div class="sections-grid">
+            <!-- Verification Section -->
+            <div class="section" id="verificationSection">
+                <h2><span class="section-icon">🔐</span>Secure Verification</h2>
+                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
+                    To ensure the security of our elite platform, we require verification before you can create or access your professional profile.
+                </p>
+                
+                <form id="verificationForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="verifyEmail">Professional Email *</label>
+                            <input type="email" id="verifyEmail" name="email" required placeholder="alexandra@eliteclinic.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="verifyPhone">Contact Number (Optional)</label>
+                            <input type="tel" id="verifyPhone" name="phone" placeholder="+1 (555) 123-4567">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <button type="button" class="btn" onclick="sendVerification('email')">Send Email Code</button>
+                        <button type="button" class="btn btn-add" onclick="sendVerification('sms')">Send SMS Code</button>
+                    </div>
+                    
+                    <div id="codeSection" style="display: none; margin-top: 30px;">
+                        <div class="form-group">
+                            <label for="verificationCode">Enter 6-Digit Verification Code</label>
+                            <input type="text" id="verificationCode" maxlength="6" placeholder="123456" style="text-align: center; font-size: 1.5rem; letter-spacing: 8px;">
+                        </div>
+                        <button type="button" class="btn" onclick="verifyCode()">Verify & Proceed</button>
+                    </div>
+                    
+                    <div id="verificationResponse" class="response"></div>
+                </form>
+            </div>
+
+            <!-- Professional Profile Section -->
+            <div class="section" id="profileSection" style="display: none;">
+                <h2><span class="section-icon">👑</span>Distinguished Profile</h2>
+                <form id="professionalForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Distinguished Name *</label>
+                            <input type="text" id="name" name="name" required placeholder="Dr. Alexandra Sterling">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Professional Email *</label>
+                            <input type="email" id="email" name="email" required
+                                placeholder="alexandra@eliteclinic.com" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Contact Number</label>
+                            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Professional Biography</label>
+                        <textarea id="bio" name="bio" rows="4"
+                            placeholder="Share your expertise, credentials, and what makes your practice exceptional..."></textarea>
+                    </div>
+                    <button type="submit" class="btn">Establish Profile</button>
+                    <div id="profileResponse" class="response"></div>
+                </form>
+            </div>
+
+            <!-- Premium Services Section -->
+            <div class="section">
+                <h2><span class="section-icon">💎</span>Premium Services Portfolio</h2>
+                <div id="servicesContainer">
+                    <div class="dynamic-item">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Service Name</label>
+                                <input type="text" class="service-name" placeholder="Executive Health Consultation">
+                            </div>
+                            <div class="form-group">
+                                <label>Investment ($)</label>
+                                <input type="number" class="service-price" placeholder="500.00" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>Duration (minutes)</label>
+                                <input type="number" class="service-duration" placeholder="60">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-add" onclick="addServiceField()">+ Add Premium Service</button>
+                <button type="button" class="btn" onclick="saveServices()">Publish Services</button>
+                <div id="servicesResponse" class="response"></div>
+            </div>
+
+            <!-- Exclusive Availability Section -->
+            <div class="section">
+                <h2><span class="section-icon">📅</span>Exclusive Availability</h2>
+                <div id="availabilityContainer">
+                    <div class="dynamic-item">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" class="availability-date">
+                            </div>
+                            <div class="form-group">
+                                <label>Opening Hour</label>
+                                <input type="time" class="availability-start" value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label>Closing Hour</label>
+                                <input type="time" class="availability-end" value="17:00">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-add" onclick="addAvailabilityField()">+ Add Time Block</button>
+                <button type="button" class="btn" onclick="saveAvailability()">Set Availability</button>
+                <div id="availabilityResponse" class="response"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSpecialistId = null;
+
+        // Set default dates
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date();
+            const dateInput = document.querySelector('.availability-date');
+            if (dateInput) {
+                dateInput.value = today.toISOString().split('T')[0];
+            }
+        });
+
+        // Professional profile form
+        document.getElementById('professionalForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/specialist/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentSpecialistId = result.id;
+                    showResponse('profileResponse', `✨ Profile established successfully! Your Élite ID: ${result.id}`, 'success');
+                } else {
+                    showResponse('profileResponse', `❌ Profile creation failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('profileResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        });
+
+        function addServiceField() {
+            const container = document.getElementById('servicesContainer');
+            const newService = document.createElement('div');
+            newService.className = 'dynamic-item';
+            newService.innerHTML = `
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Service Name</label>
+                        <input type="text" class="service-name" placeholder="Premium Consultation">
+                    </div>
+                    <div class="form-group">
+                        <label>Investment ($)</label>
+                        <input type="number" class="service-price" placeholder="300.00" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Duration (minutes)</label>
+                        <input type="number" class="service-duration" placeholder="45">
+                    </div>
+                </div>
+            `;
+            container.appendChild(newService);
+        }
+
+        function addAvailabilityField() {
+            const container = document.getElementById('availabilityContainer');
+            const newAvailability = document.createElement('div');
+            newAvailability.className = 'dynamic-item';
+
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+            newAvailability.innerHTML = `
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" class="availability-date" value="${tomorrowStr}">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Hour</label>
+                        <input type="time" class="availability-start" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Closing Hour</label>
+                        <input type="time" class="availability-end" value="17:00">
+                    </div>
+                </div>
+            `;
+            container.appendChild(newAvailability);
+        }
+
+        async function saveServices() {
+            if (!currentSpecialistId) {
+                showResponse('servicesResponse', '❌ Please establish your profile first', 'error');
+                return;
+            }
+
+            const serviceItems = document.querySelectorAll('.dynamic-item');
+            const services = [];
+
+            serviceItems.forEach(item => {
+                const nameInput = item.querySelector('.service-name');
+                const priceInput = item.querySelector('.service-price');
+                const durationInput = item.querySelector('.service-duration');
+
+                if (nameInput && priceInput && durationInput) {
+                    const name = nameInput.value;
+                    const price = parseFloat(priceInput.value);
+                    const duration = parseInt(durationInput.value);
+
+                    if (name && price && duration) {
+                        services.push({ name, price, duration });
+                    }
+                }
+            });
+
+            if (services.length === 0) {
+                showResponse('servicesResponse', '❌ Please add at least one premium service', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/specialist/${currentSpecialistId}/services`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(services)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    showResponse('servicesResponse', `✨ ${services.length} premium services published successfully!`, 'success');
+                } else {
+                    showResponse('servicesResponse', `❌ Publishing failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('servicesResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveAvailability() {
+            if (!currentSpecialistId) {
+                showResponse('availabilityResponse', '❌ Please establish your profile first', 'error');
+                return;
+            }
+
+            const availabilityItems = document.querySelectorAll('.dynamic-item');
+            const slots = [];
+
+            availabilityItems.forEach(item => {
+                const dateInput = item.querySelector('.availability-date');
+                const startInput = item.querySelector('.availability-start');
+                const endInput = item.querySelector('.availability-end');
+
+                if (dateInput && startInput && endInput) {
+                    const date = dateInput.value;
+                    const start_time = startInput.value + ':00';
+                    const end_time = endInput.value + ':00';
+
+                    if (date && start_time && end_time) {
+                        slots.push({ date, start_time, end_time });
+                    }
+                }
+            });
+
+            if (slots.length === 0) {
+                showResponse('availabilityResponse', '❌ Please set at least one availability block', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/specialist/${currentSpecialistId}/availability`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(slots)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    showResponse('availabilityResponse', `✨ ${slots.length} exclusive time blocks set successfully!`, 'success');
+                } else {
+                    showResponse('availabilityResponse', `❌ Scheduling failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('availabilityResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Verification Functions
+        let verifiedEmail = null;
+        let verifiedPhone = null;
+
+        async function sendVerification(method) {
+            const email = document.getElementById('verifyEmail').value;
+            const phone = document.getElementById('verifyPhone').value;
+
+            if (method === 'email' && !email) {
+                showResponse('verificationResponse', '❌ Please enter your email address', 'error');
+                return;
+            }
+
+            if (method === 'sms' && !phone) {
+                showResponse('verificationResponse', '❌ Please enter your phone number for SMS verification', 'error');
+                return;
+            }
+
+            const requestData = {
+                verification_type: 'registration'
+            };
+
+            if (method === 'email') {
+                requestData.email = email;
+            } else {
+                requestData.phone = phone;
+            }
+
+            try {
+                const response = await fetch('/verification/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResponse('verificationResponse', `✨ ${result.message}`, 'success');
+                    document.getElementById('codeSection').style.display = 'block';
+                    
+                    // Store which method was used for verification
+                    if (method === 'email') {
+                        verifiedEmail = email;
+                    } else {
+                        verifiedPhone = phone;
+                    }
+                } else {
+                    showResponse('verificationResponse', `❌ Failed to send code: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('verificationResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifyCode() {
+            const code = document.getElementById('verificationCode').value;
+
+            if (!code || code.length !== 6) {
+                showResponse('verificationResponse', '❌ Please enter a 6-digit verification code', 'error');
+                return;
+            }
+
+            const requestData = {
+                code: code,
+                verification_type: 'registration'
+            };
+
+            if (verifiedEmail) {
+                requestData.email = verifiedEmail;
+            } else if (verifiedPhone) {
+                requestData.phone = verifiedPhone;
+            }
+
+            try {
+                const response = await fetch('/verification/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.verified) {
+                    showResponse('verificationResponse', '✨ Verification successful! Proceeding to profile setup...', 'success');
+                    
+                    // Hide verification section and show profile section
+                    setTimeout(() => {
+                        document.getElementById('verificationSection').style.display = 'none';
+                        document.getElementById('profileSection').style.display = 'block';
+                        
+                        // Pre-fill the email and phone fields
+                        if (verifiedEmail) {
+                            document.getElementById('email').value = verifiedEmail;
+                        }
+                        if (verifiedPhone) {
+                            document.getElementById('phone').value = verifiedPhone;
+                        }
+                        
+                        // Scroll to profile section
+                        document.getElementById('profileSection').scrollIntoView({ 
+                            behavior: 'smooth' 
+                        });
+                    }, 2000);
+
+                } else {
+                    showResponse('verificationResponse', `❌ ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse('verificationResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        function showResponse(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `response ${type}`;
+            element.style.display = 'block';
+
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>
