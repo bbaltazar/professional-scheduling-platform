@@ -17,8 +17,8 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #0d0d0d 100%);
+            color: #D4AF37;
             min-height: 100vh;
             position: relative;
         }
@@ -27,20 +27,20 @@
             position: fixed;
             top: 30px;
             left: 30px;
-            color: #FFD700;
+            color: #D4AF37;
             text-decoration: none;
             font-weight: 500;
             padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(212, 175, 55, 0.1);
             backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(212, 175, 55, 0.3);
             border-radius: 50px;
             transition: all 0.3s ease;
             z-index: 1000;
         }
 
         .back-link:hover {
-            background: rgba(255, 215, 0, 0.1);
+            background: rgba(212, 175, 55, 0.2);
             transform: translateX(-5px);
         }
 
@@ -59,7 +59,7 @@
             font-family: 'Playfair Display', serif;
             font-size: 3rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
+            background: linear-gradient(135deg, #D4AF37, #F7E7AD);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -67,7 +67,7 @@
         }
 
         .header .subtitle {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(212, 175, 55, 0.8);
             font-size: 1.1rem;
             font-weight: 300;
         }
@@ -79,9 +79,9 @@
         }
 
         .section {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(212, 175, 55, 0.05);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.2);
             border-radius: 20px;
             padding: 40px;
             position: relative;
@@ -95,12 +95,12 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #FFD700, #FFA500);
+            background: linear-gradient(90deg, #D4AF37, #F7E7AD);
         }
 
         .section h2 {
             font-family: 'Playfair Display', serif;
-            color: #ffffff;
+            color: #D4AF37;
             margin-bottom: 30px;
             font-size: 1.8rem;
             font-weight: 600;
@@ -152,9 +152,9 @@
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #FFD700;
-            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
-            background: rgba(255, 255, 255, 0.08);
+            border-color: #D4AF37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+            background: rgba(212, 175, 55, 0.08);
         }
 
         .form-group input::placeholder,
@@ -163,7 +163,7 @@
         }
 
         .btn {
-            background: linear-gradient(135deg, #FFD700, #FFA500);
+            background: linear-gradient(135deg, #D4AF37, #F7E7AD);
             color: #000;
             padding: 16px 32px;
             border: none;
@@ -212,11 +212,11 @@
         }
 
         .dynamic-item {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(212, 175, 55, 0.05);
             padding: 25px;
             margin: 15px 0;
             border-radius: 15px;
-            border-left: 4px solid #FFD700;
+            border-left: 4px solid #D4AF37;
             position: relative;
             transition: all 0.3s ease;
         }
@@ -344,80 +344,80 @@
 
         <div class="sections-grid">
             {% if not authenticated %}
-            <!-- Verification Section - Show when not authenticated -->
-            <div class="section" id="verificationSection">
-                <h2><span class="section-icon">🔐</span>Secure Verification Required</h2>
-                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
-                    To ensure the security of our elite platform, please sign in or register to access your professional
-                    dashboard and manage your services and availability.
+            <!-- Simplified Login Section -->
+            <div class="section" id="loginSection">
+                <h2><span class="section-icon">🔐</span>Professional Access</h2>
+                <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 40px;">
+                    Welcome to your elite professional platform. Enter your email to continue.
                 </p>
 
-                <div
-                    style="margin-bottom: 30px; padding: 20px; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 12px;">
-                    <h3 style="color: #FFD700; margin-bottom: 15px; font-size: 1.1rem;">New Professional?</h3>
-                    <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 15px;">Register for your elite account by
-                        providing your professional details below.</p>
-                </div>
+                <form id="loginForm">
+                    <!-- Simple Email Input -->
+                    <div class="form-group" style="margin-bottom: 30px;">
+                        <label for="userEmail"
+                            style="font-size: 1.1rem; color: #D4AF37; margin-bottom: 10px; display: block;">Email
+                            Address</label>
+                        <input type="email" id="userEmail" name="email" required placeholder="your@email.com"
+                            style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: white;">
+                    </div>
 
-                <form id="verificationForm">
-                    <!-- Registration Fields (shown initially) -->
-                    <div id="registrationFields">
-                        <h3 style="color: #FFD700; margin-bottom: 20px;">Professional Registration</h3>
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="proceedWithEmail()"
+                            style="flex: 1; min-width: 120px;">Next</button>
+                        <button type="button" class="btn btn-add" onclick="showSignUp()"
+                            style="flex: 1; min-width: 120px;">Sign Up</button>
+                    </div>
+
+                    <!-- Hidden Registration Section (shown when user clicks Sign Up) -->
+                    <div id="registrationSection"
+                        style="display: none; margin-top: 30px; padding: 25px; border-top: 2px solid rgba(255, 215, 0, 0.3);">
+                        <h3 style="color: #D4AF37; margin-bottom: 20px;">Create Your Professional Account</h3>
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="regName">Distinguished Name *</label>
+                                <label for="regName">Professional Name *</label>
                                 <input type="text" id="regName" name="name" required
                                     placeholder="Dr. Alexandra Sterling">
                             </div>
                             <div class="form-group">
-                                <label for="verifyEmail">Professional Email *</label>
-                                <input type="email" id="verifyEmail" name="email" required
-                                    placeholder="alexandra@eliteclinic.com">
+                                <label for="regBio">Professional Title (Optional)</label>
+                                <select id="regBio" name="bio"
+                                    style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: white;">
+                                    <option value="">Select your profession...</option>
+                                    <option value="Hair Stylist">Hair Stylist</option>
+                                    <option value="Massage Therapist">Massage Therapist</option>
+                                    <option value="Esthetician">Esthetician</option>
+                                    <option value="Personal Trainer">Personal Trainer</option>
+                                    <option value="Nail Technician">Nail Technician</option>
+                                    <option value="Makeup Artist">Makeup Artist</option>
+                                    <option value="Therapist/Counselor">Therapist/Counselor</option>
+                                    <option value="Music Instructor">Music Instructor</option>
+                                    <option value="Fitness Coach">Fitness Coach</option>
+                                    <option value="Nutritionist">Nutritionist</option>
+                                    <option value="Life Coach">Life Coach</option>
+                                    <option value="Tutor">Tutor</option>
+                                    <option value="Consultant">Consultant</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label for="regBio">Professional Bio (Optional)</label>
-                                <input type="text" id="regBio" name="bio"
-                                    placeholder="Luxury wellness specialist with 10+ years experience">
-                            </div>
-                            <div class="form-group">
-                                <label for="verifyPhone">Contact Number (Optional)</label>
-                                <input type="tel" id="verifyPhone" name="phone" placeholder="+1 (555) 123-4567">
+                                <label for="regPhone">Contact Number (Optional)</label>
+                                <input type="tel" id="regPhone" name="phone" placeholder="+1 (555) 123-4567">
                             </div>
                         </div>
+                        <button type="button" class="btn" onclick="registerUser()"
+                            style="width: 100%; margin-top: 20px;">Create Account & Send Verification</button>
                     </div>
 
-                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button type="button" class="btn" onclick="sendVerification('email', 'registration')">Register
-                            with Email Verification</button>
-                        <button type="button" class="btn btn-add" onclick="toggleLoginMode()">Already Have Account? Sign
-                            In</button>
-                    </div>
-
-                    <!-- Sign In Mode -->
-                    <div id="loginFields" style="display: none;">
-                        <h3 style="color: #FFD700; margin-bottom: 20px;">Professional Sign In</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="loginEmail">Professional Email *</label>
-                                <input type="email" id="loginEmail" name="loginEmail" required
-                                    placeholder="alexandra@eliteclinic.com">
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                            <button type="button" class="btn" onclick="sendVerification('email', 'login')">Send Login
-                                Code</button>
-                            <button type="button" class="btn btn-add" onclick="toggleLoginMode()">New User?
-                                Register</button>
-                        </div>
-                    </div>
-
+                    <!-- Verification Code Section -->
                     <div id="codeSection" style="display: none; margin-top: 30px;">
                         <div class="form-group">
                             <label for="verificationCode">Enter 6-Digit Verification Code</label>
                             <input type="text" id="verificationCode" maxlength="6" placeholder="123456"
-                                style="text-align: center; font-size: 1.5rem; letter-spacing: 8px;">
+                                style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; width: 100%; padding: 15px;">
                         </div>
-                        <button type="button" class="btn" onclick="verifyCode()">Verify & Access Dashboard</button>
+                        <button type="button" class="btn" onclick="verifyCode()"
+                            style="width: 100%; margin-top: 15px;">Verify & Access Dashboard</button>
                     </div>
 
                     <div id="verificationResponse" class="response"></div>
@@ -499,7 +499,7 @@
         {% else %}
         let currentSpecialistId = null;
         {% endif %}
-        let isLoginMode = false;
+
 
         // Set default dates
         document.addEventListener('DOMContentLoaded', function () {
@@ -510,19 +510,41 @@
             }
         });
 
-        // Toggle between registration and login modes
-        function toggleLoginMode() {
-            isLoginMode = !isLoginMode;
-            const regFields = document.getElementById('registrationFields');
-            const loginFields = document.getElementById('loginFields');
-
-            if (isLoginMode) {
-                regFields.style.display = 'none';
-                loginFields.style.display = 'block';
-            } else {
-                regFields.style.display = 'block';
-                loginFields.style.display = 'none';
+        // Simplified Login Functions
+        function proceedWithEmail() {
+            const email = document.getElementById('userEmail').value;
+            if (!email) {
+                alert('Please enter your email address');
+                return;
             }
+
+            // Send verification code for existing user login
+            sendVerification('email', 'login');
+        }
+
+        function showSignUp() {
+            const registrationSection = document.getElementById('registrationSection');
+            registrationSection.style.display = 'block';
+
+            // Copy email to registration if already entered
+            const userEmail = document.getElementById('userEmail').value;
+            if (userEmail) {
+                // Email will be used from the main input field
+                document.getElementById('userEmail').placeholder = userEmail;
+            }
+        }
+
+        function registerUser() {
+            const email = document.getElementById('userEmail').value;
+            const name = document.getElementById('regName').value;
+
+            if (!email || !name) {
+                alert('Please fill in your email and name');
+                return;
+            }
+
+            // Send verification code for new user registration
+            sendVerification('email', 'registration');
         }
 
         // Logout function
@@ -692,41 +714,38 @@
         }
 
         // Verification Functions
-        let verifiedEmail = null;
-        let verifiedPhone = null;
         let currentVerificationType = 'registration';
 
         async function sendVerification(method, verificationType) {
             currentVerificationType = verificationType || 'registration';
 
-            let email, phone;
-
-            if (isLoginMode) {
-                email = document.getElementById('loginEmail').value;
-                phone = null;
-            } else {
-                email = document.getElementById('verifyEmail').value;
-                phone = document.getElementById('verifyPhone').value;
-            }
+            // Get email from the main input field
+            const email = document.getElementById('userEmail').value;
 
             if (method === 'email' && !email) {
                 showResponse('verificationResponse', '❌ Please enter your email address', 'error');
                 return;
             }
 
-            if (method === 'sms' && !phone) {
-                showResponse('verificationResponse', '❌ Please enter your phone number for SMS verification', 'error');
-                return;
-            }
-
             const requestData = {
-                verification_type: currentVerificationType
+                verification_type: currentVerificationType,
+                email: email
             };
 
-            if (method === 'email') {
-                requestData.email = email;
-            } else {
-                requestData.phone = phone;
+            // If it's registration, include additional user data
+            if (verificationType === 'registration') {
+                const name = document.getElementById('regName').value;
+                const bio = document.getElementById('regBio').value;
+                const phone = document.getElementById('regPhone').value;
+
+                if (!name) {
+                    showResponse('verificationResponse', '❌ Please enter your professional name', 'error');
+                    return;
+                }
+
+                requestData.name = name;
+                if (bio) requestData.bio = bio;
+                if (phone) requestData.phone = phone;
             }
 
             try {
@@ -741,13 +760,6 @@
                 if (response.ok) {
                     showResponse('verificationResponse', `✨ ${result.message}`, 'success');
                     document.getElementById('codeSection').style.display = 'block';
-
-                    // Store which method was used for verification
-                    if (method === 'email') {
-                        verifiedEmail = email;
-                    } else {
-                        verifiedPhone = phone;
-                    }
                 } else {
                     showResponse('verificationResponse', `❌ Failed to send code: ${result.detail}`, 'error');
                 }
@@ -769,17 +781,17 @@
                 verification_type: currentVerificationType
             };
 
-            if (verifiedEmail) {
-                requestData.email = verifiedEmail;
-            } else if (verifiedPhone) {
-                requestData.phone = verifiedPhone;
+            // Use the main email field
+            const email = document.getElementById('userEmail').value;
+            if (email) {
+                requestData.email = email;
             }
 
             // Add registration data if this is a registration
             if (currentVerificationType === 'registration') {
                 const name = document.getElementById('regName').value;
                 const bio = document.getElementById('regBio').value;
-                const phone = document.getElementById('verifyPhone').value;
+                const phone = document.getElementById('regPhone').value;
 
                 if (!name) {
                     showResponse('verificationResponse', '❌ Please enter your name for registration', 'error');
@@ -811,7 +823,7 @@
                     // Redirect to refresh the page and show authenticated state
                     setTimeout(() => {
                         window.location.reload();
-                    }, 2000);
+                    }, 1000);
 
                 } else {
                     showResponse('verificationResponse', `❌ ${result.message}`, 'error');
