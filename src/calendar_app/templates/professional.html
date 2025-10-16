@@ -226,6 +226,152 @@
             transform: translateX(5px);
         }
 
+        .existing-services-container {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .existing-service-card {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .existing-service-card:hover {
+            background: rgba(212, 175, 55, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+        }
+
+        .service-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .service-card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #D4AF37;
+            margin: 0;
+        }
+
+        .service-card-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: rgba(212, 175, 55, 0.2);
+            color: #D4AF37;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+        }
+
+        .btn-edit:hover {
+            background: rgba(212, 175, 55, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-delete:hover {
+            background: rgba(220, 53, 69, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .service-card-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .service-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-detail-icon {
+            font-size: 1.1rem;
+        }
+
+        .service-detail-value {
+            font-weight: 500;
+        }
+
+        .service-edit-form {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .service-edit-form .form-grid {
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .service-edit-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-save,
+        .btn-cancel {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-cancel {
+            background: rgba(108, 117, 125, 0.2);
+            color: #6c757d;
+            border: 1px solid rgba(108, 117, 125, 0.4);
+        }
+
+        .btn-cancel:hover {
+            background: rgba(108, 117, 125, 0.3);
+            transform: translateY(-1px);
+        }
+
         .response {
             margin-top: 20px;
             padding: 20px;
@@ -464,6 +610,20 @@
                 <div id="servicesResponse" class="response"></div>
             </div>
 
+            <!-- Existing Services Management Section -->
+            <div class="section" id="existingServicesSection" style="display: none;">
+                <h2><span class="section-icon">⚙️</span>Manage Your Services</h2>
+                <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 20px;">
+                    View, edit, or remove your existing services. Changes are saved automatically.
+                </p>
+
+                <div id="existingServicesList" class="existing-services-container">
+                    <!-- Existing services will be loaded here -->
+                </div>
+
+                <div id="existingServicesResponse" class="response"></div>
+            </div>
+
             <!-- Exclusive Availability Section -->
             <div class="section">
                 <h2><span class="section-icon">📅</span>Exclusive Availability</h2>
@@ -501,14 +661,275 @@
         {% endif %}
 
 
-        // Set default dates
+        // Set default dates and load existing data
         document.addEventListener('DOMContentLoaded', function () {
             const today = new Date();
             const dateInput = document.querySelector('.availability-date');
             if (dateInput) {
                 dateInput.value = today.toISOString().split('T')[0];
             }
+
+            // Load existing services and availability if user is authenticated
+            if (currentSpecialistId) {
+                loadExistingData();
+            }
         });
+
+        // Load existing services and availability for returning professionals
+        async function loadExistingData() {
+            try {
+                const response = await fetch('/auth/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Load existing services
+                    if (data.services && data.services.length > 0) {
+                        loadExistingServices(data.services);
+                        displayExistingServices(data.services);
+                    }
+
+                    // Load existing availability
+                    if (data.availability && data.availability.length > 0) {
+                        loadExistingAvailability(data.availability);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load existing data:', error);
+            }
+        }
+
+        // Display existing services in the management section
+        function displayExistingServices(services) {
+            const existingServicesSection = document.getElementById('existingServicesSection');
+            const existingServicesList = document.getElementById('existingServicesList');
+
+            if (!existingServicesSection || !existingServicesList) return;
+
+            if (services && services.length > 0) {
+                existingServicesSection.style.display = 'block';
+
+                existingServicesList.innerHTML = services.map(service => `
+                    <div class="existing-service-card" data-service-id="${service.id}">
+                        <div class="service-card-header">
+                            <h3 class="service-card-title">${service.name}</h3>
+                            <div class="service-card-actions">
+                                <button class="btn-edit" onclick="editService(${service.id})">
+                                    ✏️ Edit
+                                </button>
+                                <button class="btn-delete" onclick="confirmDeleteService(${service.id}, '${service.name}')">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="service-card-details">
+                            <div class="service-detail">
+                                <span class="service-detail-icon">💰</span>
+                                <span class="service-detail-value">$${service.price}</span>
+                            </div>
+                            <div class="service-detail">
+                                <span class="service-detail-icon">⏱️</span>
+                                <span class="service-detail-value">${service.duration} minutes</span>
+                            </div>
+                        </div>
+                        
+                        <div class="service-edit-form" id="edit-form-${service.id}">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Service Name</label>
+                                    <input type="text" id="edit-name-${service.id}" value="${service.name}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Price ($)</label>
+                                    <input type="number" id="edit-price-${service.id}" value="${service.price}" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration (minutes)</label>
+                                    <input type="number" id="edit-duration-${service.id}" value="${service.duration}">
+                                </div>
+                            </div>
+                            <div class="service-edit-buttons">
+                                <button class="btn-cancel" onclick="cancelEdit(${service.id})">Cancel</button>
+                                <button class="btn-save" onclick="saveServiceEdit(${service.id})">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                existingServicesSection.style.display = 'none';
+            }
+        }
+
+        // Edit service function
+        function editService(serviceId) {
+            const editForm = document.getElementById(`edit-form-${serviceId}`);
+            const serviceCard = document.querySelector(`[data-service-id="${serviceId}"]`);
+
+            if (editForm && serviceCard) {
+                // Hide all other edit forms
+                document.querySelectorAll('.service-edit-form').forEach(form => {
+                    form.style.display = 'none';
+                });
+
+                // Show this edit form
+                editForm.style.display = 'block';
+                serviceCard.style.background = 'rgba(212, 175, 55, 0.2)';
+            }
+        }
+
+        // Cancel edit function
+        function cancelEdit(serviceId) {
+            const editForm = document.getElementById(`edit-form-${serviceId}`);
+            const serviceCard = document.querySelector(`[data-service-id="${serviceId}"]`);
+
+            if (editForm && serviceCard) {
+                editForm.style.display = 'none';
+                serviceCard.style.background = 'rgba(212, 175, 55, 0.1)';
+            }
+        }
+
+        // Save service edit function
+        async function saveServiceEdit(serviceId) {
+            const name = document.getElementById(`edit-name-${serviceId}`).value;
+            const price = parseFloat(document.getElementById(`edit-price-${serviceId}`).value);
+            const duration = parseInt(document.getElementById(`edit-duration-${serviceId}`).value);
+
+            if (!name || !price || !duration) {
+                showResponse('existingServicesResponse', '❌ Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                // Get current services first
+                const currentServices = await getCurrentServices();
+
+                // Update the service in the array
+                const updatedServices = currentServices.map(service =>
+                    service.id === serviceId ? { name, price, duration } : service
+                );
+
+                // Send updated services to server
+                const response = await fetch(`/specialist/${currentSpecialistId}/services`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedServices)
+                });
+
+                if (response.ok) {
+                    showResponse('existingServicesResponse', '✨ Service updated successfully!', 'success');
+
+                    // Refresh the services display
+                    loadExistingData();
+                } else {
+                    const result = await response.json();
+                    showResponse('existingServicesResponse', `❌ Update failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('existingServicesResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Delete service confirmation
+        function confirmDeleteService(serviceId, serviceName) {
+            if (confirm(`Are you sure you want to delete "${serviceName}"? This action cannot be undone.`)) {
+                deleteService(serviceId);
+            }
+        }
+
+        // Delete service function
+        async function deleteService(serviceId) {
+            try {
+                // Get current services first
+                const currentServices = await getCurrentServices();
+
+                // Remove the service from the array
+                const updatedServices = currentServices.filter(service => service.id !== serviceId);
+
+                // Send updated services to server
+                const response = await fetch(`/specialist/${currentSpecialistId}/services`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedServices)
+                });
+
+                if (response.ok) {
+                    showResponse('existingServicesResponse', '✨ Service deleted successfully!', 'success');
+
+                    // Refresh the services display
+                    loadExistingData();
+                } else {
+                    const result = await response.json();
+                    showResponse('existingServicesResponse', `❌ Delete failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResponse('existingServicesResponse', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Helper function to get current services
+        async function getCurrentServices() {
+            const response = await fetch(`/specialist/${currentSpecialistId}/services`);
+            if (response.ok) {
+                return await response.json();
+            }
+            return [];
+        }
+
+        // Load existing services into the form
+        function loadExistingServices(services) {
+            const servicesContainer = document.querySelector('#servicesForm .dynamic-list');
+            if (!servicesContainer) return;
+
+            // Clear any existing empty items
+            servicesContainer.innerHTML = '';
+
+            services.forEach((service, index) => {
+                const serviceItem = document.createElement('div');
+                serviceItem.className = 'dynamic-item';
+                serviceItem.innerHTML = `
+                    <div class="service-row">
+                        <input type="text" placeholder="Service Name" class="service-name" value="${service.name}">
+                        <input type="number" placeholder="Price ($)" step="0.01" class="service-price" value="${service.price}">
+                        <input type="number" placeholder="Duration (min)" class="service-duration" value="${service.duration}">
+                        <button type="button" onclick="removeItem(this)" class="remove-btn">Remove</button>
+                    </div>
+                `;
+                servicesContainer.appendChild(serviceItem);
+            });
+
+            // Show success message
+            showResponse('servicesResponse', `✨ Loaded ${services.length} existing services`, 'success');
+        }
+
+        // Load existing availability into the form
+        function loadExistingAvailability(availability) {
+            const availabilityContainer = document.querySelector('#availabilityForm .dynamic-list');
+            if (!availabilityContainer) return;
+
+            // Clear any existing empty items
+            availabilityContainer.innerHTML = '';
+
+            availability.forEach((slot, index) => {
+                const availabilityItem = document.createElement('div');
+                availabilityItem.className = 'dynamic-item';
+                availabilityItem.innerHTML = `
+                    <div class="availability-row">
+                        <input type="date" class="availability-date" value="${slot.date}">
+                        <input type="time" class="availability-start" value="${slot.start_time.substring(0, 5)}">
+                        <input type="time" class="availability-end" value="${slot.end_time.substring(0, 5)}">
+                        <button type="button" onclick="removeItem(this)" class="remove-btn">Remove</button>
+                    </div>
+                `;
+                availabilityContainer.appendChild(availabilityItem);
+            });
+
+            // Show success message
+            showResponse('availabilityResponse', `✨ Loaded ${availability.length} existing availability slots`, 'success');
+        }
 
         // Simplified Login Functions
         function proceedWithEmail() {
@@ -624,7 +1045,7 @@
             }
 
             const serviceItems = document.querySelectorAll('.dynamic-item');
-            const services = [];
+            const newServices = [];
 
             serviceItems.forEach(item => {
                 const nameInput = item.querySelector('.service-name');
@@ -637,26 +1058,40 @@
                     const duration = parseInt(durationInput.value);
 
                     if (name && price && duration) {
-                        services.push({ name, price, duration });
+                        newServices.push({ name, price, duration });
                     }
                 }
             });
 
-            if (services.length === 0) {
+            if (newServices.length === 0) {
                 showResponse('servicesResponse', '❌ Please add at least one premium service', 'error');
                 return;
             }
 
             try {
+                // Get existing services first
+                const existingServices = await getCurrentServices();
+                
+                // Combine existing services with new services
+                const allServices = [...existingServices, ...newServices];
+
                 const response = await fetch(`/specialist/${currentSpecialistId}/services`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(services)
+                    body: JSON.stringify(allServices)
                 });
 
                 const result = await response.json();
                 if (response.ok) {
-                    showResponse('servicesResponse', `✨ ${services.length} premium services published successfully!`, 'success');
+                    showResponse('servicesResponse', `✨ ${newServices.length} new premium services added successfully! Total: ${allServices.length}`, 'success');
+
+                    // Refresh the existing services display
+                    loadExistingData();
+
+                    // Clear the form
+                    document.querySelectorAll('.dynamic-item .service-name').forEach(input => input.value = '');
+                    document.querySelectorAll('.dynamic-item .service-price').forEach(input => input.value = '');
+                    document.querySelectorAll('.dynamic-item .service-duration').forEach(input => input.value = '');
                 } else {
                     showResponse('servicesResponse', `❌ Publishing failed: ${result.detail}`, 'error');
                 }

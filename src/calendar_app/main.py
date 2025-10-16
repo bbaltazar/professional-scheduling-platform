@@ -98,7 +98,7 @@ def verify_token(token: str) -> Optional[dict]:
 def get_current_specialist(
     request: Request, db: Session = Depends(get_db)
 ) -> Optional[Specialist]:
-    """Get current authenticated specialist from session"""
+    """Get current authenticated specialist from session with their services and availability"""
     # Try to get token from cookie first
     token = request.cookies.get("access_token")
     if not token:
@@ -112,6 +112,7 @@ def get_current_specialist(
     if not specialist_id:
         return None
 
+    # Fetch specialist with services eagerly loaded
     specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
     return specialist
 
@@ -162,10 +163,28 @@ async def logout(response: Response):
 
 @app.get("/auth/me")
 async def get_current_user(request: Request, db: Session = Depends(get_db)):
-    """Get current authenticated user info"""
+    """Get current authenticated user info with services and availability"""
     specialist = get_current_specialist(request, db)
     if not specialist:
         raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Get services for this specialist
+    services = (
+        db.query(ServiceDB).filter(ServiceDB.specialist_id == specialist.id).all()
+    )
+
+    # Get recent availability slots for this specialist
+    from datetime import date, timedelta
+
+    today = date.today()
+    recent_availability = (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.specialist_id == specialist.id,
+            AvailabilitySlot.date >= today,
+        )
+        .all()
+    )
 
     specialist_response = SpecialistResponse(
         id=specialist.id,
@@ -173,9 +192,23 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
         email=specialist.email,
         bio=specialist.bio,
         phone=specialist.phone,
-        services=[],
+        services=services,
     )
-    return {"specialist": specialist_response}
+
+    return {
+        "specialist": specialist_response,
+        "services": services,
+        "availability": [
+            {
+                "id": slot.id,
+                "date": slot.date.isoformat(),
+                "start_time": slot.start_time.strftime("%H:%M:%S"),
+                "end_time": slot.end_time.strftime("%H:%M:%S"),
+                "is_available": slot.is_available,
+            }
+            for slot in recent_availability
+        ],
+    }
 
 
 # HTML Routes for Web Interface
@@ -502,6 +535,19 @@ async def verify_code(
         access_token=access_token,
         specialist=specialist_response,
     )
+
+
+@app.get("/auth/my-services", response_model=List[ServiceResponse])
+async def get_current_user_services(request: Request, db: Session = Depends(get_db)):
+    """Get current authenticated user's services"""
+    specialist = get_current_specialist(request, db)
+    if not specialist:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    services = (
+        db.query(ServiceDB).filter(ServiceDB.specialist_id == specialist.id).all()
+    )
+    return services
 
 
 @app.post("/specialist/", response_model=SpecialistResponse)
