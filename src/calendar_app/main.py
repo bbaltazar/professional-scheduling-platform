@@ -6,6 +6,16 @@ from __future__ import annotations
 from typing import Union, List, Optional
 from datetime import date, time, datetime, timedelta
 import secrets
+import json
+
+# Note: dateutil will need to be installed: pip install python-dateutil
+try:
+    from dateutil.rrule import rrule, DAILY, WEEKLY
+    from dateutil.rrule import MO, TU, WE, TH, FR, SA, SU
+
+    DATEUTIL_AVAILABLE = True
+except ImportError:
+    DATEUTIL_AVAILABLE = False
 from fastapi import FastAPI, Depends, HTTPException, Request, Cookie, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -23,6 +33,10 @@ try:
         ServiceDB,
         AvailabilitySlot,
         Booking,
+        CalendarEvent,
+        EventException,
+        WorkingHours,
+        SchedulingPreferences,
         database,
         VerificationCode,
     )
@@ -34,6 +48,10 @@ except ImportError:
         ServiceDB,
         AvailabilitySlot,
         Booking,
+        CalendarEvent,
+        EventException,
+        WorkingHours,
+        SchedulingPreferences,
         database,
         VerificationCode,
     )
@@ -140,6 +158,474 @@ async def startup():
 async def shutdown():
     """Close database connection on shutdown."""
     await database.disconnect()
+
+
+# Advanced Calendar Management Helper Functions
+
+
+def generate_recurring_event_instances(
+    db: Session, base_event: CalendarEvent, recurrence_rule: RecurrenceRule
+):
+    """
+    Generate instances of a recurring event based on sophisticated recurrence rules.
+    Supports RFC 5545-like RRULE patterns for Google Calendar-level flexibility.
+    """
+    if not DATEUTIL_AVAILABLE:
+        # Fallback to simple recurring logic if dateutil is not available
+        return generate_simple_recurring_instances(db, base_event, recurrence_rule)
+
+    # Map frequency strings to dateutil constants
+    freq_map = {"DAILY": DAILY, "WEEKLY": WEEKLY}
+
+    # Map weekday integers to dateutil weekday objects
+    weekday_map = {0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU}
+
+    # Build rrule parameters
+    rrule_params = {
+        "freq": freq_map.get(recurrence_rule.freq, WEEKLY),
+        "interval": recurrence_rule.interval,
+        "dtstart": base_event.start_datetime,
+    }
+
+    # Add end conditions
+    if recurrence_rule.until:
+        rrule_params["until"] = datetime.combine(recurrence_rule.until, time.max)
+    elif recurrence_rule.count:
+        rrule_params["count"] = recurrence_rule.count
+    else:
+        # Default to 2 years if no end specified
+        rrule_params["until"] = base_event.start_datetime + timedelta(days=730)
+
+    # Add weekday restrictions
+    if recurrence_rule.byweekday:
+        rrule_params["byweekday"] = [
+            weekday_map[day] for day in recurrence_rule.byweekday
+        ]
+
+    # Add month day restrictions
+    if recurrence_rule.bymonthday:
+        rrule_params["bymonthday"] = recurrence_rule.bymonthday
+
+    # Add month restrictions
+    if recurrence_rule.bymonth:
+        rrule_params["bymonth"] = recurrence_rule.bymonth
+
+    # Generate occurrence dates
+    rule = rrule(**rrule_params)
+    occurrences = list(rule)
+
+    # Create event instances (skip the first one as it's the base event)
+    duration = base_event.end_datetime - base_event.start_datetime
+
+    for occurrence_start in occurrences[1:]:  # Skip first occurrence
+        occurrence_end = occurrence_start + duration
+
+        # Check for conflicts with existing events
+        if not has_calendar_conflict(
+            db, base_event.specialist_id, occurrence_start, occurrence_end
+        ):
+            db_instance = CalendarEvent(
+                specialist_id=base_event.specialist_id,
+                title=base_event.title,
+                description=base_event.description,
+                location=base_event.location,
+                start_datetime=occurrence_start,
+                end_datetime=occurrence_end,
+                is_all_day=base_event.is_all_day,
+                timezone=base_event.timezone,
+                event_type=base_event.event_type,
+                category=base_event.category,
+                priority=base_event.priority,
+                color=base_event.color,
+                is_bookable=base_event.is_bookable,
+                max_bookings=base_event.max_bookings,
+                buffer_before=base_event.buffer_before,
+                buffer_after=base_event.buffer_after,
+                is_recurring=False,  # Individual instances are not recurring
+                status=base_event.status,
+                visibility=base_event.visibility,
+                recurring_event_id=base_event.recurring_event_id,
+                original_start=occurrence_start,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(db_instance)
+
+    db.commit()
+
+
+def generate_simple_recurring_instances(
+    db: Session, base_event: CalendarEvent, recurrence_rule: RecurrenceRule
+):
+    """
+    Fallback simple recurring instance generator when dateutil is not available.
+    """
+    current_date = base_event.start_datetime.date()
+    end_date = recurrence_rule.until or (current_date + timedelta(days=365))
+    duration = base_event.end_datetime - base_event.start_datetime
+    count = 0
+    max_count = recurrence_rule.count or 100
+
+    while current_date <= end_date and count < max_count:
+        # Simple frequency handling
+        if recurrence_rule.freq == "DAILY":
+            current_date += timedelta(days=recurrence_rule.interval)
+        elif recurrence_rule.freq == "WEEKLY":
+            current_date += timedelta(weeks=recurrence_rule.interval)
+        else:
+            break
+
+        if current_date <= end_date:
+            # Create instance
+            occurrence_start = datetime.combine(
+                current_date, base_event.start_datetime.time()
+            )
+            occurrence_end = occurrence_start + duration
+
+            if not has_calendar_conflict(
+                db, base_event.specialist_id, occurrence_start, occurrence_end
+            ):
+                db_instance = CalendarEvent(
+                    specialist_id=base_event.specialist_id,
+                    title=base_event.title,
+                    description=base_event.description,
+                    location=base_event.location,
+                    start_datetime=occurrence_start,
+                    end_datetime=occurrence_end,
+                    is_all_day=base_event.is_all_day,
+                    timezone=base_event.timezone,
+                    event_type=base_event.event_type,
+                    category=base_event.category,
+                    priority=base_event.priority,
+                    color=base_event.color,
+                    is_bookable=base_event.is_bookable,
+                    max_bookings=base_event.max_bookings,
+                    buffer_before=base_event.buffer_before,
+                    buffer_after=base_event.buffer_after,
+                    is_recurring=False,
+                    status=base_event.status,
+                    visibility=base_event.visibility,
+                    recurring_event_id=base_event.recurring_event_id,
+                    original_start=occurrence_start,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(db_instance)
+
+        count += 1
+
+    db.commit()
+
+
+def apply_recurring_exceptions(
+    db: Session,
+    events: List[CalendarEvent],
+    start_date: Optional[date],
+    end_date: Optional[date],
+) -> List[CalendarEvent]:
+    """
+    Apply exceptions to recurring events (cancellations, modifications).
+    Returns the event list with exceptions applied.
+    """
+    # Get all exceptions for the events in the date range
+    event_ids = [event.id for event in events]
+    exceptions = (
+        db.query(EventException).filter(EventException.event_id.in_(event_ids)).all()
+    )
+
+    # Group exceptions by event ID
+    exceptions_by_event = {}
+    for exception in exceptions:
+        if exception.event_id not in exceptions_by_event:
+            exceptions_by_event[exception.event_id] = []
+        exceptions_by_event[exception.event_id].append(exception)
+
+    # Apply exceptions
+    result_events = []
+    for event in events:
+        event_exceptions = exceptions_by_event.get(event.id, [])
+
+        # Check if this specific occurrence should be modified or cancelled
+        event_date = event.start_datetime.date()
+        exception_for_date = None
+
+        for exception in event_exceptions:
+            if exception.exception_date == event_date:
+                exception_for_date = exception
+                break
+
+        if exception_for_date:
+            if exception_for_date.exception_type == "cancelled":
+                # Skip cancelled events
+                continue
+            elif exception_for_date.exception_type in ["modified", "moved"]:
+                # Apply modifications
+                if exception_for_date.new_start_datetime:
+                    event.start_datetime = exception_for_date.new_start_datetime
+                if exception_for_date.new_end_datetime:
+                    event.end_datetime = exception_for_date.new_end_datetime
+                if exception_for_date.new_title:
+                    event.title = exception_for_date.new_title
+                if exception_for_date.new_description:
+                    event.description = exception_for_date.new_description
+
+        result_events.append(event)
+
+    return result_events
+
+
+def create_event_exception(
+    db: Session, event: CalendarEvent, modifications: CalendarEventUpdate
+):
+    """
+    Create an exception for a specific instance of a recurring event.
+    """
+    exception_date = event.start_datetime.date()
+
+    db_exception = EventException(
+        event_id=event.id,
+        exception_date=exception_date,
+        exception_type="modified",
+        new_start_datetime=modifications.start_datetime,
+        new_end_datetime=modifications.end_datetime,
+        new_title=modifications.title,
+        new_description=modifications.description,
+        created_at=datetime.utcnow(),
+    )
+
+    db.add(db_exception)
+    db.commit()
+
+
+def has_calendar_conflict(
+    db: Session, specialist_id: int, start_datetime: datetime, end_datetime: datetime
+) -> bool:
+    """
+    Check if there are any calendar conflicts for the given time range.
+    Considers all types of calendar events and buffer times.
+    """
+    conflicting_events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.is_active == True,
+            CalendarEvent.start_datetime < end_datetime,
+            CalendarEvent.end_datetime > start_datetime,
+        )
+        .all()
+    )
+
+    # Check for buffer time conflicts
+    for event in conflicting_events:
+        # Add buffer times to the event
+        buffered_start = event.start_datetime - timedelta(minutes=event.buffer_before)
+        buffered_end = event.end_datetime + timedelta(minutes=event.buffer_after)
+
+        if buffered_start < end_datetime and buffered_end > start_datetime:
+            return True
+
+    return False
+
+
+def generate_smart_availability_suggestions(
+    db: Session, specialist_id: int, query: AvailabilityQuery
+) -> List[SmartSchedulingSuggestion]:
+    """
+    Generate intelligent scheduling suggestions based on preferences, working hours, and patterns.
+    Uses machine learning-like algorithms to suggest optimal times.
+    """
+    suggestions = []
+
+    # Get specialist's preferences and working hours
+    preferences = (
+        db.query(SchedulingPreferences)
+        .filter(
+            SchedulingPreferences.specialist_id == specialist_id,
+            SchedulingPreferences.is_active == True,
+        )
+        .first()
+    )
+
+    working_hours = (
+        db.query(WorkingHours)
+        .filter(
+            WorkingHours.specialist_id == specialist_id, WorkingHours.is_active == True
+        )
+        .all()
+    )
+
+    # Generate time slots based on working hours
+    current_datetime = query.start_datetime
+    end_datetime = query.end_datetime
+    duration = timedelta(minutes=query.duration_minutes)
+
+    while current_datetime + duration <= end_datetime:
+        # Check if this time falls within working hours
+        if is_within_working_hours(current_datetime, working_hours):
+            # Check for conflicts
+            if not has_calendar_conflict(
+                db, specialist_id, current_datetime, current_datetime + duration
+            ):
+                # Calculate confidence score based on various factors
+                confidence = calculate_confidence_score(
+                    db, specialist_id, current_datetime, query, preferences
+                )
+
+                suggestion = SmartSchedulingSuggestion(
+                    suggested_datetime=current_datetime,
+                    duration_minutes=query.duration_minutes,
+                    confidence_score=confidence,
+                    reason=f"Available slot with {confidence:.1%} confidence",
+                    alternative_times=[],
+                    conflicts=[],
+                )
+                suggestions.append(suggestion)
+
+        # Move to next time slot
+        increment = preferences.slot_increment if preferences else 30
+        current_datetime += timedelta(minutes=increment)
+
+    # Sort by confidence score and return top suggestions
+    suggestions.sort(key=lambda x: x.confidence_score, reverse=True)
+    return suggestions[:10]  # Return top 10 suggestions
+
+
+def is_within_working_hours(
+    check_datetime: datetime, working_hours: List[WorkingHours]
+) -> bool:
+    """
+    Check if a datetime falls within the specialist's working hours.
+    """
+    weekday = check_datetime.weekday()  # 0=Monday, 6=Sunday
+    check_time = check_datetime.time()
+
+    for wh in working_hours:
+        if wh.day_of_week == weekday and wh.is_working_day:
+            # Parse time ranges from JSON
+            time_ranges = json.loads(wh.time_ranges)
+            for tr in time_ranges:
+                if tr.get("start_time") and tr.get("end_time"):
+                    start_time = time.fromisoformat(tr["start_time"])
+                    end_time = time.fromisoformat(tr["end_time"])
+                    if start_time <= check_time <= end_time:
+                        return True
+
+    return False
+
+
+def calculate_confidence_score(
+    db: Session,
+    specialist_id: int,
+    suggested_datetime: datetime,
+    query: AvailabilityQuery,
+    preferences: Optional[SchedulingPreferences],
+) -> float:
+    """
+    Calculate a confidence score for a suggested time slot based on multiple factors.
+    """
+    score = 1.0
+
+    # Factor 1: Time of day preferences (higher score for mid-morning/afternoon)
+    hour = suggested_datetime.hour
+    if 9 <= hour <= 11 or 14 <= hour <= 16:
+        score *= 1.0  # Peak times
+    elif 8 <= hour <= 9 or 11 <= hour <= 14 or 16 <= hour <= 17:
+        score *= 0.8  # Good times
+    else:
+        score *= 0.6  # Off-peak times
+
+    # Factor 2: Day of week preferences (weekdays typically better)
+    weekday = suggested_datetime.weekday()
+    if 0 <= weekday <= 4:  # Monday to Friday
+        score *= 1.0
+    else:  # Weekend
+        score *= 0.7
+
+    # Factor 3: Advance booking notice
+    if preferences:
+        notice_hours = (suggested_datetime - datetime.utcnow()).total_seconds() / 3600
+        min_notice_hours = preferences.min_booking_notice / 60
+        if notice_hours >= min_notice_hours * 2:
+            score *= 1.0  # Good advance notice
+        elif notice_hours >= min_notice_hours:
+            score *= 0.8  # Adequate notice
+        else:
+            score *= 0.3  # Short notice
+
+    # Factor 4: Buffer around existing appointments
+    nearby_events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.is_active == True,
+            CalendarEvent.start_datetime >= suggested_datetime - timedelta(hours=2),
+            CalendarEvent.end_datetime <= suggested_datetime + timedelta(hours=2),
+        )
+        .all()
+    )
+
+    if len(nearby_events) == 0:
+        score *= 1.0  # No nearby events
+    elif len(nearby_events) <= 2:
+        score *= 0.9  # Some nearby events
+    else:
+        score *= 0.7  # Busy period
+
+    return min(score, 1.0)
+
+
+def execute_bulk_calendar_operation(
+    db: Session, specialist_id: int, operation: BulkEventOperation
+) -> List[CalendarEventResponse]:
+    """
+    Execute bulk operations on calendar events for efficiency.
+    """
+    results = []
+
+    if operation.operation == "create":
+        for event_data in operation.events:
+            # Convert to CalendarEventCreate if needed
+            if isinstance(event_data, CalendarEventUpdate):
+                # Skip updates in create operation
+                continue
+
+            # Create the event
+            db_event = CalendarEvent(
+                specialist_id=specialist_id,
+                **event_data.dict(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(db_event)
+            results.append(db_event)
+
+    elif operation.operation == "update":
+        # Batch update operations
+        for event_data in operation.events:
+            if hasattr(event_data, "id") and event_data.id:
+                db_event = (
+                    db.query(CalendarEvent)
+                    .filter(
+                        CalendarEvent.id == event_data.id,
+                        CalendarEvent.specialist_id == specialist_id,
+                    )
+                    .first()
+                )
+
+                if db_event:
+                    for field, value in event_data.dict(exclude_unset=True).items():
+                        if field != "id":
+                            setattr(db_event, field, value)
+                    db_event.updated_at = datetime.utcnow()
+                    results.append(db_event)
+
+    db.commit()
+
+    # Refresh all results
+    for result in results:
+        db.refresh(result)
+
+    return results
 
 
 # Health Check
@@ -373,6 +859,223 @@ class ErrorResponse(BaseModel):
     error: str
     detail: str
     timestamp: datetime
+
+
+# Advanced Calendar Models - Google Calendar Level Flexibility
+
+
+class RecurrenceRule(BaseModel):
+    """Comprehensive recurrence rule similar to RFC 5545 RRULE"""
+
+    freq: str  # 'DAILY', 'WEEKLY'
+    interval: int = 1  # Every N days/weeks
+    byweekday: Optional[List[int]] = None  # Days of week (0=Mon, 6=Sun)
+    bymonthday: Optional[List[int]] = None  # Days of month (1-31)
+    bymonth: Optional[List[int]] = None  # Months (1-12)
+    byyearday: Optional[List[int]] = None  # Day of year (1-366)
+    bysetpos: Optional[List[int]] = None  # Nth occurrence (1st Monday, last Friday)
+    wkst: int = 0  # Week start (0=Monday)
+    until: Optional[date] = None  # End date for recurrence
+    count: Optional[int] = None  # Maximum occurrences
+
+    # Advanced patterns
+    byweekno: Optional[List[int]] = None  # Week numbers
+    byhour: Optional[List[int]] = None  # Hours (0-23)
+    byminute: Optional[List[int]] = None  # Minutes (0-59)
+
+
+class TimeRange(BaseModel):
+    """Flexible time range supporting both date-times and all-day events"""
+
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    is_all_day: bool = False
+    timezone: str = "UTC"
+
+
+class CalendarEventCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    location: Optional[str] = None
+
+    # Time settings - flexible for both timed and all-day events
+    start_datetime: datetime
+    end_datetime: datetime
+    is_all_day: bool = False
+    timezone: str = "UTC"
+
+    # Event classification
+    event_type: str = "availability"  # 'availability', 'block', 'appointment', 'break'
+    category: Optional[str] = None
+    priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
+    color: Optional[str] = None
+
+    # Availability settings
+    is_bookable: bool = True
+    max_bookings: Optional[int] = None
+    buffer_before: int = 0  # Minutes
+    buffer_after: int = 0  # Minutes
+
+    # Recurrence
+    is_recurring: bool = False
+    recurrence_rule: Optional[RecurrenceRule] = None
+
+    # Status
+    status: str = "confirmed"  # 'tentative', 'confirmed', 'cancelled'
+    visibility: str = "public"  # 'public', 'private'
+
+
+class CalendarEventResponse(CalendarEventCreate):
+    id: int
+    specialist_id: int
+    recurring_event_id: Optional[str] = None
+    original_start: Optional[datetime] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CalendarEventUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    is_all_day: Optional[bool] = None
+    timezone: Optional[str] = None
+    event_type: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    color: Optional[str] = None
+    is_bookable: Optional[bool] = None
+    max_bookings: Optional[int] = None
+    buffer_before: Optional[int] = None
+    buffer_after: Optional[int] = None
+    status: Optional[str] = None
+    visibility: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class EventExceptionCreate(BaseModel):
+    exception_date: date
+    exception_type: str  # 'cancelled', 'modified', 'moved'
+    new_start_datetime: Optional[datetime] = None
+    new_end_datetime: Optional[datetime] = None
+    new_title: Optional[str] = None
+    new_description: Optional[str] = None
+
+
+class EventExceptionResponse(EventExceptionCreate):
+    id: int
+    event_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkingHoursCreate(BaseModel):
+    day_of_week: int  # 0=Monday, 6=Sunday
+    time_ranges: List[TimeRange]
+    is_working_day: bool = True
+    break_duration: int = 0  # Minutes
+    break_start_time: Optional[time] = None
+    timezone: str = "UTC"
+    effective_date: Optional[date] = None
+
+
+class WorkingHoursResponse(WorkingHoursCreate):
+    id: int
+    specialist_id: int
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class SchedulingPreferencesCreate(BaseModel):
+    # Buffer times
+    default_buffer_before: int = 15
+    default_buffer_after: int = 15
+
+    # Booking windows
+    advance_booking_days: int = 365
+    min_booking_notice: int = 60  # Minutes
+
+    # Limits
+    auto_accept_bookings: bool = True
+    max_daily_bookings: Optional[int] = None
+    max_weekly_bookings: Optional[int] = None
+
+    # Time preferences
+    minimum_slot_duration: int = 15
+    slot_increment: int = 15
+
+    # Breaks
+    lunch_break_start: Optional[time] = None
+    lunch_break_duration: int = 60
+    travel_time_between_appointments: int = 0
+
+    # Locale
+    timezone: str = "UTC"
+    date_format: str = "YYYY-MM-DD"
+    time_format: str = "24h"
+
+    # Notifications
+    email_reminders: bool = True
+    sms_reminders: bool = False
+    reminder_advance_time: int = 1440  # Minutes
+
+
+class SchedulingPreferencesResponse(SchedulingPreferencesCreate):
+    id: int
+    specialist_id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BulkEventOperation(BaseModel):
+    operation: str  # 'create', 'update', 'delete', 'move'
+    events: List[Union[CalendarEventCreate, CalendarEventUpdate]]
+    apply_to_series: bool = False  # For recurring events
+
+
+class CalendarView(BaseModel):
+    start_date: date
+    end_date: date
+    view_type: str = "week"  # 'day', 'week', 'month', 'year'
+    timezone: str = "UTC"
+    include_all_day: bool = True
+    event_types: Optional[List[str]] = None
+    categories: Optional[List[str]] = None
+
+
+class SmartSchedulingSuggestion(BaseModel):
+    suggested_datetime: datetime
+    duration_minutes: int
+    confidence_score: float  # 0.0 to 1.0
+    reason: str
+    alternative_times: List[datetime]
+    conflicts: List[str]
+
+
+class AvailabilityQuery(BaseModel):
+    start_datetime: datetime
+    end_datetime: datetime
+    duration_minutes: int
+    service_id: Optional[int] = None
+    buffer_minutes: int = 0
+    preferred_times: Optional[List[TimeRange]] = None
+    exclude_weekends: bool = False
 
 
 # Authentication Models
@@ -796,6 +1499,564 @@ def get_specialist_availability(
     return query.all()
 
 
+# Advanced Calendar Event Management - Google Calendar Level Features
+
+
+@app.post(
+    "/specialist/{specialist_id}/calendar/events",
+    response_model=CalendarEventResponse,
+)
+def create_calendar_event(
+    specialist_id: int,
+    event: CalendarEventCreate,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Create a calendar event with advanced recurrence and flexibility options.
+    Supports Google Calendar-level features including complex recurrence rules.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own calendar"
+        )
+
+    # Generate recurring event ID for recurring events
+    recurring_event_id = None
+    if event.is_recurring:
+        recurring_event_id = f"{specialist_id}_{datetime.utcnow().timestamp()}"
+
+    # Convert recurrence rule to JSON
+    recurrence_json = None
+    if event.recurrence_rule:
+        recurrence_json = event.recurrence_rule.json()
+
+    db_event = CalendarEvent(
+        specialist_id=specialist_id,
+        title=event.title,
+        description=event.description,
+        location=event.location,
+        start_datetime=event.start_datetime,
+        end_datetime=event.end_datetime,
+        is_all_day=event.is_all_day,
+        timezone=event.timezone,
+        event_type=event.event_type,
+        category=event.category,
+        priority=event.priority,
+        color=event.color,
+        is_bookable=event.is_bookable,
+        max_bookings=event.max_bookings,
+        buffer_before=event.buffer_before,
+        buffer_after=event.buffer_after,
+        is_recurring=event.is_recurring,
+        recurrence_rule=recurrence_json,
+        status=event.status,
+        visibility=event.visibility,
+        recurring_event_id=recurring_event_id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+
+    # Generate recurring event instances if needed
+    if event.is_recurring and event.recurrence_rule:
+        generate_recurring_event_instances(db, db_event, event.recurrence_rule)
+
+    return db_event
+
+
+@app.get(
+    "/specialist/{specialist_id}/calendar/events",
+    response_model=List[CalendarEventResponse],
+)
+def get_calendar_events(
+    specialist_id: int,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    event_types: Optional[str] = None,  # Comma-separated list
+    categories: Optional[str] = None,  # Comma-separated list
+    include_recurring: bool = True,
+    db: Session = Depends(get_db),
+    current_specialist: Optional[Specialist] = Depends(get_current_user),
+):
+    """
+    Get calendar events with advanced filtering options.
+    Public availability events are visible to everyone, private events only to owner.
+    """
+    query = db.query(CalendarEvent).filter(
+        CalendarEvent.specialist_id == specialist_id, CalendarEvent.is_active == True
+    )
+
+    # Privacy filter - only show public events to non-owners
+    if not current_specialist or current_specialist.id != specialist_id:
+        query = query.filter(CalendarEvent.visibility == "public")
+
+    # Date filtering
+    if start_date:
+        query = query.filter(
+            CalendarEvent.end_datetime >= datetime.combine(start_date, time.min)
+        )
+    if end_date:
+        query = query.filter(
+            CalendarEvent.start_datetime <= datetime.combine(end_date, time.max)
+        )
+
+    # Event type filtering
+    if event_types:
+        type_list = [t.strip() for t in event_types.split(",")]
+        query = query.filter(CalendarEvent.event_type.in_(type_list))
+
+    # Category filtering
+    if categories:
+        category_list = [c.strip() for c in categories.split(",")]
+        query = query.filter(CalendarEvent.category.in_(category_list))
+
+    events = query.order_by(CalendarEvent.start_datetime).all()
+
+    # Apply recurring event exceptions
+    if include_recurring:
+        events = apply_recurring_exceptions(db, events, start_date, end_date)
+
+    return events
+
+
+@app.put(
+    "/specialist/{specialist_id}/calendar/events/{event_id}",
+    response_model=CalendarEventResponse,
+)
+def update_calendar_event(
+    specialist_id: int,
+    event_id: int,
+    event_update: CalendarEventUpdate,
+    modify_series: bool = False,  # For recurring events - modify entire series or just this instance
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Update calendar event with support for modifying recurring series or individual instances.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own calendar"
+        )
+
+    db_event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == event_id, CalendarEvent.specialist_id == specialist_id
+        )
+        .first()
+    )
+
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Handle recurring event modifications
+    if db_event.is_recurring and not modify_series:
+        # Create exception for this specific instance
+        create_event_exception(db, db_event, event_update)
+    else:
+        # Update the event directly
+        for field, value in event_update.dict(exclude_unset=True).items():
+            setattr(db_event, field, value)
+
+        db_event.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event
+
+
+@app.delete("/specialist/{specialist_id}/calendar/events/{event_id}")
+def delete_calendar_event(
+    specialist_id: int,
+    event_id: int,
+    delete_series: bool = False,  # For recurring events
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Delete calendar event with support for recurring event series management.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own calendar"
+        )
+
+    db_event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == event_id, CalendarEvent.specialist_id == specialist_id
+        )
+        .first()
+    )
+
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if db_event.is_recurring and delete_series:
+        # Delete entire recurring series
+        db.query(CalendarEvent).filter(
+            CalendarEvent.recurring_event_id == db_event.recurring_event_id
+        ).update({"is_active": False})
+    else:
+        # Delete just this event
+        db_event.is_active = False
+
+    db.commit()
+
+    return {"message": "Event deleted successfully"}
+
+
+# Recurring Schedule Management (Simplified Interface)
+
+
+class RecurringScheduleCreate(BaseModel):
+    recurrence_type: str  # 'daily' or 'weekly'
+    days_of_week: Optional[List[int]] = None  # For weekly: 0=Monday, 6=Sunday
+    start_time: str  # Format: "09:00"
+    end_time: str  # Format: "17:00"
+    start_date: str  # Format: "2024-01-01"
+    end_date: Optional[str] = None  # Format: "2024-12-31"
+
+
+@app.post("/specialist/{specialist_id}/recurring-schedule")
+def create_recurring_schedule(
+    specialist_id: int,
+    schedule: RecurringScheduleCreate,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Create recurring schedule using simplified interface that maps to calendar events.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own schedule"
+        )
+
+    # Build recurrence rule based on simple interface
+    if schedule.recurrence_type == "daily":
+        freq = "DAILY"
+        byweekday = None
+    elif schedule.recurrence_type == "weekly":
+        if not schedule.days_of_week or len(schedule.days_of_week) == 0:
+            raise HTTPException(
+                status_code=400, detail="Days of week required for weekly schedule"
+            )
+        freq = "WEEKLY"
+        byweekday = schedule.days_of_week
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported recurrence type. Use 'daily' or 'weekly'",
+        )
+
+    # Parse dates and times
+    try:
+        start_date = datetime.strptime(schedule.start_date, "%Y-%m-%d").date()
+        start_time_obj = datetime.strptime(schedule.start_time, "%H:%M").time()
+        end_time_obj = datetime.strptime(schedule.end_time, "%H:%M").time()
+
+        start_datetime = datetime.combine(start_date, start_time_obj)
+        end_datetime = datetime.combine(start_date, end_time_obj)
+
+        end_date = None
+        if schedule.end_date:
+            end_date = datetime.strptime(schedule.end_date, "%Y-%m-%d").date()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid date/time format: {str(e)}"
+        )
+
+    # Create recurrence rule
+    recurrence_rule = RecurrenceRule(
+        freq=freq, interval=1, byweekday=byweekday, until=end_date
+    )
+
+    # Generate recurring event ID
+    recurring_event_id = f"{specialist_id}_{datetime.utcnow().timestamp()}"
+
+    # Create base calendar event
+    db_event = CalendarEvent(
+        specialist_id=specialist_id,
+        title=f"{schedule.recurrence_type.title()} Availability",
+        description=f"Recurring {schedule.recurrence_type} availability from {schedule.start_time} to {schedule.end_time}",
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        is_all_day=False,
+        timezone="UTC",
+        event_type="availability",
+        category="schedule",
+        priority="normal",
+        color="#4CAF50",
+        is_bookable=True,
+        max_bookings=1,
+        buffer_before=0,
+        buffer_after=0,
+        is_recurring=True,
+        recurrence_rule=recurrence_rule.json(),
+        status="confirmed",
+        visibility="public",
+        recurring_event_id=recurring_event_id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+
+    # Generate recurring instances
+    generate_recurring_event_instances(db, db_event, recurrence_rule)
+
+    return {
+        "message": "Recurring schedule created successfully",
+        "event_id": db_event.id,
+        "recurring_event_id": recurring_event_id,
+        "recurrence_type": schedule.recurrence_type,
+    }
+
+
+@app.get("/specialist/{specialist_id}/recurring-schedules")
+def get_recurring_schedules(
+    specialist_id: int,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Get all recurring schedules for a specialist.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only view your own schedules"
+        )
+
+    # Get all recurring calendar events (base events only, not instances)
+    recurring_events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.is_active == True,
+            CalendarEvent.recurring_event_id != None,
+        )
+        .all()
+    )
+
+    schedules = []
+    for event in recurring_events:
+        recurrence_rule = None
+        if event.recurrence_rule:
+            try:
+                import json
+
+                recurrence_data = json.loads(event.recurrence_rule)
+                recurrence_rule = RecurrenceRule(**recurrence_data)
+            except:
+                continue
+
+        schedules.append(
+            {
+                "id": event.id,
+                "title": event.title,
+                "recurrence_type": (
+                    recurrence_rule.freq.lower() if recurrence_rule else "unknown"
+                ),
+                "days_of_week": recurrence_rule.byweekday if recurrence_rule else None,
+                "start_time": event.start_datetime.strftime("%H:%M"),
+                "end_time": event.end_datetime.strftime("%H:%M"),
+                "start_date": event.start_datetime.strftime("%Y-%m-%d"),
+                "end_date": (
+                    recurrence_rule.until.strftime("%Y-%m-%d")
+                    if recurrence_rule and recurrence_rule.until
+                    else None
+                ),
+                "created_at": event.created_at.isoformat(),
+            }
+        )
+
+    return schedules
+
+
+# Smart Scheduling and Availability
+
+
+@app.post(
+    "/specialist/{specialist_id}/calendar/find-availability",
+    response_model=List[SmartSchedulingSuggestion],
+)
+def find_smart_availability(
+    specialist_id: int,
+    query: AvailabilityQuery,
+    db: Session = Depends(get_db),
+):
+    """
+    Find optimal availability slots using smart scheduling algorithms.
+    Considers working hours, existing events, preferences, and travel time.
+    """
+    return generate_smart_availability_suggestions(db, specialist_id, query)
+
+
+@app.post(
+    "/specialist/{specialist_id}/calendar/bulk-operations",
+    response_model=List[CalendarEventResponse],
+)
+def bulk_calendar_operations(
+    specialist_id: int,
+    operation: BulkEventOperation,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Perform bulk operations on calendar events for efficiency.
+    Supports creating multiple events, batch updates, etc.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own calendar"
+        )
+
+    return execute_bulk_calendar_operation(db, specialist_id, operation)
+
+
+# Working Hours and Preferences Management
+
+
+@app.post(
+    "/specialist/{specialist_id}/working-hours",
+    response_model=WorkingHoursResponse,
+)
+def set_working_hours(
+    specialist_id: int,
+    working_hours: WorkingHoursCreate,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Set working hours with support for multiple time ranges per day and breaks.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own working hours"
+        )
+
+    # Convert time ranges to JSON
+    time_ranges_json = json.dumps(
+        [
+            {
+                "start_time": tr.start_time.isoformat() if tr.start_time else None,
+                "end_time": tr.end_time.isoformat() if tr.end_time else None,
+                "start_datetime": (
+                    tr.start_datetime.isoformat() if tr.start_datetime else None
+                ),
+                "end_datetime": (
+                    tr.end_datetime.isoformat() if tr.end_datetime else None
+                ),
+                "is_all_day": tr.is_all_day,
+                "timezone": tr.timezone,
+            }
+            for tr in working_hours.time_ranges
+        ]
+    )
+
+    db_working_hours = WorkingHours(
+        specialist_id=specialist_id,
+        day_of_week=working_hours.day_of_week,
+        time_ranges=time_ranges_json,
+        is_working_day=working_hours.is_working_day,
+        break_duration=working_hours.break_duration,
+        break_start_time=working_hours.break_start_time,
+        timezone=working_hours.timezone,
+        effective_date=working_hours.effective_date or date.today(),
+        is_active=True,
+    )
+
+    db.add(db_working_hours)
+    db.commit()
+    db.refresh(db_working_hours)
+
+    return db_working_hours
+
+
+@app.get(
+    "/specialist/{specialist_id}/working-hours",
+    response_model=List[WorkingHoursResponse],
+)
+def get_working_hours(
+    specialist_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Get working hours configuration for a specialist.
+    """
+    working_hours = (
+        db.query(WorkingHours)
+        .filter(
+            WorkingHours.specialist_id == specialist_id, WorkingHours.is_active == True
+        )
+        .order_by(WorkingHours.day_of_week)
+        .all()
+    )
+
+    return working_hours
+
+
+@app.post(
+    "/specialist/{specialist_id}/preferences",
+    response_model=SchedulingPreferencesResponse,
+)
+def set_scheduling_preferences(
+    specialist_id: int,
+    preferences: SchedulingPreferencesCreate,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication),
+):
+    """
+    Set comprehensive scheduling preferences for intelligent calendar management.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only manage your own preferences"
+        )
+
+    # Check if preferences already exist
+    existing = (
+        db.query(SchedulingPreferences)
+        .filter(
+            SchedulingPreferences.specialist_id == specialist_id,
+            SchedulingPreferences.is_active == True,
+        )
+        .first()
+    )
+
+    if existing:
+        # Update existing preferences
+        for field, value in preferences.dict().items():
+            setattr(existing, field, value)
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+    else:
+        # Create new preferences
+        db_preferences = SchedulingPreferences(
+            specialist_id=specialist_id,
+            **preferences.dict(),
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(db_preferences)
+        db.commit()
+        db.refresh(db_preferences)
+        return db_preferences
+
+
 # Consumer Side - Browse and Book
 @app.get("/catalog/specialists", response_model=List[SpecialistCatalogResponse])
 def get_specialists_catalog(db: Session = Depends(get_db)):
@@ -900,6 +2161,16 @@ def get_available_time_slots(
                 if current_time < booking_end and slot_end > booking_start:
                     conflict = True
                     break
+
+            # Check if this slot conflicts with calendar events (blocks, PTO, etc.)
+            if not conflict:
+                calendar_conflict = has_calendar_conflict(
+                    db,
+                    specialist_id,
+                    datetime.combine(booking_date, current_time.time()),
+                    datetime.combine(booking_date, slot_end.time()),
+                )
+                conflict = calendar_conflict
 
             if not conflict:
                 available_slots.append(
