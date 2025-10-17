@@ -300,21 +300,51 @@ class AvailabilitySlotResponse(AvailabilitySlotCreate):
 class BookingCreate(BaseModel):
     specialist_id: int
     service_id: int
-    slot_id: int
+    booking_date: date
+    start_time: time
     client_name: str
     client_email: EmailStr
     client_phone: Optional[str] = None
     notes: Optional[str] = None
 
 
-class BookingResponse(BookingCreate):
+class BookingResponse(BaseModel):
     id: int
     specialist_id: int
+    service_id: int
+    client_name: str
+    client_email: str
+    client_phone: Optional[str] = None
+    notes: Optional[str] = None
+    date: date
+    start_time: time
     end_time: time
     status: str
 
     class Config:
         from_attributes = True
+
+
+class BookingWithServiceResponse(BaseModel):
+    id: int
+    specialist_id: int
+    service_id: int
+    client_name: str
+    client_email: str
+    client_phone: Optional[str] = None
+    notes: Optional[str] = None
+    date: date
+    start_time: time
+    end_time: time
+    status: str
+    service: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BookingStatusUpdate(BaseModel):
+    status: str
 
 
 class SpecialistCatalogResponse(BaseModel):
@@ -880,9 +910,9 @@ def get_available_time_slots(
                     }
                 )
 
-            # Use the minimum service duration as the interval, but at least 15 minutes
-            interval = max(15, min(30, service_duration))
-            current_time += timedelta(minutes=interval)
+            # Increment by the shortest service duration to allow booking any service
+            # This ensures customers can book any service at properly spaced intervals
+            current_time += timedelta(minutes=service_duration)
 
     return available_slots
 
@@ -913,31 +943,34 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
             status_code=404, detail="Service not found for this specialist"
         )
 
-    # Validate availability slot exists and is available
-    availability_slot = (
+    # Validate that there's an availability slot covering this time
+    availability_slots = (
         db.query(AvailabilitySlot)
         .filter(
-            AvailabilitySlot.id == booking.slot_id,
             AvailabilitySlot.specialist_id == booking.specialist_id,
+            AvailabilitySlot.date == booking.booking_date,
             AvailabilitySlot.is_available == True,
         )
-        .first()
+        .all()
     )
-    if not availability_slot:
+    
+    # Check if the requested time falls within any availability slot
+    booking_start = datetime.combine(booking.booking_date, booking.start_time)
+    booking_end = booking_start + timedelta(minutes=service.duration)
+    
+    valid_slot = None
+    for slot in availability_slots:
+        slot_start = datetime.combine(slot.date, slot.start_time)
+        slot_end = datetime.combine(slot.date, slot.end_time)
+        
+        # Check if booking fits within this availability slot
+        if booking_start >= slot_start and booking_end <= slot_end:
+            valid_slot = slot
+            break
+    
+    if not valid_slot:
         raise HTTPException(
-            status_code=404, detail="Availability slot not found or not available"
-        )
-
-    # Calculate booking times
-    slot_start = datetime.combine(availability_slot.date, availability_slot.start_time)
-    booking_end = slot_start + timedelta(minutes=service.duration)
-    slot_end = datetime.combine(availability_slot.date, availability_slot.end_time)
-
-    # Validate service fits within availability slot
-    if booking_end > slot_end:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Service duration ({service.duration} min) exceeds available time slot",
+            status_code=404, detail="No availability slot covers the requested time"
         )
 
     # Check for conflicts with existing bookings
@@ -945,13 +978,13 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
         db.query(Booking)
         .filter(
             Booking.specialist_id == booking.specialist_id,
-            Booking.date == availability_slot.date,
+            Booking.date == booking.booking_date,
             Booking.status == "confirmed",
         )
         .filter(
             # Check for time overlap
             (Booking.start_time < booking_end.time())
-            & (Booking.end_time > slot_start.time())
+            & (Booking.end_time > booking_start.time())
         )
         .first()
     )
@@ -968,8 +1001,8 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
         client_name=booking.client_name,
         client_email=booking.client_email,
         client_phone=booking.client_phone,
-        date=availability_slot.date,
-        start_time=slot_start.time(),
+        date=booking.booking_date,
+        start_time=booking.start_time,
         end_time=booking_end.time(),
         notes=booking.notes,
         status="confirmed",
@@ -979,18 +1012,78 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_booking)
 
-    # Update availability slot to unavailable if fully booked
-    # (You might want to implement partial slot booking logic here)
-    availability_slot.is_available = False
-    db.commit()
-
     return db_booking
 
 
-@app.get("/bookings/specialist/{specialist_id}", response_model=List[BookingResponse])
+@app.get(
+    "/bookings/specialist/{specialist_id}",
+    response_model=List[BookingWithServiceResponse],
+)
 def get_specialist_bookings(specialist_id: int, db: Session = Depends(get_db)):
     """
-    Get all bookings for a specialist.
+    Get all bookings for a specialist with service details.
     """
-    bookings = db.query(Booking).filter(Booking.specialist_id == specialist_id).all()
-    return bookings
+    bookings = (
+        db.query(Booking)
+        .filter(Booking.specialist_id == specialist_id)
+        .join(ServiceDB)
+        .all()
+    )
+
+    # Add service details to each booking
+    booking_responses = []
+    for booking in bookings:
+        booking_dict = {
+            "id": booking.id,
+            "specialist_id": booking.specialist_id,
+            "service_id": booking.service_id,
+            "client_name": booking.client_name,
+            "client_email": booking.client_email,
+            "client_phone": booking.client_phone,
+            "notes": booking.notes,
+            "date": booking.date,
+            "start_time": booking.start_time,
+            "end_time": booking.end_time,
+            "status": booking.status,
+            "service": {
+                "id": booking.service.id,
+                "name": booking.service.name,
+                "price": booking.service.price,
+                "duration": booking.service.duration,
+            },
+        }
+        booking_responses.append(booking_dict)
+
+    return booking_responses
+
+
+@app.put("/booking/{booking_id}/status")
+def update_booking_status(
+    booking_id: int, status_update: BookingStatusUpdate, db: Session = Depends(get_db)
+):
+    """
+    Update the status of a booking (e.g., completed, cancelled).
+    """
+    # Validate status
+    valid_statuses = ["confirmed", "completed", "cancelled"]
+    if status_update.status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}"
+        )
+
+    # Find the booking
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Update the status
+    old_status = booking.status
+    booking.status = status_update.status
+    db.commit()
+    db.refresh(booking)
+
+    return {
+        "message": f"Booking status updated from {old_status} to {status_update.status}",
+        "booking_id": booking_id,
+        "new_status": status_update.status,
+    }

@@ -683,25 +683,41 @@
 
         async function loadAvailableSlots(specialistId) {
             try {
-                const response = await fetch(`/specialist/${specialistId}/availability`);
+                // Get today's date as default
+                const today = new Date();
+                const dateStr = today.toISOString().split('T')[0];
+                
+                const response = await fetch(`/specialist/${specialistId}/availability/${dateStr}`);
                 const slots = await response.json();
                 availableSlots = slots;
 
                 const container = document.getElementById('timeSlotsContainer');
                 container.innerHTML = '';
 
-                slots.forEach(slot => {
+                if (slots.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No available time slots for today. Please contact the professional directly.</div>';
+                    return;
+                }
+
+                slots.forEach((slot, index) => {
                     const slotElement = document.createElement('div');
                     slotElement.className = 'time-slot';
-                    slotElement.onclick = () => selectTimeSlot(slot);
+                    
+                    // Add date and index to slot data for booking
+                    const slotData = {
+                        ...slot,
+                        date: dateStr,
+                        index: index
+                    };
+                    
+                    slotElement.onclick = () => selectTimeSlot(slotData);
 
-                    const date = new Date(slot.date + 'T' + slot.start_time);
-                    const dateStr = date.toLocaleDateString();
-                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const timeStart = slot.start_time;
+                    const timeEnd = slot.end_time;
 
                     slotElement.innerHTML = `
-                        <div>${dateStr}</div>
-                        <div>${timeStr}</div>
+                        <div>${today.toLocaleDateString()}</div>
+                        <div>${timeStart} - ${timeEnd}</div>
                     `;
 
                     container.appendChild(slotElement);
@@ -709,6 +725,8 @@
 
             } catch (error) {
                 console.error('Error loading availability:', error);
+                const container = document.getElementById('timeSlotsContainer');
+                container.innerHTML = '<div style="text-align: center; color: red; padding: 20px;">❌ Error loading available times. Please try again.</div>';
             }
         }
 
@@ -742,10 +760,12 @@
             const bookingData = {
                 specialist_id: selectedProfessional.id,
                 service_id: selectedService.id,
-                slot_id: selectedTimeSlot.id,
+                booking_date: selectedTimeSlot.date,
+                start_time: selectedTimeSlot.start_time,
                 client_name: formData.get('client_name'),
                 client_email: formData.get('client_email'),
-                client_phone: formData.get('client_phone') || null
+                client_phone: formData.get('client_phone') || null,
+                notes: formData.get('notes') || null
             };
 
             try {
