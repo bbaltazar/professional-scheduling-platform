@@ -953,21 +953,21 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
         )
         .all()
     )
-    
+
     # Check if the requested time falls within any availability slot
     booking_start = datetime.combine(booking.booking_date, booking.start_time)
     booking_end = booking_start + timedelta(minutes=service.duration)
-    
+
     valid_slot = None
     for slot in availability_slots:
         slot_start = datetime.combine(slot.date, slot.start_time)
         slot_end = datetime.combine(slot.date, slot.end_time)
-        
+
         # Check if booking fits within this availability slot
         if booking_start >= slot_start and booking_end <= slot_end:
             valid_slot = slot
             break
-    
+
     if not valid_slot:
         raise HTTPException(
             status_code=404, detail="No availability slot covers the requested time"
