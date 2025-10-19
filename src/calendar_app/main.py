@@ -724,6 +724,44 @@ async def consumer_portal(request: Request):
     return templates.TemplateResponse("consumer.html", {"request": request})
 
 
+@app.get("/consumer/professional/{specialist_id}", response_class=HTMLResponse)
+async def consumer_professional_page(
+    request: Request, specialist_id: int, db: Session = Depends(get_db)
+):
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Professional not found")
+
+    return templates.TemplateResponse(
+        "consumer_professional.html", {"request": request, "specialist": specialist}
+    )
+
+
+@app.get(
+    "/consumer/professional/{specialist_id}/service/{service_id}",
+    response_class=HTMLResponse,
+)
+async def consumer_booking_page(
+    request: Request, specialist_id: int, service_id: int, db: Session = Depends(get_db)
+):
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Professional not found")
+
+    service = (
+        db.query(ServiceDB)
+        .filter(ServiceDB.id == service_id, ServiceDB.specialist_id == specialist_id)
+        .first()
+    )
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return templates.TemplateResponse(
+        "consumer_booking.html",
+        {"request": request, "specialist": specialist, "service": service},
+    )
+
+
 """
 Desired features
 

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Élite Client Experience - Select Professional</title>
+    <title>{{ specialist.name }} - Premium Services</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
         rel="stylesheet">
@@ -50,44 +50,75 @@
             padding: 120px 40px 60px;
         }
 
-        .header {
+        .professional-header {
             text-align: center;
             margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
         }
 
-        .header h1 {
+        .professional-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #0f0f23;
+        }
+
+        .professional-name {
             font-family: 'Playfair Display', serif;
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 700;
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
+            margin-bottom: 10px;
         }
 
-        .subtitle {
+        .professional-title {
             font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+        }
+
+        .professional-bio {
+            font-size: 1rem;
             color: rgba(255, 255, 255, 0.7);
             max-width: 600px;
             margin: 0 auto;
-            font-weight: 300;
+            line-height: 1.6;
         }
 
-        .professionals-grid {
+        .services-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .services-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 30px;
-            margin-bottom: 40px;
         }
 
-        .professional-card {
+        .service-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 30px;
-            text-align: center;
             transition: all 0.4s ease;
             backdrop-filter: blur(10px);
             cursor: pointer;
@@ -95,7 +126,7 @@
             overflow: hidden;
         }
 
-        .professional-card::before {
+        .service-card::before {
             content: '';
             position: absolute;
             top: 0;
@@ -106,82 +137,51 @@
             transition: left 0.6s;
         }
 
-        .professional-card:hover::before {
+        .service-card:hover::before {
             left: 100%;
         }
 
-        .professional-card:hover {
+        .service-card:hover {
             background: rgba(255, 255, 255, 0.08);
             border-color: rgba(255, 215, 0, 0.3);
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
         }
 
-        .professional-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
+        .service-name {
+            font-size: 1.5rem;
             font-weight: 700;
-            color: #0f0f23;
-            position: relative;
-            z-index: 1;
-        }
-
-        .professional-name {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 8px;
             color: #FFD700;
-        }
-
-        .professional-title {
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.8);
             margin-bottom: 15px;
         }
 
-        .professional-specialties {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
+        .service-description {
+            color: rgba(255, 255, 255, 0.8);
             margin-bottom: 20px;
+            line-height: 1.6;
         }
 
-        .specialty-tag {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            border-radius: 20px;
-            padding: 5px 12px;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .professional-rating {
+        .service-details {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
             margin-bottom: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .stars {
-            color: #FFD700;
-            font-size: 1.2rem;
-        }
-
-        .rating-text {
+        .service-duration {
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.9rem;
         }
 
-        .select-btn {
+        .service-price {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #FFD700;
+        }
+
+        .select-service-btn {
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
             color: #0f0f23;
             border: none;
@@ -194,7 +194,7 @@
             width: 100%;
         }
 
-        .select-btn:hover {
+        .select-service-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
         }
@@ -245,17 +245,23 @@
                 padding: 100px 20px 40px;
             }
 
-            .header h1 {
+            .professional-name {
                 font-size: 2.5rem;
             }
 
-            .professionals-grid {
+            .services-grid {
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
 
-            .professional-card {
+            .service-card {
                 padding: 25px;
+            }
+
+            .service-details {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
         }
     </style>
@@ -274,67 +280,70 @@
         <div class="particle" style="left: 90%; animation-delay: 16s;"></div>
     </div>
 
-    <a href="/" class="back-link">← Return to Élite Home</a>
+    <a href="/consumer" class="back-link">← Back to Professionals</a>
 
     <div class="container">
-        <div class="header">
-            <h1>Select Your Professional</h1>
-            <p class="subtitle">Choose from our distinguished team of elite professionals</p>
+        <div class="professional-header">
+            <div class="professional-avatar">
+                {{ specialist.name.split(' ')[0][0] }}{{ specialist.name.split(' ')[-1][0] if specialist.name.split(' ')|length > 1 else '' }}
+            </div>
+            <h1 class="professional-name">{{ specialist.name }}</h1>
+            <div class="professional-title">{{ specialist.specialization or 'Elite Professional' }}</div>
+            {% if specialist.bio %}
+            <div class="professional-bio">{{ specialist.bio }}</div>
+            {% endif %}
         </div>
 
-        <div id="professionalsContainer" class="professionals-grid">
-            <!-- Professionals will be loaded here -->
+        <div class="services-section">
+            <h2 class="section-title">Premium Services</h2>
+            <div id="servicesContainer" class="services-grid">
+                <!-- Services will be loaded here -->
+            </div>
         </div>
     </div>
 
     <script>
-        // Load professionals on page load
+        const specialistId = {{ specialist.id }};
+
+        // Load services on page load
         document.addEventListener('DOMContentLoaded', function () {
-            loadProfessionals();
+            loadServices();
         });
 
-        async function loadProfessionals() {
+        async function loadServices() {
             try {
-                const response = await fetch('/specialists');
-                if (!response.ok) throw new Error('Failed to load professionals');
+                const response = await fetch(`/specialist/${specialistId}/services`);
+                if (!response.ok) throw new Error('Failed to load services');
 
-                const specialists = await response.json();
-                const container = document.getElementById('professionalsContainer');
+                const services = await response.json();
+                const container = document.getElementById('servicesContainer');
 
-                if (specialists.length === 0) {
-                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.7); grid-column: 1 / -1; padding: 40px;">No professionals available at the moment.</p>';
+                if (services.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.7); grid-column: 1 / -1; padding: 40px;">No services available at the moment.</p>';
                     return;
                 }
 
-                container.innerHTML = specialists.map(specialist => `
-                    <div class="professional-card" onclick="selectProfessional(${specialist.id})">
-                        <div class="professional-avatar">
-                            ${specialist.name.split(' ').map(n => n[0]).join('')}
+                container.innerHTML = services.map(service => `
+                    <div class="service-card" onclick="selectService(${service.id})">
+                        <div class="service-name">${service.name}</div>
+                        <div class="service-description">${service.description || 'Premium service experience tailored to your needs.'}</div>
+                        <div class="service-details">
+                            <div class="service-duration">${service.duration} minutes</div>
+                                <div class="service-price">$${Number(service.price).toFixed(2)}</div>
                         </div>
-                        <div class="professional-name">${specialist.name}</div>
-                        <div class="professional-title">${specialist.specialization || 'Elite Professional'}</div>
-                        <div class="professional-specialties">
-                            ${specialist.bio ? specialist.bio.split(',').slice(0, 3).map(skill => 
-                                `<span class="specialty-tag">${skill.trim()}</span>`
-                            ).join('') : '<span class="specialty-tag">Premium Services</span>'}
-                        </div>
-                        <div class="professional-rating">
-                            <div class="stars">★★★★★</div>
-                            <span class="rating-text">5.0 (${Math.floor(Math.random() * 50) + 20} reviews)</span>
-                        </div>
-                        <button class="select-btn">Select Professional</button>
+                        <button class="select-service-btn">Book This Service</button>
                     </div>
                 `).join('');
             } catch (error) {
-                console.error('Error loading professionals:', error);
-                document.getElementById('professionalsContainer').innerHTML = 
-                    '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading professionals. Please refresh the page.</p>';
+                console.error('Error loading services:', error);
+                document.getElementById('servicesContainer').innerHTML = 
+                    '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading services. Please refresh the page.</p>';
             }
         }
 
-        function selectProfessional(specialistId) {
-            // Navigate to the professional's services page
-            window.location.href = `/consumer/professional/${specialistId}`;
+        function selectService(serviceId) {
+            // Navigate to the booking page for this service
+            window.location.href = `/consumer/professional/${specialistId}/service/${serviceId}`;
         }
     </script>
 </body>

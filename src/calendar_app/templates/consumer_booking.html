@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book {{ service.name }} with {{ specialist.name }}</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #FFD700;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateX(-5px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 120px 40px 60px;
+        }
+
+        .booking-header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .service-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .professional-info {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+        }
+
+        .service-meta {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .booking-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 50px;
+            align-items: start;
+        }
+
+        .time-selection {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 30px;
+        }
+
+        .date-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .date-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .date-option:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: rgba(212, 175, 55, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .date-option.selected {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #D4AF37;
+            color: #FFD700;
+        }
+
+        .date-option.unavailable {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .date-option.unavailable:hover {
+            transform: none;
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .date-day {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+        }
+
+        .date-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #FFD700;
+        }
+
+        .date-month {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .time-slot {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .time-slot:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: rgba(212, 175, 55, 0.5);
+            color: #D4AF37;
+        }
+
+        .time-slot.selected {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #D4AF37;
+            color: #FFD700;
+        }
+
+        .booking-summary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            height: fit-content;
+            position: sticky;
+            top: 30px;
+        }
+
+        .summary-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .summary-item span:first-child {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .summary-item span:last-child {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .booking-form {
+            margin-top: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #FFD700;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .confirm-btn {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #0f0f23;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .confirm-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .confirm-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 100px 20px 40px;
+            }
+
+            .booking-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .date-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .time-slots {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .service-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/consumer/professional/{{ specialist.id }}" class="back-link">← Back to Services</a>
+
+    <div class="container">
+        <div class="booking-header">
+            <h1 class="service-title">{{ service.name }}</h1>
+            <div class="professional-info">with {{ specialist.name }}</div>
+            <div class="service-meta">
+                <span>{{ service.duration }} minutes</span>
+                <span>${{ "%.2f"|format(service.price) }}</span>
+            </div>
+        </div>
+
+        <div class="booking-content">
+            <div class="time-selection">
+                <h2 class="section-title">Select Date & Time</h2>
+                
+                <div class="date-selector">
+                    <h3>Available Dates</h3>
+                    <div class="date-grid" id="dateGrid">
+                        <!-- Available dates will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="time-selector" style="margin-top: 30px;">
+                    <h3>Available Times</h3>
+                    <div id="timeSlots" class="time-slots">
+                        <p style="grid-column: 1 / -1; text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">Please select a date to see available times</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="booking-summary">
+                <h3 class="summary-title">Booking Summary</h3>
+                <div class="summary-item">
+                    <span>Professional:</span>
+                    <span>{{ specialist.name }}</span>
+                </div>
+                <div class="summary-item">
+                    <span>Service:</span>
+                    <span>{{ service.name }}</span>
+                </div>
+                <div class="summary-item">
+                    <span>Date & Time:</span>
+                    <span id="summaryDateTime">-</span>
+                </div>
+                <div class="summary-item">
+                    <span>Investment:</span>
+                    <span>${{ "%.2f"|format(service.price) }}</span>
+                </div>
+
+                <form id="bookingForm" class="booking-form">
+                    <div class="form-group">
+                        <label for="clientName">Full Name *</label>
+                        <input type="text" id="clientName" name="client_name" required placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientEmail">Email Address *</label>
+                        <input type="email" id="clientEmail" name="client_email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientPhone">Phone Number</label>
+                        <input type="tel" id="clientPhone" name="client_phone" placeholder="+1 (555) 123-4567">
+                    </div>
+                </form>
+
+                <button type="button" class="confirm-btn" id="confirmBtn" onclick="confirmBooking()" disabled>
+                    Confirm Exclusive Reservation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const specialistId = {{ specialist.id }};
+        const serviceId = {{ service.id }};
+        let selectedDate = null;
+        let selectedTimeSlot = null;
+
+        // Load available dates on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            loadAvailableDates();
+        });
+
+        async function loadAvailableDates() {
+            const dateGrid = document.getElementById('dateGrid');
+            dateGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 20px;">Loading available dates...</p>';
+
+            try {
+                // Generate next 14 days
+                const dates = [];
+                const today = new Date();
+                for (let i = 0; i < 14; i++) {
+                    const date = new Date(today);
+                    date.setDate(today.getDate() + i);
+                    dates.push(date);
+                }
+
+                dateGrid.innerHTML = '';
+
+                for (const date of dates) {
+                    const dateString = date.toISOString().split('T')[0];
+
+                    try {
+                        const response = await fetch(`/specialist/${specialistId}/availability/${dateString}?service_id=${serviceId}`);
+                        const hasSlots = response.ok ? (await response.json()).length > 0 : false;
+
+                        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                        const dayNumber = date.getDate();
+                        const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+
+                        const dateOption = document.createElement('div');
+                        dateOption.className = `date-option ${!hasSlots ? 'unavailable' : ''}`;
+                        dateOption.dataset.date = dateString;
+
+                        if (hasSlots) {
+                            dateOption.addEventListener('click', () => selectDate(dateString));
+                        }
+
+                        dateOption.innerHTML = `
+                            <div class="date-day">${dayName}</div>
+                            <div class="date-number">${dayNumber}</div>
+                            <div class="date-month">${monthName}</div>
+                        `;
+
+                        dateGrid.appendChild(dateOption);
+                    } catch (error) {
+                        console.error(`Error loading availability for ${dateString}:`, error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading dates:', error);
+                dateGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: red; padding: 20px;">Error loading dates. Please try again.</p>';
+            }
+        }
+
+        async function selectDate(dateString) {
+            // Clear previous selections
+            document.querySelectorAll('.date-option.selected').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`[data-date="${dateString}"]`).classList.add('selected');
+            
+            selectedDate = dateString;
+            selectedTimeSlot = null;
+            updateConfirmButton();
+
+            // Load available time slots for this date
+            await loadTimeSlots(dateString);
+        }
+
+        async function loadTimeSlots(dateString) {
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            timeSlotsContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 20px;">Loading available times...</p>';
+
+            try {
+                const response = await fetch(`/specialist/${specialistId}/availability/${dateString}?service_id=${serviceId}`);
+                if (!response.ok) throw new Error('Failed to load time slots');
+
+                const timeSlots = await response.json();
+
+                if (timeSlots.length === 0) {
+                    timeSlotsContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">No available times for this date.</p>';
+                    return;
+                }
+
+                timeSlotsContainer.innerHTML = timeSlots.map(slot => `
+                    <div class="time-slot" onclick="selectTimeSlot('${slot.start_time}', '${slot.end_time}')" data-time="${slot.start_time}">
+                        ${formatTime(slot.start_time)}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading time slots:', error);
+                timeSlotsContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: red; padding: 20px;">Error loading times. Please try again.</p>';
+            }
+        }
+
+        function selectTimeSlot(startTime, endTime) {
+            // Clear previous selections
+            document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`[data-time="${startTime}"]`).classList.add('selected');
+            
+            selectedTimeSlot = { start: startTime, end: endTime };
+            
+            // Update summary
+            const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            document.getElementById('summaryDateTime').textContent = `${formattedDate} at ${formatTime(startTime)}`;
+            
+            updateConfirmButton();
+        }
+
+        function formatTime(timeString) {
+            return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function updateConfirmButton() {
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.disabled = !selectedDate || !selectedTimeSlot;
+        }
+
+        async function confirmBooking() {
+            if (!selectedDate || !selectedTimeSlot) {
+                alert('Please select a date and time');
+                return;
+            }
+
+            const formData = new FormData(document.getElementById('bookingForm'));
+            const bookingData = {
+                specialist_id: specialistId,
+                service_id: serviceId,
+                date: selectedDate,
+                start_time: selectedTimeSlot.start,
+                end_time: selectedTimeSlot.end,
+                client_name: formData.get('client_name'),
+                client_email: formData.get('client_email'),
+                client_phone: formData.get('client_phone') || null
+            };
+
+            try {
+                const response = await fetch('/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to create booking');
+                }
+
+                const booking = await response.json();
+                alert('Booking confirmed successfully! You will receive a confirmation email shortly.');
+                
+                // Redirect to a success page or back to main page
+                window.location.href = '/consumer';
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                alert('Error creating booking: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
