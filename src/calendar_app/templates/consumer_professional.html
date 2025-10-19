@@ -285,7 +285,8 @@
     <div class="container">
         <div class="professional-header">
             <div class="professional-avatar">
-                {{ specialist.name.split(' ')[0][0] }}{{ specialist.name.split(' ')[-1][0] if specialist.name.split(' ')|length > 1 else '' }}
+                {{ specialist.name.split(' ')[0][0] }}{{ specialist.name.split(' ')[-1][0] if specialist.name.split('
+                ')|length > 1 else '' }}
             </div>
             <h1 class="professional-name">{{ specialist.name }}</h1>
             <div class="professional-title">{{ specialist.specialization or 'Elite Professional' }}</div>
@@ -336,7 +337,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading services:', error);
-                document.getElementById('servicesContainer').innerHTML = 
+                document.getElementById('servicesContainer').innerHTML =
                     '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading services. Please refresh the page.</p>';
             }
         }

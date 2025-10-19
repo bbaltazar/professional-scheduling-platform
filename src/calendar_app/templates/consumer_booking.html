@@ -340,7 +340,7 @@
         <div class="booking-content">
             <div class="time-selection">
                 <h2 class="section-title">Select Date & Time</h2>
-                
+
                 <div class="date-selector">
                     <h3>Available Dates</h3>
                     <div class="date-grid" id="dateGrid">
@@ -351,7 +351,9 @@
                 <div class="time-selector" style="margin-top: 30px;">
                     <h3>Available Times</h3>
                     <div id="timeSlots" class="time-slots">
-                        <p style="grid-column: 1 / -1; text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">Please select a date to see available times</p>
+                        <p
+                            style="grid-column: 1 / -1; text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">
+                            Please select a date to see available times</p>
                     </div>
                 </div>
             </div>
@@ -464,7 +466,7 @@
             // Clear previous selections
             document.querySelectorAll('.date-option.selected').forEach(el => el.classList.remove('selected'));
             document.querySelector(`[data-date="${dateString}"]`).classList.add('selected');
-            
+
             selectedDate = dateString;
             selectedTimeSlot = null;
             updateConfirmButton();
@@ -503,18 +505,18 @@
             // Clear previous selections
             document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
             document.querySelector(`[data-time="${startTime}"]`).classList.add('selected');
-            
+
             selectedTimeSlot = { start: startTime, end: endTime };
-            
+
             // Update summary
-            const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+            const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
             });
             document.getElementById('summaryDateTime').textContent = `${formattedDate} at ${formatTime(startTime)}`;
-            
+
             updateConfirmButton();
         }
 
@@ -541,16 +543,17 @@
             const bookingData = {
                 specialist_id: specialistId,
                 service_id: serviceId,
-                date: selectedDate,
+                booking_date: selectedDate,
                 start_time: selectedTimeSlot.start,
-                end_time: selectedTimeSlot.end,
                 client_name: formData.get('client_name'),
                 client_email: formData.get('client_email'),
                 client_phone: formData.get('client_phone') || null
             };
 
             try {
-                const response = await fetch('/bookings', {
+                console.log('Sending booking request with data:', bookingData);
+
+                const response = await fetch('/booking/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -558,18 +561,51 @@
                     body: JSON.stringify(bookingData)
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to create booking');
+                    let errorMessage = 'Failed to create booking';
+                    let errorDetails = null;
+
+                    try {
+                        const errorText = await response.text();
+                        console.log('Raw error response:', errorText);
+
+                        // Try to parse as JSON
+                        if (errorText) {
+                            const error = JSON.parse(errorText);
+                            console.log('Parsed error object:', error);
+
+                            if (error.detail) {
+                                if (Array.isArray(error.detail)) {
+                                    // Pydantic validation errors
+                                    errorMessage = error.detail.map(err => `${err.loc?.join('.')}: ${err.msg}`).join(', ');
+                                } else {
+                                    errorMessage = error.detail;
+                                }
+                            } else if (error.message) {
+                                errorMessage = error.message;
+                            } else {
+                                errorMessage = JSON.stringify(error);
+                            }
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse error response:', parseError);
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+
+                    throw new Error(errorMessage);
                 }
 
                 const booking = await response.json();
                 alert('Booking confirmed successfully! You will receive a confirmation email shortly.');
-                
+
                 // Redirect to a success page or back to main page
                 window.location.href = '/consumer';
             } catch (error) {
                 console.error('Error creating booking:', error);
+                console.error('Booking data:', bookingData);
                 alert('Error creating booking: ' + error.message);
             }
         }

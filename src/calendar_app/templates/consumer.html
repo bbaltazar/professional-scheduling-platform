@@ -314,9 +314,9 @@
                         <div class="professional-name">${specialist.name}</div>
                         <div class="professional-title">${specialist.specialization || 'Elite Professional'}</div>
                         <div class="professional-specialties">
-                            ${specialist.bio ? specialist.bio.split(',').slice(0, 3).map(skill => 
-                                `<span class="specialty-tag">${skill.trim()}</span>`
-                            ).join('') : '<span class="specialty-tag">Premium Services</span>'}
+                            ${specialist.bio ? specialist.bio.split(',').slice(0, 3).map(skill =>
+                    `<span class="specialty-tag">${skill.trim()}</span>`
+                ).join('') : '<span class="specialty-tag">Premium Services</span>'}
                         </div>
                         <div class="professional-rating">
                             <div class="stars">★★★★★</div>
@@ -327,7 +327,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading professionals:', error);
-                document.getElementById('professionalsContainer').innerHTML = 
+                document.getElementById('professionalsContainer').innerHTML =
                     '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading professionals. Please refresh the page.</p>';
             }
         }

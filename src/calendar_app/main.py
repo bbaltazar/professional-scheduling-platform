@@ -7,6 +7,7 @@ from typing import Union, List, Optional
 from datetime import date, time, datetime, timedelta
 import secrets
 import json
+from contextlib import asynccontextmanager
 
 # Note: dateutil will need to be installed: pip install python-dateutil
 try:
@@ -22,8 +23,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import jwt
 
 try:
@@ -41,6 +44,65 @@ try:
         VerificationCode,
     )
     from .verification_service import verification_service
+    from .models import (
+        # Core service models
+        Service,
+        ServiceResponse,
+        # Specialist models
+        SpecialistCreate,
+        SpecialistResponse,
+        SpecialistCatalogResponse,
+        # Availability models
+        AvailabilitySlotCreate,
+        AvailabilitySlotResponse,
+        TimeSlotResponse,
+        TimeRange,
+        AvailabilityQuery,
+        # Booking models
+        BookingCreate,
+        BookingResponse,
+        BookingWithServiceResponse,
+        BookingStatusUpdate,
+        # Calendar models
+        RecurrenceRule,
+        CalendarEventCreate,
+        CalendarEventResponse,
+        CalendarEventUpdate,
+        EventExceptionCreate,
+        EventExceptionResponse,
+        BulkEventOperation,
+        CalendarView,
+        # Working hours and preferences
+        WorkingHoursCreate,
+        WorkingHoursResponse,
+        SchedulingPreferencesCreate,
+        SchedulingPreferencesResponse,
+        # Smart scheduling
+        SmartSchedulingSuggestion,
+        # Authentication models
+        LoginRequest,
+        AuthResponse,
+        # Verification models
+        VerificationRequest,
+        VerificationResponse,
+        CodeVerificationRequest,
+        CodeVerificationResponse,
+        # Error models
+        ErrorResponse,
+    )
+    from .auth import (
+        JWT_SECRET_KEY,
+        JWT_ALGORITHM,
+        ACCESS_TOKEN_EXPIRE_HOURS,
+        security,
+        create_access_token,
+        verify_token,
+        get_current_specialist,
+        require_authentication,
+        get_current_specialist_dep,
+        require_authentication_dep,
+    )
+    from .config import settings
 except ImportError:
     from database import (
         get_db,
@@ -56,6 +118,76 @@ except ImportError:
         VerificationCode,
     )
     from verification_service import verification_service
+    from models import (
+        # Core service models
+        Service,
+        ServiceResponse,
+        # Specialist models
+        SpecialistCreate,
+        SpecialistResponse,
+        SpecialistCatalogResponse,
+        # Availability models
+        AvailabilitySlotCreate,
+        AvailabilitySlotResponse,
+        TimeSlotResponse,
+        TimeRange,
+        AvailabilityQuery,
+        # Booking models
+        BookingCreate,
+        BookingResponse,
+        BookingWithServiceResponse,
+        BookingStatusUpdate,
+        # Calendar models
+        RecurrenceRule,
+        CalendarEventCreate,
+        CalendarEventResponse,
+        CalendarEventUpdate,
+        EventExceptionCreate,
+        EventExceptionResponse,
+        BulkEventOperation,
+        CalendarView,
+        # Working hours and preferences
+        WorkingHoursCreate,
+        WorkingHoursResponse,
+        SchedulingPreferencesCreate,
+        SchedulingPreferencesResponse,
+        # Smart scheduling
+        SmartSchedulingSuggestion,
+        # Authentication models
+        LoginRequest,
+        AuthResponse,
+        # Verification models
+        VerificationRequest,
+        VerificationResponse,
+        CodeVerificationRequest,
+        CodeVerificationResponse,
+        # Error models
+        ErrorResponse,
+    )
+    from auth import (
+        JWT_SECRET_KEY,
+        JWT_ALGORITHM,
+        ACCESS_TOKEN_EXPIRE_HOURS,
+        security,
+        create_access_token,
+        verify_token,
+        get_current_specialist,
+        require_authentication,
+        get_current_specialist_dep,
+        require_authentication_dep,
+    )
+    from config import settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown events."""
+    # Startup: Initialize database connection
+    await database.connect()
+    yield
+    # Shutdown: Close database connection
+    await database.disconnect()
+
 
 app = FastAPI(
     title="Élite Scheduling Platform",
@@ -63,24 +195,17 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
-
-# JWT Configuration
-JWT_SECRET_KEY = secrets.token_urlsafe(32)
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=settings.CORS_ORIGINS,  # Use settings instead of hardcoded "*"
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Security
-security = HTTPBearer(auto_error=False)
 
 import os
 from pathlib import Path
@@ -89,75 +214,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-
-# Authentication Helper Functions
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create JWT access token"""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
-
-
-def verify_token(token: str) -> Optional[dict]:
-    """Verify JWT token and return payload"""
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        return payload
-    except jwt.PyJWTError:
-        return None
-
-
-def get_current_specialist(
-    request: Request, db: Session = Depends(get_db)
-) -> Optional[Specialist]:
-    """Get current authenticated specialist from session with their services and availability"""
-    # Try to get token from cookie first
-    token = request.cookies.get("access_token")
-    if not token:
-        return None
-
-    payload = verify_token(token)
-    if not payload:
-        return None
-
-    specialist_id = payload.get("specialist_id")
-    if not specialist_id:
-        return None
-
-    # Fetch specialist with services eagerly loaded
-    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
-    return specialist
-
-
-def require_authentication(
-    request: Request, db: Session = Depends(get_db)
-) -> Specialist:
-    """Dependency to require authentication"""
-    specialist = get_current_specialist(request, db)
-    if not specialist:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required. Please sign in to access professional features.",
-        )
-    return specialist
-
-
-@app.on_event("startup")
-async def startup():
-    """Initialize database connection on startup."""
-    await database.connect()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    """Close database connection on shutdown."""
-    await database.disconnect()
+# Mount static files
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 # Advanced Calendar Management Helper Functions
@@ -398,22 +456,28 @@ def create_event_exception(
 
 
 def has_calendar_conflict(
-    db: Session, specialist_id: int, start_datetime: datetime, end_datetime: datetime
+    db: Session,
+    specialist_id: int,
+    start_datetime: datetime,
+    end_datetime: datetime,
+    exclude_event_id: Optional[int] = None,
 ) -> bool:
     """
     Check if there are any calendar conflicts for the given time range.
     Considers all types of calendar events and buffer times.
     """
-    conflicting_events = (
-        db.query(CalendarEvent)
-        .filter(
-            CalendarEvent.specialist_id == specialist_id,
-            CalendarEvent.is_active == True,
-            CalendarEvent.start_datetime < end_datetime,
-            CalendarEvent.end_datetime > start_datetime,
-        )
-        .all()
+    query = db.query(CalendarEvent).filter(
+        CalendarEvent.specialist_id == specialist_id,
+        CalendarEvent.is_active == True,
+        CalendarEvent.start_datetime < end_datetime,
+        CalendarEvent.end_datetime > start_datetime,
     )
+
+    # Exclude specific event if provided (useful for availability events)
+    if exclude_event_id:
+        query = query.filter(CalendarEvent.id != exclude_event_id)
+
+    conflicting_events = query.all()
 
     # Check for buffer time conflicts
     for event in conflicting_events:
@@ -772,398 +836,6 @@ We want to build a simple API that allows us to:
 """
 
 
-# Pydantic models for API
-class Service(BaseModel):
-    name: str
-    price: float
-    duration: int
-
-
-class ServiceResponse(Service):
-    id: int
-    specialist_id: int
-
-    class Config:
-        from_attributes = True
-
-
-class SpecialistCreate(BaseModel):
-    name: str
-    email: str
-    bio: Optional[str] = None
-    phone: Optional[str] = None
-
-
-class SpecialistResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    bio: Optional[str] = None
-    phone: Optional[str] = None
-    services: List[ServiceResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
-class AvailabilitySlotCreate(BaseModel):
-    date: date
-    start_time: time
-    end_time: time
-
-
-class AvailabilitySlotResponse(AvailabilitySlotCreate):
-    id: int
-    specialist_id: int
-    is_available: bool
-
-    class Config:
-        from_attributes = True
-
-
-class BookingCreate(BaseModel):
-    specialist_id: int
-    service_id: int
-    booking_date: date
-    start_time: time
-    client_name: str
-    client_email: EmailStr
-    client_phone: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class BookingResponse(BaseModel):
-    id: int
-    specialist_id: int
-    service_id: int
-    client_name: str
-    client_email: str
-    client_phone: Optional[str] = None
-    notes: Optional[str] = None
-    date: date
-    start_time: time
-    end_time: time
-    status: str
-
-    class Config:
-        from_attributes = True
-
-
-class BookingWithServiceResponse(BaseModel):
-    id: int
-    specialist_id: int
-    service_id: int
-    client_name: str
-    client_email: str
-    client_phone: Optional[str] = None
-    notes: Optional[str] = None
-    date: date
-    start_time: time
-    end_time: time
-    status: str
-    service: Optional[dict] = None
-
-    class Config:
-        from_attributes = True
-
-
-class BookingStatusUpdate(BaseModel):
-    status: str
-
-
-class SpecialistCatalogResponse(BaseModel):
-    id: int
-    name: str
-    bio: Optional[str] = None
-    services: List[ServiceResponse] = []
-    available_dates: List[date] = []
-
-    class Config:
-        from_attributes = True
-
-
-class TimeSlotResponse(BaseModel):
-    id: int
-    start_time: time
-    end_time: time
-    duration_minutes: int
-    date: date
-
-    class Config:
-        from_attributes = True
-
-
-class ErrorResponse(BaseModel):
-    error: str
-    detail: str
-    timestamp: datetime
-
-
-# Advanced Calendar Models - Google Calendar Level Flexibility
-
-
-class RecurrenceRule(BaseModel):
-    """Comprehensive recurrence rule similar to RFC 5545 RRULE"""
-
-    freq: str  # 'DAILY', 'WEEKLY'
-    interval: int = 1  # Every N days/weeks
-    byweekday: Optional[List[int]] = None  # Days of week (0=Mon, 6=Sun)
-    bymonthday: Optional[List[int]] = None  # Days of month (1-31)
-    bymonth: Optional[List[int]] = None  # Months (1-12)
-    byyearday: Optional[List[int]] = None  # Day of year (1-366)
-    bysetpos: Optional[List[int]] = None  # Nth occurrence (1st Monday, last Friday)
-    wkst: int = 0  # Week start (0=Monday)
-    until: Optional[date] = None  # End date for recurrence
-    count: Optional[int] = None  # Maximum occurrences
-
-    # Advanced patterns
-    byweekno: Optional[List[int]] = None  # Week numbers
-    byhour: Optional[List[int]] = None  # Hours (0-23)
-    byminute: Optional[List[int]] = None  # Minutes (0-59)
-
-
-class TimeRange(BaseModel):
-    """Flexible time range supporting both date-times and all-day events"""
-
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
-    start_datetime: Optional[datetime] = None
-    end_datetime: Optional[datetime] = None
-    is_all_day: bool = False
-    timezone: str = "UTC"
-
-
-class CalendarEventCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    location: Optional[str] = None
-
-    # Time settings - flexible for both timed and all-day events
-    start_datetime: datetime
-    end_datetime: datetime
-    is_all_day: bool = False
-    timezone: str = "UTC"
-
-    # Event classification
-    event_type: str = "availability"  # 'availability', 'block', 'appointment', 'break'
-    category: Optional[str] = None
-    priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
-    color: Optional[str] = None
-
-    # Availability settings
-    is_bookable: bool = True
-    max_bookings: Optional[int] = None
-    buffer_before: int = 0  # Minutes
-    buffer_after: int = 0  # Minutes
-
-    # Recurrence
-    is_recurring: bool = False
-    recurrence_rule: Optional[RecurrenceRule] = None
-
-    # Status
-    status: str = "confirmed"  # 'tentative', 'confirmed', 'cancelled'
-    visibility: str = "public"  # 'public', 'private'
-
-
-class CalendarEventResponse(CalendarEventCreate):
-    id: int
-    specialist_id: int
-    recurring_event_id: Optional[str] = None
-    original_start: Optional[datetime] = None
-    is_active: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-class CalendarEventUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    location: Optional[str] = None
-    start_datetime: Optional[datetime] = None
-    end_datetime: Optional[datetime] = None
-    is_all_day: Optional[bool] = None
-    timezone: Optional[str] = None
-    event_type: Optional[str] = None
-    category: Optional[str] = None
-    priority: Optional[str] = None
-    color: Optional[str] = None
-    is_bookable: Optional[bool] = None
-    max_bookings: Optional[int] = None
-    buffer_before: Optional[int] = None
-    buffer_after: Optional[int] = None
-    status: Optional[str] = None
-    visibility: Optional[str] = None
-    is_active: Optional[bool] = None
-
-
-class EventExceptionCreate(BaseModel):
-    exception_date: date
-    exception_type: str  # 'cancelled', 'modified', 'moved'
-    new_start_datetime: Optional[datetime] = None
-    new_end_datetime: Optional[datetime] = None
-    new_title: Optional[str] = None
-    new_description: Optional[str] = None
-
-
-class EventExceptionResponse(EventExceptionCreate):
-    id: int
-    event_id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class WorkingHoursCreate(BaseModel):
-    day_of_week: int  # 0=Monday, 6=Sunday
-    time_ranges: List[TimeRange]
-    is_working_day: bool = True
-    break_duration: int = 0  # Minutes
-    break_start_time: Optional[time] = None
-    timezone: str = "UTC"
-    effective_date: Optional[date] = None
-
-
-class WorkingHoursResponse(WorkingHoursCreate):
-    id: int
-    specialist_id: int
-    is_active: bool
-
-    class Config:
-        from_attributes = True
-
-
-class SchedulingPreferencesCreate(BaseModel):
-    # Buffer times
-    default_buffer_before: int = 15
-    default_buffer_after: int = 15
-
-    # Booking windows
-    advance_booking_days: int = 365
-    min_booking_notice: int = 60  # Minutes
-
-    # Limits
-    auto_accept_bookings: bool = True
-    max_daily_bookings: Optional[int] = None
-    max_weekly_bookings: Optional[int] = None
-
-    # Time preferences
-    minimum_slot_duration: int = 15
-    slot_increment: int = 15
-
-    # Breaks
-    lunch_break_start: Optional[time] = None
-    lunch_break_duration: int = 60
-    travel_time_between_appointments: int = 0
-
-    # Locale
-    timezone: str = "UTC"
-    date_format: str = "YYYY-MM-DD"
-    time_format: str = "24h"
-
-    # Notifications
-    email_reminders: bool = True
-    sms_reminders: bool = False
-    reminder_advance_time: int = 1440  # Minutes
-
-
-class SchedulingPreferencesResponse(SchedulingPreferencesCreate):
-    id: int
-    specialist_id: int
-    is_active: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-class BulkEventOperation(BaseModel):
-    operation: str  # 'create', 'update', 'delete', 'move'
-    events: List[Union[CalendarEventCreate, CalendarEventUpdate]]
-    apply_to_series: bool = False  # For recurring events
-
-
-class CalendarView(BaseModel):
-    start_date: date
-    end_date: date
-    view_type: str = "week"  # 'day', 'week', 'month', 'year'
-    timezone: str = "UTC"
-    include_all_day: bool = True
-    event_types: Optional[List[str]] = None
-    categories: Optional[List[str]] = None
-
-
-class SmartSchedulingSuggestion(BaseModel):
-    suggested_datetime: datetime
-    duration_minutes: int
-    confidence_score: float  # 0.0 to 1.0
-    reason: str
-    alternative_times: List[datetime]
-    conflicts: List[str]
-
-
-class AvailabilityQuery(BaseModel):
-    start_datetime: datetime
-    end_datetime: datetime
-    duration_minutes: int
-    service_id: Optional[int] = None
-    buffer_minutes: int = 0
-    preferred_times: Optional[List[TimeRange]] = None
-    exclude_weekends: bool = False
-
-
-# Authentication Models
-class LoginRequest(BaseModel):
-    email: EmailStr
-    name: Optional[str] = None  # For new registrations
-    bio: Optional[str] = None
-    phone: Optional[str] = None
-
-
-class AuthResponse(BaseModel):
-    success: bool
-    message: str
-    access_token: Optional[str] = None
-    specialist: Optional[SpecialistResponse] = None
-    requires_verification: bool = False
-
-
-# Verification Models
-class VerificationRequest(BaseModel):
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    verification_type: str = "registration"  # "registration" or "login"
-
-
-class VerificationResponse(BaseModel):
-    success: bool
-    message: str
-    method: str  # "email" or "sms"
-
-
-class CodeVerificationRequest(BaseModel):
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    code: str
-    verification_type: str = "registration"
-    # Add optional registration data
-    name: Optional[str] = None
-    bio: Optional[str] = None
-    specialist_phone: Optional[str] = None
-
-
-class CodeVerificationResponse(BaseModel):
-    success: bool
-    message: str
-    verified: bool = False
-    access_token: Optional[str] = None
-    specialist: Optional[SpecialistResponse] = None
-
-
 # Verification Endpoints
 @app.post("/verification/send", response_model=VerificationResponse)
 async def send_verification_code(
@@ -1325,7 +997,7 @@ async def get_current_user_services(request: Request, db: Session = Depends(get_
 def create_specialist(
     specialist: SpecialistCreate,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Create a new specialist with enhanced profile info and validation.
@@ -1364,7 +1036,7 @@ def update_specialist_services(
     services: List[Service],
     request: Request,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ) -> dict:
     """
     Update the services offered by a specialist using a real database.
@@ -1479,7 +1151,7 @@ def add_availability_slots(
     slots: List[AvailabilitySlotCreate],
     request: Request,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Add availability slots for a specialist.
@@ -1548,7 +1220,7 @@ def create_calendar_event(
     specialist_id: int,
     event: CalendarEventCreate,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Create a calendar event with advanced recurrence and flexibility options.
@@ -1671,7 +1343,7 @@ def update_calendar_event(
     event_update: CalendarEventUpdate,
     modify_series: bool = False,  # For recurring events - modify entire series or just this instance
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Update calendar event with support for modifying recurring series or individual instances.
@@ -1715,7 +1387,7 @@ def delete_calendar_event(
     event_id: int,
     delete_series: bool = False,  # For recurring events
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Delete calendar event with support for recurring event series management.
@@ -1767,7 +1439,7 @@ def create_recurring_schedule(
     specialist_id: int,
     schedule: RecurringScheduleCreate,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Create recurring schedule using simplified interface that maps to calendar events.
@@ -1864,7 +1536,7 @@ def create_recurring_schedule(
 def get_recurring_schedules(
     specialist_id: int,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Get all recurring schedules for a specialist.
@@ -1948,7 +1620,7 @@ def bulk_calendar_operations(
     specialist_id: int,
     operation: BulkEventOperation,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Perform bulk operations on calendar events for efficiency.
@@ -1973,7 +1645,7 @@ def set_working_hours(
     specialist_id: int,
     working_hours: WorkingHoursCreate,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Set working hours with support for multiple time ranges per day and breaks.
@@ -2052,7 +1724,7 @@ def set_scheduling_preferences(
     specialist_id: int,
     preferences: SchedulingPreferencesCreate,
     db: Session = Depends(get_db),
-    current_specialist: Specialist = Depends(require_authentication),
+    current_specialist: Specialist = Depends(require_authentication_dep),
 ):
     """
     Set comprehensive scheduling preferences for intelligent calendar management.
@@ -2170,6 +1842,18 @@ def get_available_time_slots(
         .all()
     )
 
+    # Also get calendar events that represent availability (from recurring schedules)
+    calendar_availability = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.event_type == "availability",
+            CalendarEvent.status == "confirmed",
+            func.date(CalendarEvent.start_datetime) == booking_date,
+        )
+        .all()
+    )
+
     # Get existing bookings for the date
     existing_bookings = (
         db.query(Booking)
@@ -2223,6 +1907,58 @@ def get_available_time_slots(
             # This ensures customers can book any service at properly spaced intervals
             current_time += timedelta(minutes=service_duration)
 
+    # Also process calendar availability events (from recurring schedules)
+    for cal_event in calendar_availability:
+        # Generate time slots within the calendar availability window
+        current_time = cal_event.start_datetime
+        end_time = cal_event.end_datetime
+
+        while current_time + timedelta(minutes=service_duration) <= end_time:
+            slot_end = current_time + timedelta(minutes=service_duration)
+
+            # Check if this slot conflicts with existing bookings
+            conflict = False
+            for booking in existing_bookings:
+                booking_start = datetime.combine(booking_date, booking.start_time)
+                booking_end = datetime.combine(booking_date, booking.end_time)
+
+                if current_time < booking_end and slot_end > booking_start:
+                    conflict = True
+                    break
+
+            # Check if this slot conflicts with calendar events (blocks, PTO, etc.)
+            # Skip the current availability event itself from conflict check
+            if not conflict:
+                calendar_conflict = has_calendar_conflict(
+                    db,
+                    specialist_id,
+                    current_time,
+                    slot_end,
+                    exclude_event_id=cal_event.id,  # Exclude the current availability event
+                )
+                conflict = calendar_conflict
+
+            if not conflict:
+                # Check if this slot is already in available_slots to avoid duplicates
+                slot_time = current_time.time()
+                slot_exists = any(
+                    slot["start_time"] == slot_time for slot in available_slots
+                )
+
+                if not slot_exists:
+                    available_slots.append(
+                        {
+                            "start_time": slot_time,
+                            "end_time": slot_end.time(),
+                            "duration_minutes": service_duration,
+                        }
+                    )
+
+            # Increment by the service duration
+            current_time += timedelta(minutes=service_duration)
+
+    # Sort available slots by start time and return
+    available_slots.sort(key=lambda slot: slot["start_time"])
     return available_slots
 
 
@@ -2231,97 +1967,139 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
     """
     Create a new booking for a consumer with comprehensive validation.
     """
-    # Validate specialist exists
-    specialist = (
-        db.query(Specialist).filter(Specialist.id == booking.specialist_id).first()
-    )
-    if not specialist:
-        raise HTTPException(status_code=404, detail="Specialist not found")
+    try:
+        print(f"DEBUG: Received booking request: {booking}")
 
-    # Validate service exists and belongs to specialist
-    service = (
-        db.query(ServiceDB)
-        .filter(
-            ServiceDB.id == booking.service_id,
-            ServiceDB.specialist_id == booking.specialist_id,
+        # Validate specialist exists
+        specialist = (
+            db.query(Specialist).filter(Specialist.id == booking.specialist_id).first()
         )
-        .first()
-    )
-    if not service:
-        raise HTTPException(
-            status_code=404, detail="Service not found for this specialist"
+        if not specialist:
+            print(f"DEBUG: Specialist {booking.specialist_id} not found")
+            raise HTTPException(status_code=404, detail="Specialist not found")
+
+        # Validate service exists and belongs to specialist
+        service = (
+            db.query(ServiceDB)
+            .filter(
+                ServiceDB.id == booking.service_id,
+                ServiceDB.specialist_id == booking.specialist_id,
+            )
+            .first()
         )
+        if not service:
+            raise HTTPException(
+                status_code=404, detail="Service not found for this specialist"
+            )
 
-    # Validate that there's an availability slot covering this time
-    availability_slots = (
-        db.query(AvailabilitySlot)
-        .filter(
-            AvailabilitySlot.specialist_id == booking.specialist_id,
-            AvailabilitySlot.date == booking.booking_date,
-            AvailabilitySlot.is_available == True,
-        )
-        .all()
-    )
-
-    # Check if the requested time falls within any availability slot
-    booking_start = datetime.combine(booking.booking_date, booking.start_time)
-    booking_end = booking_start + timedelta(minutes=service.duration)
-
-    valid_slot = None
-    for slot in availability_slots:
-        slot_start = datetime.combine(slot.date, slot.start_time)
-        slot_end = datetime.combine(slot.date, slot.end_time)
-
-        # Check if booking fits within this availability slot
-        if booking_start >= slot_start and booking_end <= slot_end:
-            valid_slot = slot
-            break
-
-    if not valid_slot:
-        raise HTTPException(
-            status_code=404, detail="No availability slot covers the requested time"
+        # Validate that there's an availability slot covering this time
+        availability_slots = (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.specialist_id == booking.specialist_id,
+                AvailabilitySlot.date == booking.booking_date,
+                AvailabilitySlot.is_available == True,
+            )
+            .all()
         )
 
-    # Check for conflicts with existing bookings
-    existing_booking = (
-        db.query(Booking)
-        .filter(
-            Booking.specialist_id == booking.specialist_id,
-            Booking.date == booking.booking_date,
-            Booking.status == "confirmed",
-        )
-        .filter(
-            # Check for time overlap
-            (Booking.start_time < booking_end.time())
-            & (Booking.end_time > booking_start.time())
-        )
-        .first()
-    )
-
-    if existing_booking:
-        raise HTTPException(
-            status_code=400, detail="Time slot conflicts with existing booking"
+        # Also check calendar events that represent availability (from recurring schedules)
+        calendar_availability = (
+            db.query(CalendarEvent)
+            .filter(
+                CalendarEvent.specialist_id == booking.specialist_id,
+                CalendarEvent.event_type == "availability",
+                CalendarEvent.status == "confirmed",
+                CalendarEvent.is_active == True,
+                func.date(CalendarEvent.start_datetime) == booking.booking_date,
+            )
+            .all()
         )
 
-    # Create the booking
-    db_booking = Booking(
-        specialist_id=booking.specialist_id,
-        service_id=booking.service_id,
-        client_name=booking.client_name,
-        client_email=booking.client_email,
-        client_phone=booking.client_phone,
-        date=booking.booking_date,
-        start_time=booking.start_time,
-        end_time=booking_end.time(),
-        notes=booking.notes,
-        status="confirmed",
-    )
+        # Check if the requested time falls within any availability slot
+        booking_start = datetime.combine(booking.booking_date, booking.start_time)
+        booking_end = booking_start + timedelta(minutes=service.duration)
 
-    db.add(db_booking)
-    db.commit()
-    db.refresh(db_booking)
+        valid_slot = None
 
-    return db_booking
+        # Check traditional availability slots
+        for slot in availability_slots:
+            slot_start = datetime.combine(slot.date, slot.start_time)
+            slot_end = datetime.combine(slot.date, slot.end_time)
+
+            # Check if booking fits within this availability slot
+            if booking_start >= slot_start and booking_end <= slot_end:
+                valid_slot = slot
+                break
+
+        # If not found in traditional slots, check calendar availability events
+        if not valid_slot:
+            for cal_event in calendar_availability:
+                # Check if booking fits within this calendar availability
+                if (
+                    booking_start >= cal_event.start_datetime
+                    and booking_end <= cal_event.end_datetime
+                ):
+                    valid_slot = cal_event  # Use calendar event as valid slot indicator
+                    break
+
+        if not valid_slot:
+            raise HTTPException(
+                status_code=404, detail="No availability slot covers the requested time"
+            )
+
+        # Check for conflicts with existing bookings
+        existing_booking = (
+            db.query(Booking)
+            .filter(
+                Booking.specialist_id == booking.specialist_id,
+                Booking.date == booking.booking_date,
+                Booking.status == "confirmed",
+            )
+            .filter(
+                # Check for time overlap
+                (Booking.start_time < booking_end.time())
+                & (Booking.end_time > booking_start.time())
+            )
+            .first()
+        )
+
+        if existing_booking:
+            raise HTTPException(
+                status_code=400, detail="Time slot conflicts with existing booking"
+            )
+
+        # Create the booking
+        db_booking = Booking(
+            specialist_id=booking.specialist_id,
+            service_id=booking.service_id,
+            client_name=booking.client_name,
+            client_email=booking.client_email,
+            client_phone=booking.client_phone,
+            date=booking.booking_date,
+            start_time=booking.start_time,
+            end_time=booking_end.time(),
+            notes=booking.notes,
+            status="confirmed",
+        )
+
+        db.add(db_booking)
+        db.commit()
+        db.refresh(db_booking)
+
+        print(f"DEBUG: Successfully created booking with ID: {db_booking.id}")
+        return db_booking
+
+    except Exception as e:
+        print(f"DEBUG: Error creating booking: {str(e)}")
+        print(f"DEBUG: Error type: {type(e)}")
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        else:
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
 
 
 @app.get(
