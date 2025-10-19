@@ -42,12 +42,22 @@ try:
         SchedulingPreferences,
         database,
         VerificationCode,
+        Workplace,
+        specialist_workplace_association,
     )
     from .verification_service import verification_service
+    from .yelp_service import yelp_service, YelpAPIError
     from .models import (
         # Core service models
         Service,
         ServiceResponse,
+        # Workplace models
+        WorkplaceCreate,
+        WorkplaceResponse,
+        WorkplaceUpdate,
+        YelpBusinessSearch,
+        YelpBusinessResponse,
+        SpecialistWorkplaceAssociation,
         # Specialist models
         SpecialistCreate,
         SpecialistResponse,
@@ -2174,3 +2184,502 @@ def update_booking_status(
         "booking_id": booking_id,
         "new_status": status_update.status,
     }
+
+
+# ==================== Workplace Endpoints ====================
+
+
+@app.post("/workplaces/", response_model=WorkplaceResponse)
+async def create_workplace(workplace: WorkplaceCreate, db: Session = Depends(get_db)):
+    """
+    Create a new workplace.
+    """
+    # Validate Yelp business if provided
+    if workplace.yelp_business_id:
+        try:
+            is_valid = await yelp_service.validate_business(workplace.yelp_business_id)
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid Yelp business ID or business is closed",
+                )
+        except YelpAPIError as e:
+            raise HTTPException(status_code=400, detail=f"Yelp API error: {str(e)}")
+
+    db_workplace = Workplace(
+        name=workplace.name,
+        address=workplace.address,
+        city=workplace.city,
+        state=workplace.state,
+        zip_code=workplace.zip_code,
+        country=workplace.country,
+        phone=workplace.phone,
+        website=workplace.website,
+        description=workplace.description,
+        yelp_business_id=workplace.yelp_business_id,
+        is_verified=workplace.is_verified,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    db.add(db_workplace)
+    db.commit()
+    db.refresh(db_workplace)
+
+    # Count specialists
+    specialists_count = len(db_workplace.specialists)
+
+    # Convert to response model
+    response = WorkplaceResponse(
+        id=db_workplace.id,
+        name=db_workplace.name,
+        address=db_workplace.address,
+        city=db_workplace.city,
+        state=db_workplace.state,
+        zip_code=db_workplace.zip_code,
+        country=db_workplace.country,
+        phone=db_workplace.phone,
+        website=db_workplace.website,
+        description=db_workplace.description,
+        yelp_business_id=db_workplace.yelp_business_id,
+        is_verified=db_workplace.is_verified,
+        created_at=db_workplace.created_at,
+        updated_at=db_workplace.updated_at,
+        specialists_count=specialists_count,
+    )
+
+    return response
+
+
+@app.get("/workplaces/", response_model=List[WorkplaceResponse])
+def get_workplaces(
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    is_verified: Optional[bool] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Get all workplaces with optional filtering.
+    """
+    query = db.query(Workplace)
+
+    if city:
+        query = query.filter(Workplace.city.ilike(f"%{city}%"))
+    if state:
+        query = query.filter(Workplace.state.ilike(f"%{state}%"))
+    if is_verified is not None:
+        query = query.filter(Workplace.is_verified == is_verified)
+
+    workplaces = query.all()
+
+    # Convert to response models
+    response_workplaces = []
+    for workplace in workplaces:
+        specialists_count = len(workplace.specialists)
+        response = WorkplaceResponse(
+            id=workplace.id,
+            name=workplace.name,
+            address=workplace.address,
+            city=workplace.city,
+            state=workplace.state,
+            zip_code=workplace.zip_code,
+            country=workplace.country,
+            phone=workplace.phone,
+            website=workplace.website,
+            description=workplace.description,
+            yelp_business_id=workplace.yelp_business_id,
+            is_verified=workplace.is_verified,
+            created_at=workplace.created_at,
+            updated_at=workplace.updated_at,
+            specialists_count=specialists_count,
+        )
+        response_workplaces.append(response)
+
+    return response_workplaces
+
+
+@app.get("/workplaces/{workplace_id}", response_model=WorkplaceResponse)
+def get_workplace(workplace_id: int, db: Session = Depends(get_db)):
+    """
+    Get a specific workplace by ID.
+    """
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    specialists_count = len(workplace.specialists)
+
+    response = WorkplaceResponse(
+        id=workplace.id,
+        name=workplace.name,
+        address=workplace.address,
+        city=workplace.city,
+        state=workplace.state,
+        zip_code=workplace.zip_code,
+        country=workplace.country,
+        phone=workplace.phone,
+        website=workplace.website,
+        description=workplace.description,
+        yelp_business_id=workplace.yelp_business_id,
+        is_verified=workplace.is_verified,
+        created_at=workplace.created_at,
+        updated_at=workplace.updated_at,
+        specialists_count=specialists_count,
+    )
+
+    return response
+
+
+@app.put("/workplaces/{workplace_id}", response_model=WorkplaceResponse)
+async def update_workplace(
+    workplace_id: int, workplace_update: WorkplaceUpdate, db: Session = Depends(get_db)
+):
+    """
+    Update a workplace.
+    """
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Validate Yelp business if being updated
+    if workplace_update.yelp_business_id is not None:
+        try:
+            is_valid = await yelp_service.validate_business(
+                workplace_update.yelp_business_id
+            )
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid Yelp business ID or business is closed",
+                )
+        except YelpAPIError as e:
+            raise HTTPException(status_code=400, detail=f"Yelp API error: {str(e)}")
+
+    # Update fields that are provided
+    update_data = workplace_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(workplace, field, value)
+
+    workplace.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(workplace)
+
+    specialists_count = len(workplace.specialists)
+
+    response = WorkplaceResponse(
+        id=workplace.id,
+        name=workplace.name,
+        address=workplace.address,
+        city=workplace.city,
+        state=workplace.state,
+        zip_code=workplace.zip_code,
+        country=workplace.country,
+        phone=workplace.phone,
+        website=workplace.website,
+        description=workplace.description,
+        yelp_business_id=workplace.yelp_business_id,
+        is_verified=workplace.is_verified,
+        created_at=workplace.created_at,
+        updated_at=workplace.updated_at,
+        specialists_count=specialists_count,
+    )
+
+    return response
+
+
+@app.delete("/workplaces/{workplace_id}")
+def delete_workplace(workplace_id: int, db: Session = Depends(get_db)) -> dict:
+    """
+    Delete a workplace.
+    """
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Check if workplace has associated specialists
+    if workplace.specialists:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete workplace with associated specialists. Remove associations first.",
+        )
+
+    db.delete(workplace)
+    db.commit()
+
+    return {"message": "Workplace deleted successfully"}
+
+
+# ==================== Specialist-Workplace Association Endpoints ====================
+
+
+@app.post("/specialists/{specialist_id}/workplaces/{workplace_id}")
+def associate_specialist_workplace(
+    specialist_id: int,
+    workplace_id: int,
+    association: SpecialistWorkplaceAssociation,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Associate a specialist with a workplace.
+    """
+    # Check if specialist exists
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Specialist not found")
+
+    # Check if workplace exists
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Check if association already exists and is active
+    from sqlalchemy import and_
+
+    existing_association = db.execute(
+        specialist_workplace_association.select().where(
+            and_(
+                specialist_workplace_association.c.specialist_id == specialist_id,
+                specialist_workplace_association.c.workplace_id == workplace_id,
+                specialist_workplace_association.c.is_active == True,
+            )
+        )
+    ).first()
+
+    if existing_association:
+        raise HTTPException(
+            status_code=400,
+            detail="Active association already exists between specialist and workplace",
+        )
+
+    # Create new association
+    association_data = {
+        "specialist_id": specialist_id,
+        "workplace_id": workplace_id,
+        "role": association.role,
+        "start_date": association.start_date,
+        "end_date": association.end_date,
+        "is_active": association.is_active,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    }
+
+    db.execute(specialist_workplace_association.insert().values(**association_data))
+    db.commit()
+
+    return {
+        "message": "Specialist successfully associated with workplace",
+        "specialist_id": specialist_id,
+        "workplace_id": workplace_id,
+        "role": association.role,
+    }
+
+
+@app.delete("/specialists/{specialist_id}/workplaces/{workplace_id}")
+def disassociate_specialist_workplace(
+    specialist_id: int, workplace_id: int, db: Session = Depends(get_db)
+) -> dict:
+    """
+    Remove association between a specialist and workplace.
+    """
+    from sqlalchemy import and_
+
+    # Find the association
+    existing_association = db.execute(
+        specialist_workplace_association.select().where(
+            and_(
+                specialist_workplace_association.c.specialist_id == specialist_id,
+                specialist_workplace_association.c.workplace_id == workplace_id,
+                specialist_workplace_association.c.is_active == True,
+            )
+        )
+    ).first()
+
+    if not existing_association:
+        raise HTTPException(
+            status_code=404,
+            detail="Active association not found between specialist and workplace",
+        )
+
+    # Update association to inactive instead of deleting (for audit trail)
+    db.execute(
+        specialist_workplace_association.update()
+        .where(
+            and_(
+                specialist_workplace_association.c.specialist_id == specialist_id,
+                specialist_workplace_association.c.workplace_id == workplace_id,
+            )
+        )
+        .values(is_active=False, end_date=date.today(), updated_at=datetime.utcnow())
+    )
+    db.commit()
+
+    return {
+        "message": "Specialist successfully disassociated from workplace",
+        "specialist_id": specialist_id,
+        "workplace_id": workplace_id,
+    }
+
+
+@app.get(
+    "/specialists/{specialist_id}/workplaces", response_model=List[WorkplaceResponse]
+)
+def get_specialist_workplaces(specialist_id: int, db: Session = Depends(get_db)):
+    """
+    Get all workplaces associated with a specialist.
+    """
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Specialist not found")
+
+    # Get active workplace associations
+    from sqlalchemy import and_
+
+    associations = db.execute(
+        specialist_workplace_association.select().where(
+            and_(
+                specialist_workplace_association.c.specialist_id == specialist_id,
+                specialist_workplace_association.c.is_active == True,
+            )
+        )
+    ).fetchall()
+
+    workplace_ids = [assoc.workplace_id for assoc in associations]
+    workplaces = db.query(Workplace).filter(Workplace.id.in_(workplace_ids)).all()
+
+    # Convert to response models
+    response_workplaces = []
+    for workplace in workplaces:
+        specialists_count = len(workplace.specialists)
+        response = WorkplaceResponse(
+            id=workplace.id,
+            name=workplace.name,
+            address=workplace.address,
+            city=workplace.city,
+            state=workplace.state,
+            zip_code=workplace.zip_code,
+            country=workplace.country,
+            phone=workplace.phone,
+            website=workplace.website,
+            description=workplace.description,
+            yelp_business_id=workplace.yelp_business_id,
+            is_verified=workplace.is_verified,
+            created_at=workplace.created_at,
+            updated_at=workplace.updated_at,
+            specialists_count=specialists_count,
+        )
+        response_workplaces.append(response)
+
+    return response_workplaces
+
+
+# ==================== Yelp Integration Endpoints ====================
+
+
+@app.get("/yelp/search", response_model=List[YelpBusinessResponse])
+async def search_yelp_businesses(
+    term: str,
+    location: str,
+    limit: int = 10,
+    radius: Optional[int] = None,
+    categories: Optional[str] = None,
+) -> List[YelpBusinessResponse]:
+    """
+    Search for businesses using Yelp API.
+    """
+    search_params = YelpBusinessSearch(
+        term=term,
+        location=location,
+        limit=min(limit, 50),  # Cap at 50 results
+        radius=radius,
+        categories=categories,
+    )
+
+    try:
+        businesses = await yelp_service.search_businesses(search_params)
+        return businesses
+    except YelpAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/yelp/business/{business_id}", response_model=YelpBusinessResponse)
+async def get_yelp_business(business_id: str) -> YelpBusinessResponse:
+    """
+    Get detailed information about a specific Yelp business.
+    """
+    try:
+        business = await yelp_service.get_business_details(business_id)
+        if not business:
+            raise HTTPException(status_code=404, detail="Business not found")
+        return business
+    except YelpAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/workplaces/from-yelp/{business_id}", response_model=WorkplaceResponse)
+async def create_workplace_from_yelp(business_id: str, db: Session = Depends(get_db)):
+    """
+    Create a workplace from Yelp business data.
+    """
+    try:
+        business = await yelp_service.get_business_details(business_id)
+        if not business:
+            raise HTTPException(status_code=404, detail="Yelp business not found")
+
+        # Check if workplace with this Yelp ID already exists
+        existing_workplace = (
+            db.query(Workplace)
+            .filter(Workplace.yelp_business_id == business_id)
+            .first()
+        )
+
+        if existing_workplace:
+            raise HTTPException(
+                status_code=400,
+                detail="Workplace with this Yelp business ID already exists",
+            )
+
+        # Create workplace from Yelp data
+        db_workplace = Workplace(
+            name=business.name,
+            address=business.address,
+            city=business.city,
+            state=business.state,
+            zip_code=business.zip_code,
+            country=business.country,
+            phone=business.phone,
+            website=None,  # Yelp doesn't provide website in basic search
+            description=f"Business verified through Yelp. Rating: {business.rating}/5 ({business.review_count} reviews)",
+            yelp_business_id=business_id,
+            is_verified=True,  # Verified through Yelp
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        db.add(db_workplace)
+        db.commit()
+        db.refresh(db_workplace)
+
+        specialists_count = len(db_workplace.specialists)
+
+        response = WorkplaceResponse(
+            id=db_workplace.id,
+            name=db_workplace.name,
+            address=db_workplace.address,
+            city=db_workplace.city,
+            state=db_workplace.state,
+            zip_code=db_workplace.zip_code,
+            country=db_workplace.country,
+            phone=db_workplace.phone,
+            website=db_workplace.website,
+            description=db_workplace.description,
+            yelp_business_id=db_workplace.yelp_business_id,
+            is_verified=db_workplace.is_verified,
+            created_at=db_workplace.created_at,
+            updated_at=db_workplace.updated_at,
+            specialists_count=specialists_count,
+        )
+
+        return response
+
+    except YelpAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -41,6 +41,11 @@ calendar_app/
 - **Calendar Integration**: Visual calendar interface for availability management
 - **Booking System**: Consumer-facing booking flow with time slot selection
 - **Email/SMS Verification**: Two-factor authentication for specialist signup
+- **Workplace Management**: ⭐ **NEW** - Professionals can manage multiple workplaces with Yelp API integration
+  - Many-to-many specialist-workplace relationships
+  - Yelp business search and validation
+  - Verified workplace listings
+  - Role-based associations (owner, employee, contractor)
 - **Responsive UI**: Luxury glassmorphism theme with mobile support
 
 ## Tech Stack
@@ -201,6 +206,22 @@ Reset the database:
 rm calendar_app.db test.db test_auth.db
 # Restart the server to recreate tables
 ```
+
+## Roadmap
+[ ] Create a commerce page that conveys the value prop
+* feature set:
+   - service listings
+   - loyal customer platform
+   - booking management
+   - payment processing
+   - reviews and ratings
+[ ] Create a relationship between professional and workplace
+[ ] Add payment processing integration for bookings
+[ ] Add payment processing integration for new signups
+[ ] Implement notification system for bookings
+[ ] Enhance UI with more luxury-themed components
+[ ] Add Video and Photos of Services across application
+[ ] Fix dashboard summary counts
 
 ## License
 

@@ -28,6 +28,80 @@ class ServiceResponse(Service):
         from_attributes = True
 
 
+# ==================== Workplace Models ====================
+
+
+class WorkplaceCreate(BaseModel):
+    name: str
+    address: str
+    city: str
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country: str = "US"
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    description: Optional[str] = None
+    yelp_business_id: Optional[str] = None
+    is_verified: bool = False
+
+
+class WorkplaceResponse(WorkplaceCreate):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    specialists_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class WorkplaceUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    description: Optional[str] = None
+    is_verified: Optional[bool] = None
+
+
+class YelpBusinessSearch(BaseModel):
+    term: str
+    location: str
+    limit: int = 10
+    radius: Optional[int] = None  # in meters
+    categories: Optional[str] = None
+
+
+class YelpBusinessResponse(BaseModel):
+    id: str
+    name: str
+    url: str
+    phone: Optional[str] = None
+    display_phone: Optional[str] = None
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    country: str
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    categories: List[str] = []
+    image_url: Optional[str] = None
+    is_closed: bool = False
+    distance: Optional[float] = None
+
+
+class SpecialistWorkplaceAssociation(BaseModel):
+    role: Optional[str] = None  # e.g., "owner", "employee", "contractor"
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_active: bool = True
+
+
 # ==================== Specialist Models ====================
 
 
@@ -391,6 +465,12 @@ class VerificationRequest(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     verification_type: str = "registration"  # "registration" or "login"
+    # Optional registration fields (ignored during verification)
+    name: Optional[str] = None
+    bio: Optional[str] = None
+
+    class Config:
+        extra = "allow"  # Allow additional fields from frontend
 
 
 class VerificationResponse(BaseModel):

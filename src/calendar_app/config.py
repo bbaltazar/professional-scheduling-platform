@@ -26,6 +26,10 @@ class Settings:
     # CORS settings
     CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "*").split(",")
 
+    # Yelp API settings
+    YELP_API_KEY: Optional[str] = os.getenv("YELP_API_KEY")
+    YELP_API_URL: str = "https://api.yelp.com/v3"
+
     def __init__(self):
         """Initialize settings and validate required environment variables."""
         if not self.JWT_SECRET_KEY:

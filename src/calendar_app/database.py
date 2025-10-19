@@ -20,6 +20,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from datetime import datetime
 from typing import List
 
 # Database URL - using SQLite for development
@@ -34,7 +35,48 @@ Base = declarative_base()
 database = databases.Database(DATABASE_URL)
 
 
+# Many-to-Many Association Table for Specialist-Workplace relationship
+specialist_workplace_association = Table(
+    "specialist_workplace",
+    Base.metadata,
+    Column("specialist_id", Integer, ForeignKey("specialists.id"), primary_key=True),
+    Column("workplace_id", Integer, ForeignKey("workplaces.id"), primary_key=True),
+    Column("role", String, nullable=True),  # 'owner', 'employee', 'contractor', etc.
+    Column("start_date", Date, nullable=True),
+    Column("end_date", Date, nullable=True),
+    Column("is_active", Boolean, default=True),
+    Column("created_at", DateTime, default=datetime.utcnow),
+    Column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow),
+)
+
+
 # SQLAlchemy Models
+class Workplace(Base):
+    __tablename__ = "workplaces"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    address = Column(String)
+    city = Column(String, index=True)
+    state = Column(String)
+    zip_code = Column(String)
+    country = Column(String, default="US")
+    phone = Column(String)
+    website = Column(String)
+    description = Column(Text)
+    yelp_business_id = Column(String, unique=True, index=True)
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships - many-to-many with specialists
+    specialists = relationship(
+        "Specialist",
+        secondary=specialist_workplace_association,
+        back_populates="workplaces",
+    )
+
+
 class Specialist(Base):
     __tablename__ = "specialists"
 
@@ -50,7 +92,14 @@ class Specialist(Base):
     bookings = relationship("Booking", back_populates="specialist")
     calendar_events = relationship("CalendarEvent", back_populates="specialist")
     working_hours = relationship("WorkingHours", back_populates="specialist")
-    scheduling_preferences = relationship("SchedulingPreferences", back_populates="specialist")
+    scheduling_preferences = relationship(
+        "SchedulingPreferences", back_populates="specialist"
+    )
+    workplaces = relationship(
+        "Workplace",
+        secondary=specialist_workplace_association,
+        back_populates="specialists",
+    )
 
 
 class ServiceDB(Base):
@@ -106,47 +155,53 @@ class CalendarEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
-    
+
     # Event basics
     title = Column(String)
     description = Column(Text, nullable=True)
     location = Column(String, nullable=True)
-    
+
     # Date and time (supports both timed and all-day events)
     start_datetime = Column(DateTime)  # Full datetime for timed events
-    end_datetime = Column(DateTime)    # Full datetime for timed events
+    end_datetime = Column(DateTime)  # Full datetime for timed events
     is_all_day = Column(Boolean, default=False)
     timezone = Column(String, default="UTC")
-    
+
     # Event properties
-    event_type = Column(String, default="availability")  # 'availability', 'block', 'appointment', 'break'
-    category = Column(String, nullable=True)  # 'work', 'personal', 'vacation', 'meeting', etc.
+    event_type = Column(
+        String, default="availability"
+    )  # 'availability', 'block', 'appointment', 'break'
+    category = Column(
+        String, nullable=True
+    )  # 'work', 'personal', 'vacation', 'meeting', etc.
     priority = Column(String, default="normal")  # 'low', 'normal', 'high', 'urgent'
     color = Column(String, nullable=True)  # Hex color for visual organization
-    
+
     # Availability settings (for availability events)
     is_bookable = Column(Boolean, default=True)
     max_bookings = Column(Integer, nullable=True)  # Null = unlimited
     buffer_before = Column(Integer, default=0)  # Minutes of buffer before
-    buffer_after = Column(Integer, default=0)   # Minutes of buffer after
-    
+    buffer_after = Column(Integer, default=0)  # Minutes of buffer after
+
     # Recurrence settings (RRULE-like flexibility)
     is_recurring = Column(Boolean, default=False)
     recurrence_rule = Column(Text, nullable=True)  # JSON with full recurrence config
     recurrence_end_date = Column(Date, nullable=True)
     recurrence_count = Column(Integer, nullable=True)  # Max occurrences
-    
+
     # Event status and metadata
-    status = Column(String, default="confirmed")  # 'tentative', 'confirmed', 'cancelled'
+    status = Column(
+        String, default="confirmed"
+    )  # 'tentative', 'confirmed', 'cancelled'
     visibility = Column(String, default="public")  # 'public', 'private'
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
-    
+
     # For recurring event management
     recurring_event_id = Column(String, nullable=True)  # Groups recurring instances
-    original_start = Column(DateTime, nullable=True)    # For modified instances
-    
+    original_start = Column(DateTime, nullable=True)  # For modified instances
+
     # Relationships
     specialist = relationship("Specialist", back_populates="calendar_events")
     event_exceptions = relationship("EventException", back_populates="event")
@@ -159,15 +214,15 @@ class EventException(Base):
     event_id = Column(Integer, ForeignKey("calendar_events.id"))
     exception_date = Column(Date)  # Date this exception applies to
     exception_type = Column(String)  # 'cancelled', 'modified', 'moved'
-    
+
     # For modified exceptions - override original event data
     new_start_datetime = Column(DateTime, nullable=True)
     new_end_datetime = Column(DateTime, nullable=True)
     new_title = Column(String, nullable=True)
     new_description = Column(Text, nullable=True)
-    
+
     created_at = Column(DateTime)
-    
+
     # Relationships
     event = relationship("CalendarEvent", back_populates="event_exceptions")
 
@@ -177,25 +232,25 @@ class WorkingHours(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
-    
+
     # Day of week (0 = Monday, 6 = Sunday)
     day_of_week = Column(Integer)
-    
+
     # Time ranges (supports multiple ranges per day)
     time_ranges = Column(Text)  # JSON array of {start_time, end_time} objects
-    
+
     # Working hours settings
     is_working_day = Column(Boolean, default=True)
     break_duration = Column(Integer, default=0)  # Minutes of break time
     break_start_time = Column(Time, nullable=True)
-    
+
     # Timezone
     timezone = Column(String, default="UTC")
-    
+
     # Status
     is_active = Column(Boolean, default=True)
     effective_date = Column(Date)  # When these hours take effect
-    
+
     # Relationships
     specialist = relationship("Specialist", back_populates="working_hours")
 
@@ -205,44 +260,46 @@ class SchedulingPreferences(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
-    
+
     # Buffer times (in minutes)
     default_buffer_before = Column(Integer, default=15)
     default_buffer_after = Column(Integer, default=15)
-    
+
     # Booking windows
-    advance_booking_days = Column(Integer, default=365)  # How far in advance bookings allowed
-    min_booking_notice = Column(Integer, default=60)     # Minimum notice in minutes
-    
+    advance_booking_days = Column(
+        Integer, default=365
+    )  # How far in advance bookings allowed
+    min_booking_notice = Column(Integer, default=60)  # Minimum notice in minutes
+
     # Scheduling preferences
     auto_accept_bookings = Column(Boolean, default=True)
     max_daily_bookings = Column(Integer, nullable=True)
     max_weekly_bookings = Column(Integer, nullable=True)
-    
+
     # Time slot preferences
     minimum_slot_duration = Column(Integer, default=15)  # Minutes
-    slot_increment = Column(Integer, default=15)         # Minutes
-    
+    slot_increment = Column(Integer, default=15)  # Minutes
+
     # Break and travel preferences
     lunch_break_start = Column(Time, nullable=True)
-    lunch_break_duration = Column(Integer, default=60)   # Minutes
+    lunch_break_duration = Column(Integer, default=60)  # Minutes
     travel_time_between_appointments = Column(Integer, default=0)  # Minutes
-    
+
     # Timezone and locale
     timezone = Column(String, default="UTC")
     date_format = Column(String, default="YYYY-MM-DD")
     time_format = Column(String, default="24h")  # '12h' or '24h'
-    
+
     # Notifications
     email_reminders = Column(Boolean, default=True)
     sms_reminders = Column(Boolean, default=False)
     reminder_advance_time = Column(Integer, default=1440)  # Minutes (24 hours)
-    
+
     # Status
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
-    
+
     # Relationships
     specialist = relationship("Specialist", back_populates="scheduling_preferences")
 
