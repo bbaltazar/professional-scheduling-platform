@@ -17,8 +17,8 @@ try:
     DATEUTIL_AVAILABLE = True
 except ImportError:
     DATEUTIL_AVAILABLE = False
-from fastapi import FastAPI, Depends, HTTPException, Request, Cookie, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Depends, HTTPException, Request, Cookie, Response, Query
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -44,6 +44,9 @@ try:
         VerificationCode,
         Workplace,
         specialist_workplace_association,
+        Consumer,
+        Referral,
+        ClientProfile,
     )
     from .verification_service import verification_service
     from .yelp_service import yelp_service, YelpAPIError
@@ -58,6 +61,7 @@ try:
         YelpBusinessSearch,
         YelpBusinessResponse,
         SpecialistWorkplaceAssociation,
+        SpecialistWorkplaceResponse,
         # Specialist models
         SpecialistCreate,
         SpecialistResponse,
@@ -97,6 +101,12 @@ try:
         VerificationResponse,
         CodeVerificationRequest,
         CodeVerificationResponse,
+        # Consumer models
+        ConsumerCreate,
+        ConsumerResponse,
+        # Referral models
+        ReferralCreate,
+        ReferralResponse,
         # Error models
         ErrorResponse,
     )
@@ -126,6 +136,11 @@ except ImportError:
         SchedulingPreferences,
         database,
         VerificationCode,
+        Workplace,
+        specialist_workplace_association,
+        Consumer,
+        Referral,
+        ClientProfile,
     )
     from verification_service import verification_service
     from models import (
@@ -793,9 +808,39 @@ async def professional_dashboard(request: Request, db: Session = Depends(get_db)
     )
 
 
+@app.get("/search", response_class=HTMLResponse)
+async def search_page(request: Request):
+    """
+    Unified search page with Yelp-style interface.
+    """
+    return templates.TemplateResponse("search.html", {"request": request})
+
+
 @app.get("/consumer", response_class=HTMLResponse)
 async def consumer_portal(request: Request):
     return templates.TemplateResponse("consumer.html", {"request": request})
+
+
+@app.get("/consumer/business/{business_id}", response_class=HTMLResponse)
+async def consumer_business_page(
+    request: Request, business_id: int, db: Session = Depends(get_db)
+):
+    """
+    Business detail page showing professionals at that business.
+    Used for the business-first booking flow.
+    """
+    business = db.query(Workplace).filter(Workplace.id == business_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    return templates.TemplateResponse(
+        "consumer_business.html",
+        {
+            "request": request,
+            "business_name": business.name,
+            "business_id": business_id,
+        },
+    )
 
 
 @app.get("/consumer/professional/{specialist_id}", response_class=HTMLResponse)
@@ -885,10 +930,8 @@ async def send_verification_code(
     return VerificationResponse(success=success, message=message, method=method)
 
 
-@app.post("/verification/verify", response_model=CodeVerificationResponse)
-async def verify_code(
-    request: CodeVerificationRequest, response: Response, db: Session = Depends(get_db)
-):
+@app.post("/verification/verify")
+async def verify_code(request: CodeVerificationRequest, db: Session = Depends(get_db)):
     """
     Verify the 6-digit code provided by the user and authenticate them
     """
@@ -961,16 +1004,6 @@ async def verify_code(
         data={"specialist_id": specialist.id, "email": specialist.email}
     )
 
-    # Set secure cookie
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=False,  # Set to True in production with HTTPS, False for localhost
-        samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
-    )
-
     # Convert specialist to response format
     specialist_response = SpecialistResponse(
         id=specialist.id,
@@ -981,13 +1014,28 @@ async def verify_code(
         services=[],
     )
 
-    return CodeVerificationResponse(
+    # Create response with cookie
+    response_data = CodeVerificationResponse(
         success=True,
         verified=True,
         message="Verification successful! You are now signed in.",
         access_token=access_token,
         specialist=specialist_response,
     )
+
+    # Create JSON response and set cookie
+    json_response = JSONResponse(content=response_data.model_dump())
+    json_response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS, False for localhost
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
+        path="/",  # Ensure cookie is available for all paths
+    )
+
+    return json_response
 
 
 @app.get("/auth/my-services", response_model=List[ServiceResponse])
@@ -2079,10 +2127,42 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
                 status_code=400, detail="Time slot conflicts with existing booking"
             )
 
+        # Get or create consumer using normalized matching
+        matching_consumers = find_matching_consumers(
+            db, 
+            email=booking.client_email,
+            phone=booking.client_phone
+        )
+        
+        if matching_consumers:
+            # Use first matching consumer (they should all be the same person)
+            consumer = matching_consumers[0]
+        else:
+            # Create new consumer
+            consumer = Consumer(
+                name=booking.client_name,
+                email=booking.client_email,
+                phone=booking.client_phone,
+            )
+            db.add(consumer)
+            db.flush()  # Get consumer ID without committing
+
+            # Create referral tracking for first booking
+            referral = Referral(
+                consumer_id=consumer.id,
+                specialist_id=booking.specialist_id,
+                referred_by_specialist_id=(
+                    None if booking.source_workplace_id else booking.specialist_id
+                ),
+                referred_by_workplace_id=booking.source_workplace_id,
+            )
+            db.add(referral)
+
         # Create the booking
         db_booking = Booking(
             specialist_id=booking.specialist_id,
             service_id=booking.service_id,
+            consumer_id=consumer.id,
             client_name=booking.client_name,
             client_email=booking.client_email,
             client_phone=booking.client_phone,
@@ -2446,10 +2526,14 @@ def associate_specialist_workplace(
     ).first()
 
     if existing_association:
-        raise HTTPException(
-            status_code=400,
-            detail="Active association already exists between specialist and workplace",
-        )
+        # Return success if already associated (idempotent operation)
+        return {
+            "message": "Specialist is already associated with this workplace",
+            "specialist_id": specialist_id,
+            "workplace_id": workplace_id,
+            "role": existing_association.role,
+            "already_exists": True,
+        }
 
     # Create new association
     association_data = {
@@ -2471,6 +2555,7 @@ def associate_specialist_workplace(
         "specialist_id": specialist_id,
         "workplace_id": workplace_id,
         "role": association.role,
+        "already_exists": False,
     }
 
 
@@ -2521,11 +2606,12 @@ def disassociate_specialist_workplace(
 
 
 @app.get(
-    "/specialists/{specialist_id}/workplaces", response_model=List[WorkplaceResponse]
+    "/specialists/{specialist_id}/workplaces",
+    response_model=List[SpecialistWorkplaceResponse],
 )
 def get_specialist_workplaces(specialist_id: int, db: Session = Depends(get_db)):
     """
-    Get all workplaces associated with a specialist.
+    Get all workplaces associated with a specialist with association details.
     """
     specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
     if not specialist:
@@ -2543,33 +2629,423 @@ def get_specialist_workplaces(specialist_id: int, db: Session = Depends(get_db))
         )
     ).fetchall()
 
-    workplace_ids = [assoc.workplace_id for assoc in associations]
-    workplaces = db.query(Workplace).filter(Workplace.id.in_(workplace_ids)).all()
-
-    # Convert to response models
-    response_workplaces = []
-    for workplace in workplaces:
-        specialists_count = len(workplace.specialists)
-        response = WorkplaceResponse(
-            id=workplace.id,
-            name=workplace.name,
-            address=workplace.address,
-            city=workplace.city,
-            state=workplace.state,
-            zip_code=workplace.zip_code,
-            country=workplace.country,
-            phone=workplace.phone,
-            website=workplace.website,
-            description=workplace.description,
-            yelp_business_id=workplace.yelp_business_id,
-            is_verified=workplace.is_verified,
-            created_at=workplace.created_at,
-            updated_at=workplace.updated_at,
-            specialists_count=specialists_count,
+    # Build response with workplace and association data
+    response_list = []
+    for assoc in associations:
+        workplace = (
+            db.query(Workplace).filter(Workplace.id == assoc.workplace_id).first()
         )
-        response_workplaces.append(response)
+        if workplace:
+            specialists_count = len(workplace.specialists)
+            workplace_response = WorkplaceResponse(
+                id=workplace.id,
+                name=workplace.name,
+                address=workplace.address,
+                city=workplace.city,
+                state=workplace.state,
+                zip_code=workplace.zip_code,
+                country=workplace.country,
+                phone=workplace.phone,
+                website=workplace.website,
+                description=workplace.description,
+                yelp_business_id=workplace.yelp_business_id,
+                is_verified=workplace.is_verified,
+                created_at=workplace.created_at,
+                updated_at=workplace.updated_at,
+                specialists_count=specialists_count,
+            )
 
-    return response_workplaces
+            response = SpecialistWorkplaceResponse(
+                workplace=workplace_response,
+                role=assoc.role,
+                start_date=assoc.start_date,
+                end_date=assoc.end_date,
+                is_active=assoc.is_active,
+            )
+            response_list.append(response)
+
+    return response_list
+
+
+# ==================== Consumer Business Browsing Endpoints ====================
+
+
+@app.get("/consumer/workplaces", response_model=List[WorkplaceResponse])
+def get_all_workplaces(
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    """
+    Get all workplaces/businesses for consumer browsing.
+    Optionally filter by location.
+    """
+    query = db.query(Workplace)
+
+    if city:
+        query = query.filter(Workplace.city.ilike(f"%{city}%"))
+    if state:
+        query = query.filter(Workplace.state.ilike(f"%{state}%"))
+
+    workplaces = query.limit(limit).all()
+
+    # Add specialist count to each workplace
+    response = []
+    for workplace in workplaces:
+        specialists_count = (
+            db.query(specialist_workplace_association)
+            .filter(
+                specialist_workplace_association.c.workplace_id == workplace.id,
+                specialist_workplace_association.c.is_active == True,
+            )
+            .count()
+        )
+
+        workplace_dict = {
+            "id": workplace.id,
+            "name": workplace.name,
+            "address": workplace.address,
+            "city": workplace.city,
+            "state": workplace.state,
+            "zip_code": workplace.zip_code,
+            "country": workplace.country,
+            "phone": workplace.phone,
+            "website": workplace.website,
+            "description": workplace.description,
+            "yelp_business_id": workplace.yelp_business_id,
+            "is_verified": workplace.is_verified,
+            "created_at": workplace.created_at,
+            "updated_at": workplace.updated_at,
+            "specialists_count": specialists_count,
+        }
+        response.append(WorkplaceResponse(**workplace_dict))
+
+    return response
+
+
+@app.get("/consumer/workplaces/{workplace_id}", response_model=WorkplaceResponse)
+def get_workplace_details(workplace_id: int, db: Session = Depends(get_db)):
+    """
+    Get detailed information about a specific workplace.
+    """
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Count specialists
+    specialists_count = (
+        db.query(specialist_workplace_association)
+        .filter(
+            specialist_workplace_association.c.workplace_id == workplace.id,
+            specialist_workplace_association.c.is_active == True,
+        )
+        .count()
+    )
+
+    workplace_dict = {
+        "id": workplace.id,
+        "name": workplace.name,
+        "address": workplace.address,
+        "city": workplace.city,
+        "state": workplace.state,
+        "zip_code": workplace.zip_code,
+        "country": workplace.country,
+        "phone": workplace.phone,
+        "website": workplace.website,
+        "description": workplace.description,
+        "yelp_business_id": workplace.yelp_business_id,
+        "is_verified": workplace.is_verified,
+        "created_at": workplace.created_at,
+        "updated_at": workplace.updated_at,
+        "specialists_count": specialists_count,
+    }
+
+    return WorkplaceResponse(**workplace_dict)
+
+
+@app.get(
+    "/consumer/workplaces/{workplace_id}/specialists",
+    response_model=List[SpecialistCatalogResponse],
+)
+def get_workplace_specialists(workplace_id: int, db: Session = Depends(get_db)):
+    """
+    Get all specialists working at a specific workplace.
+    This is for the business-first booking flow.
+    """
+    # Verify workplace exists
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Get active specialists at this workplace
+    associations = (
+        db.query(specialist_workplace_association)
+        .filter(
+            specialist_workplace_association.c.workplace_id == workplace_id,
+            specialist_workplace_association.c.is_active == True,
+        )
+        .all()
+    )
+
+    specialist_ids = [assoc.specialist_id for assoc in associations]
+
+    if not specialist_ids:
+        return []
+
+    # Get specialist details
+    specialists = db.query(Specialist).filter(Specialist.id.in_(specialist_ids)).all()
+
+    response = []
+    for specialist in specialists:
+        # Get services
+        services = (
+            db.query(ServiceDB).filter(ServiceDB.specialist_id == specialist.id).all()
+        )
+
+        services_data = [
+            {
+                "id": svc.id,
+                "name": svc.name,
+                "price": svc.price,
+                "duration": svc.duration,
+                "specialist_id": svc.specialist_id,
+            }
+            for svc in services
+        ]
+
+        specialist_data = {
+            "id": specialist.id,
+            "name": specialist.name,
+            "email": specialist.email,
+            "bio": specialist.bio,
+            "phone": specialist.phone,
+            "services": services_data,
+        }
+        response.append(SpecialistCatalogResponse(**specialist_data))
+
+    return response
+
+
+# ==================== Search Endpoints ====================
+
+
+@app.get("/search")
+def unified_search(
+    query: str,
+    search_type: str = "professional",  # "professional" or "business"
+    location: Optional[str] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    """
+    Unified search endpoint for professionals and businesses.
+
+    Search by:
+    - query: Service name, professional name, or business name
+    - search_type: "professional" or "business"
+    - location: Free-text location (city, state)
+    - city/state: Specific filters
+    """
+
+    if search_type == "professional":
+        # Search for professionals by name or service
+        specialists_query = db.query(Specialist)
+
+        # Search in specialist name or bio
+        if query:
+            specialists_query = specialists_query.filter(
+                (Specialist.name.ilike(f"%{query}%"))
+                | (Specialist.bio.ilike(f"%{query}%"))
+            )
+
+        # Also search in services
+        service_specialists = []
+        if query:
+            services = (
+                db.query(ServiceDB).filter(ServiceDB.name.ilike(f"%{query}%")).all()
+            )
+            service_specialists = [svc.specialist_id for svc in services]
+
+        if service_specialists:
+            specialists_query = specialists_query.filter(
+                Specialist.id.in_(service_specialists)
+            )
+
+        specialists = specialists_query.limit(limit).all()
+
+        # Build response with workplace info
+        results = []
+        for specialist in specialists:
+            # Get services
+            services = (
+                db.query(ServiceDB)
+                .filter(ServiceDB.specialist_id == specialist.id)
+                .all()
+            )
+
+            # Get workplaces
+            workplace_assocs = (
+                db.query(specialist_workplace_association)
+                .filter(
+                    specialist_workplace_association.c.specialist_id == specialist.id,
+                    specialist_workplace_association.c.is_active == True,
+                )
+                .all()
+            )
+
+            workplaces = []
+            for assoc in workplace_assocs:
+                workplace = (
+                    db.query(Workplace)
+                    .filter(Workplace.id == assoc.workplace_id)
+                    .first()
+                )
+                if workplace:
+                    # Filter by location if specified
+                    if city and workplace.city.lower() != city.lower():
+                        continue
+                    if state and workplace.state.lower() != state.lower():
+                        continue
+                    if location:
+                        loc_lower = location.lower()
+                        if not (
+                            loc_lower in workplace.city.lower()
+                            or loc_lower in workplace.state.lower()
+                            or loc_lower in workplace.address.lower()
+                        ):
+                            continue
+
+                    workplaces.append(
+                        {
+                            "id": workplace.id,
+                            "name": workplace.name,
+                            "address": workplace.address,
+                            "city": workplace.city,
+                            "state": workplace.state,
+                            "is_verified": workplace.is_verified,
+                        }
+                    )
+
+            # Skip if location filter excludes all workplaces
+            if (city or state or location) and not workplaces:
+                continue
+
+            results.append(
+                {
+                    "type": "professional",
+                    "id": specialist.id,
+                    "name": specialist.name,
+                    "bio": specialist.bio,
+                    "phone": specialist.phone,
+                    "services": [
+                        {
+                            "id": svc.id,
+                            "name": svc.name,
+                            "price": svc.price,
+                            "duration": svc.duration,
+                        }
+                        for svc in services
+                    ],
+                    "workplaces": workplaces,
+                }
+            )
+
+        return {"results": results, "count": len(results)}
+
+    elif search_type == "business":
+        # Search for businesses
+        query_obj = db.query(Workplace)
+
+        # Search in business name or description
+        if query:
+            query_obj = query_obj.filter(
+                (Workplace.name.ilike(f"%{query}%"))
+                | (Workplace.description.ilike(f"%{query}%"))
+            )
+
+        # Location filters
+        if city:
+            query_obj = query_obj.filter(Workplace.city.ilike(f"%{city}%"))
+        if state:
+            query_obj = query_obj.filter(Workplace.state.ilike(f"%{state}%"))
+        if location:
+            loc_lower = f"%{location}%"
+            query_obj = query_obj.filter(
+                (Workplace.city.ilike(loc_lower))
+                | (Workplace.state.ilike(loc_lower))
+                | (Workplace.address.ilike(loc_lower))
+            )
+
+        workplaces = query_obj.limit(limit).all()
+
+        # Build response with specialist info
+        results = []
+        for workplace in workplaces:
+            # Get specialists at this workplace
+            specialist_assocs = (
+                db.query(specialist_workplace_association)
+                .filter(
+                    specialist_workplace_association.c.workplace_id == workplace.id,
+                    specialist_workplace_association.c.is_active == True,
+                )
+                .all()
+            )
+
+            specialist_ids = [assoc.specialist_id for assoc in specialist_assocs]
+            specialists = (
+                db.query(Specialist).filter(Specialist.id.in_(specialist_ids)).all()
+                if specialist_ids
+                else []
+            )
+
+            # Get all services offered at this workplace
+            all_services = []
+            for spec in specialists:
+                services = (
+                    db.query(ServiceDB).filter(ServiceDB.specialist_id == spec.id).all()
+                )
+                all_services.extend(
+                    [
+                        {
+                            "id": svc.id,
+                            "name": svc.name,
+                            "price": svc.price,
+                            "duration": svc.duration,
+                            "specialist_name": spec.name,
+                        }
+                        for svc in services
+                    ]
+                )
+
+            results.append(
+                {
+                    "type": "business",
+                    "id": workplace.id,
+                    "name": workplace.name,
+                    "address": workplace.address,
+                    "city": workplace.city,
+                    "state": workplace.state,
+                    "zip_code": workplace.zip_code,
+                    "phone": workplace.phone,
+                    "website": workplace.website,
+                    "description": workplace.description,
+                    "is_verified": workplace.is_verified,
+                    "specialists_count": len(specialists),
+                    "services": all_services,
+                }
+            )
+
+        return {"results": results, "count": len(results)}
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid search_type. Must be 'professional' or 'business'",
+        )
 
 
 # ==================== Yelp Integration Endpoints ====================
@@ -2619,12 +3095,9 @@ async def get_yelp_business(business_id: str) -> YelpBusinessResponse:
 async def create_workplace_from_yelp(business_id: str, db: Session = Depends(get_db)):
     """
     Create a workplace from Yelp business data.
+    If workplace already exists, return the existing workplace.
     """
     try:
-        business = await yelp_service.get_business_details(business_id)
-        if not business:
-            raise HTTPException(status_code=404, detail="Yelp business not found")
-
         # Check if workplace with this Yelp ID already exists
         existing_workplace = (
             db.query(Workplace)
@@ -2633,10 +3106,30 @@ async def create_workplace_from_yelp(business_id: str, db: Session = Depends(get
         )
 
         if existing_workplace:
-            raise HTTPException(
-                status_code=400,
-                detail="Workplace with this Yelp business ID already exists",
+            # Return existing workplace instead of error
+            specialists_count = len(existing_workplace.specialists)
+            return WorkplaceResponse(
+                id=existing_workplace.id,
+                name=existing_workplace.name,
+                address=existing_workplace.address,
+                city=existing_workplace.city,
+                state=existing_workplace.state,
+                zip_code=existing_workplace.zip_code,
+                country=existing_workplace.country,
+                phone=existing_workplace.phone,
+                website=existing_workplace.website,
+                description=existing_workplace.description,
+                yelp_business_id=existing_workplace.yelp_business_id,
+                is_verified=existing_workplace.is_verified,
+                specialists_count=specialists_count,
+                created_at=existing_workplace.created_at,
+                updated_at=existing_workplace.updated_at,
             )
+
+        # Fetch business details from Yelp
+        business = await yelp_service.get_business_details(business_id)
+        if not business:
+            raise HTTPException(status_code=404, detail="Yelp business not found")
 
         # Create workplace from Yelp data
         db_workplace = Workplace(
@@ -2683,3 +3176,464 @@ async def create_workplace_from_yelp(business_id: str, db: Session = Depends(get
 
     except YelpAPIError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ==================== Client Management Endpoints ====================
+
+
+def normalize_email(email):
+    """Normalize email for comparison (lowercase, strip whitespace)"""
+    if not email:
+        return None
+    return email.strip().lower()
+
+
+def normalize_phone(phone):
+    """Normalize phone for comparison (remove all non-digits)"""
+    if not phone:
+        return None
+    # Remove all non-digit characters
+    return "".join(c for c in phone if c.isdigit())
+
+
+def find_matching_consumers(
+    db: Session, email: str = None, phone: str = None
+) -> List[Consumer]:
+    """
+    Find all consumers that match the given email OR phone.
+    Uses normalized, case-insensitive matching.
+    This handles client consolidation - same person using different contact info.
+    """
+    if not email and not phone:
+        return []
+
+    norm_email = normalize_email(email)
+    norm_phone = normalize_phone(phone)
+
+    # Get all consumers and check manually (for phone normalization)
+    all_consumers = db.query(Consumer).all()
+    matching_consumers = []
+
+    for consumer in all_consumers:
+        matched = False
+        
+        # Check email match (case-insensitive)
+        if norm_email and normalize_email(consumer.email) == norm_email:
+            matched = True
+        
+        # Check phone match (normalized - digits only)
+        if norm_phone and normalize_phone(consumer.phone) == norm_phone:
+            matched = True
+        
+        if matched:
+            matching_consumers.append(consumer)
+
+    return matching_consumers
+
+    return matching_consumers
+
+
+def consolidate_consumer_bookings(
+    db: Session, consumers: List[Consumer]
+) -> List[Booking]:
+    """
+    Get all bookings from multiple consumer records.
+    Used when the same person has multiple consumer records.
+    """
+    if not consumers:
+        return []
+
+    consumer_ids = [c.id for c in consumers]
+    bookings = db.query(Booking).filter(Booking.consumer_id.in_(consumer_ids)).all()
+
+    # Also get legacy bookings without consumer_id but matching email/phone
+    legacy_bookings = []
+    for consumer in consumers:
+        if consumer.email:
+            legacy_by_email = (
+                db.query(Booking)
+                .filter(
+                    Booking.consumer_id.is_(None),
+                    Booking.client_email == consumer.email,
+                )
+                .all()
+            )
+            legacy_bookings.extend(legacy_by_email)
+
+        if consumer.phone:
+            legacy_by_phone = (
+                db.query(Booking)
+                .filter(
+                    Booking.consumer_id.is_(None),
+                    Booking.client_phone == consumer.phone,
+                )
+                .all()
+            )
+            legacy_bookings.extend(legacy_by_phone)
+
+    # Combine and deduplicate
+    all_bookings = list(set(bookings + legacy_bookings))
+    return all_bookings
+
+
+@app.get("/professional/clients")
+async def get_professional_clients(specialist_id: int, db: Session = Depends(get_db)):
+    """
+    Get all unique clients who have booked with this professional.
+    Consolidates clients by email OR phone matching.
+    Returns ClientSummary list with booking stats.
+    """
+    # Get all bookings for this specialist
+    all_bookings = (
+        db.query(Booking).filter(Booking.specialist_id == specialist_id).all()
+    )
+
+    # Build unique client list by consolidating matches
+    seen_consumers = set()
+    client_summaries = []
+    processed_contacts = set()  # Track processed email/phone combinations
+
+    for booking in all_bookings:
+        # Determine contact info
+        email = booking.consumer.email if booking.consumer else booking.client_email
+        phone = booking.consumer.phone if booking.consumer else booking.client_phone
+
+        contact_key = f"{email or 'none'}:{phone or 'none'}"
+        if contact_key in processed_contacts:
+            continue
+        processed_contacts.add(contact_key)
+
+        # Find all matching consumers
+        matching_consumers = find_matching_consumers(db, email, phone)
+
+        if not matching_consumers:
+            # Legacy booking without consumer record
+            matching_consumers = []
+
+        # Get primary consumer (first match or create summary from booking)
+        if matching_consumers:
+            primary_consumer = matching_consumers[0]
+            consumer_id = primary_consumer.id
+
+            # Skip if we've already processed this consumer
+            if consumer_id in seen_consumers:
+                continue
+            seen_consumers.add(consumer_id)
+        else:
+            # Use booking data for legacy entries
+            consumer_id = None
+
+        # Get ALL bookings for this client (consolidated)
+        if matching_consumers:
+            client_bookings = consolidate_consumer_bookings(db, matching_consumers)
+            # Filter to only this specialist's bookings
+            client_bookings = [
+                b for b in client_bookings if b.specialist_id == specialist_id
+            ]
+        else:
+            # Legacy booking only
+            client_bookings = [booking]
+
+        # Calculate stats
+        total_bookings = len(client_bookings)
+        sorted_bookings = sorted(client_bookings, key=lambda b: b.date)
+        last_booking = sorted_bookings[-1] if sorted_bookings else None
+
+        # Separate past and future
+        today = date.today()
+        future_bookings = [b for b in sorted_bookings if b.date >= today]
+        next_booking = future_bookings[0] if future_bookings else None
+
+        # Get profile if exists
+        profile = None
+        has_profile = False
+        score = None
+        if consumer_id:
+            profile = (
+                db.query(ClientProfile)
+                .filter(
+                    ClientProfile.specialist_id == specialist_id,
+                    ClientProfile.consumer_id == consumer_id,
+                )
+                .first()
+            )
+            if profile:
+                has_profile = True
+                score = profile.score
+
+        # Build summary
+        client_summary = {
+            "consumer_id": consumer_id,
+            "name": (
+                primary_consumer.name if matching_consumers else booking.client_name
+            ),
+            "email": (
+                primary_consumer.email if matching_consumers else booking.client_email
+            ),
+            "phone": (
+                primary_consumer.phone if matching_consumers else booking.client_phone
+            ),
+            "total_bookings": total_bookings,
+            "last_booking_date": (
+                datetime.combine(last_booking.date, last_booking.start_time)
+                if last_booking
+                else None
+            ),
+            "next_booking_date": (
+                datetime.combine(next_booking.date, next_booking.start_time)
+                if next_booking
+                else None
+            ),
+            "score": score,
+            "has_profile": has_profile,
+        }
+
+        client_summaries.append(client_summary)
+
+    # Sort by last booking date (most recent first)
+    client_summaries.sort(
+        key=lambda x: x["last_booking_date"] or datetime.min, reverse=True
+    )
+
+    return client_summaries
+
+
+@app.get("/professional/clients/{consumer_id}")
+async def get_client_detail(
+    specialist_id: int, consumer_id: int, db: Session = Depends(get_db)
+):
+    """
+    Get detailed information about a specific client.
+    Includes consolidated booking history, profile, and stats.
+    """
+    # Get consumer
+    consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
+    if not consumer:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Find all matching consumers (consolidation)
+    matching_consumers = find_matching_consumers(db, consumer.email, consumer.phone)
+
+    # Get all bookings (consolidated)
+    all_bookings = consolidate_consumer_bookings(db, matching_consumers)
+
+    # Filter to this specialist's bookings only
+    specialist_bookings = [b for b in all_bookings if b.specialist_id == specialist_id]
+
+    # Separate past and future
+    today = date.today()
+    past_bookings = []
+    future_bookings = []
+
+    for booking in specialist_bookings:
+        booking_dict = {
+            "id": booking.id,
+            "date": booking.date.isoformat(),
+            "start_time": booking.start_time.isoformat(),
+            "end_time": booking.end_time.isoformat(),
+            "service_name": booking.service.name if booking.service else "Unknown",
+            "service_price": booking.service.price if booking.service else 0,
+            "status": booking.status,
+            "notes": booking.notes,
+        }
+
+        if booking.date < today:
+            past_bookings.append(booking_dict)
+        else:
+            future_bookings.append(booking_dict)
+
+    # Sort bookings
+    past_bookings.sort(key=lambda x: x["date"], reverse=True)
+    future_bookings.sort(key=lambda x: x["date"])
+
+    # Calculate total revenue
+    total_revenue = sum(
+        b.service.price
+        for b in specialist_bookings
+        if b.service and b.status == "completed"
+    )
+
+    # Get first booking date
+    first_booking_date = (
+        min(b.date for b in specialist_bookings) if specialist_bookings else None
+    )
+
+    # Get client profile
+    profile = (
+        db.query(ClientProfile)
+        .filter(
+            ClientProfile.specialist_id == specialist_id,
+            ClientProfile.consumer_id == consumer_id,
+        )
+        .first()
+    )
+
+    # Parse notes JSON if exists
+    profile_data = None
+    if profile:
+        import json
+
+        notes = []
+        if profile.notes:
+            try:
+                notes = json.loads(profile.notes)
+            except:
+                notes = []
+
+        profile_data = {
+            "id": profile.id,
+            "specialist_id": profile.specialist_id,
+            "consumer_id": profile.consumer_id,
+            "bio": profile.bio,
+            "score": profile.score,
+            "notes": notes,
+            "created_at": profile.created_at.isoformat(),
+            "updated_at": profile.updated_at.isoformat(),
+        }
+
+    # Build response
+    response = {
+        "consumer": {
+            "id": consumer.id,
+            "name": consumer.name,
+            "email": consumer.email,
+            "phone": consumer.phone,
+            "created_at": consumer.created_at.isoformat(),
+            "updated_at": consumer.updated_at.isoformat(),
+        },
+        "profile": profile_data,
+        "bookings_past": past_bookings,
+        "bookings_future": future_bookings,
+        "total_revenue": total_revenue,
+        "first_booking_date": (
+            first_booking_date.isoformat() if first_booking_date else None
+        ),
+    }
+
+    return response
+
+
+@app.put("/professional/clients/{consumer_id}/profile")
+async def update_client_profile(
+    specialist_id: int,
+    consumer_id: int,
+    bio: Optional[str] = None,
+    score: Optional[int] = None,
+    notes: Optional[str] = None,  # JSON string of notes array
+    db: Session = Depends(get_db),
+):
+    """
+    Update or create a client profile with professional's notes.
+    """
+    # Validate score
+    if score is not None and (score < 1 or score > 10):
+        raise HTTPException(status_code=400, detail="Score must be between 1 and 10")
+
+    # Verify consumer exists
+    consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
+    if not consumer:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Get or create profile
+    profile = (
+        db.query(ClientProfile)
+        .filter(
+            ClientProfile.specialist_id == specialist_id,
+            ClientProfile.consumer_id == consumer_id,
+        )
+        .first()
+    )
+
+    if not profile:
+        # Create new profile
+        profile = ClientProfile(
+            specialist_id=specialist_id,
+            consumer_id=consumer_id,
+            bio=bio,
+            score=score,
+            notes=notes,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(profile)
+    else:
+        # Update existing
+        if bio is not None:
+            profile.bio = bio
+        if score is not None:
+            profile.score = score
+        if notes is not None:
+            profile.notes = notes
+        profile.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(profile)
+
+    # Parse notes for response
+    import json
+
+    notes_list = []
+    if profile.notes:
+        try:
+            notes_list = json.loads(profile.notes)
+        except:
+            notes_list = []
+
+    return {
+        "id": profile.id,
+        "specialist_id": profile.specialist_id,
+        "consumer_id": profile.consumer_id,
+        "bio": profile.bio,
+        "score": profile.score,
+        "notes": notes_list,
+        "created_at": profile.created_at.isoformat(),
+        "updated_at": profile.updated_at.isoformat(),
+    }
+
+
+@app.delete("/professional/clients/{consumer_id}")
+async def delete_client(
+    consumer_id: int,
+    specialist_id: int = Query(..., description="Specialist ID"),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a client and all associated records for a specific specialist.
+    This removes:
+    - Client profile (bio, score, notes)
+    - All booking records with this specialist
+    - Consumer record if no other bookings exist
+    """
+    # Verify consumer exists
+    consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
+    if not consumer:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Delete client profile for this specialist
+    db.query(ClientProfile).filter(
+        ClientProfile.specialist_id == specialist_id,
+        ClientProfile.consumer_id == consumer_id,
+    ).delete()
+
+    # Delete all bookings with this specialist
+    db.query(Booking).filter(
+        Booking.specialist_id == specialist_id, Booking.consumer_id == consumer_id
+    ).delete()
+
+    # Check if consumer has any other bookings with other specialists
+    remaining_bookings = (
+        db.query(Booking).filter(Booking.consumer_id == consumer_id).count()
+    )
+
+    # If no other bookings exist, delete the consumer record
+    if remaining_bookings == 0:
+        db.delete(consumer)
+
+    db.commit()
+
+    return {
+        "message": "Client deleted successfully",
+        "consumer_id": consumer_id,
+        "deleted_consumer_record": remaining_bookings == 0,
+    }
+

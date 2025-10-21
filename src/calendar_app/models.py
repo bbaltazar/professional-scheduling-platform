@@ -8,7 +8,7 @@ organized by functional areas for better maintainability.
 from __future__ import annotations
 from typing import Union, List, Optional
 from datetime import date, time, datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ==================== Core Service Models ====================
@@ -100,6 +100,19 @@ class SpecialistWorkplaceAssociation(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: bool = True
+
+
+class SpecialistWorkplaceResponse(BaseModel):
+    """Response model that includes both workplace and association data"""
+
+    workplace: WorkplaceResponse
+    role: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
 
 
 # ==================== Specialist Models ====================
@@ -197,6 +210,8 @@ class BookingCreate(BaseModel):
     client_email: EmailStr
     client_phone: Optional[str] = None
     notes: Optional[str] = None
+    # Referral tracking - pass workplace_id if booking through business
+    source_workplace_id: Optional[int] = None
 
 
 class BookingResponse(BaseModel):
@@ -496,6 +511,126 @@ class CodeVerificationResponse(BaseModel):
     verified: bool = False
     access_token: Optional[str] = None
     specialist: Optional[SpecialistResponse] = None
+
+
+# ==================== Consumer Models ====================
+
+
+class ConsumerCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+
+
+class ConsumerResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== Referral Models ====================
+
+
+class ReferralCreate(BaseModel):
+    consumer_id: int
+    specialist_id: int
+    referred_by_specialist_id: Optional[int] = None
+    referred_by_workplace_id: Optional[int] = None
+
+
+class ReferralResponse(BaseModel):
+    id: int
+    consumer_id: int
+    specialist_id: int
+    referred_by_specialist_id: Optional[int] = None
+    referred_by_workplace_id: Optional[int] = None
+    referral_date: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== Client Profile Models ====================
+
+
+class AppointmentNote(BaseModel):
+    """Individual appointment note"""
+
+    date: datetime
+    note: str
+    booking_id: Optional[int] = None
+
+
+class ClientProfileCreate(BaseModel):
+    """Create a new client profile"""
+
+    consumer_id: int
+    bio: Optional[str] = None
+    score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
+    notes: Optional[List[AppointmentNote]] = []
+
+
+class ClientProfileUpdate(BaseModel):
+    """Update an existing client profile"""
+
+    bio: Optional[str] = None
+    score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
+    notes: Optional[List[AppointmentNote]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ClientProfileResponse(BaseModel):
+    """Client profile response"""
+
+    id: int
+    specialist_id: int
+    consumer_id: int
+    bio: Optional[str] = None
+    score: Optional[int] = None
+    notes: Optional[List[AppointmentNote]] = []
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ClientSummary(BaseModel):
+    """Summary of a client for list view"""
+
+    consumer_id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    total_bookings: int
+    last_booking_date: Optional[datetime] = None
+    next_booking_date: Optional[datetime] = None
+    score: Optional[int] = None
+    has_profile: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class ClientDetail(BaseModel):
+    """Detailed client information including booking history"""
+
+    consumer: ConsumerResponse
+    profile: Optional[ClientProfileResponse] = None
+    bookings_past: List[dict]  # Past bookings
+    bookings_future: List[dict]  # Upcoming bookings
+    total_revenue: float = 0.0
+    first_booking_date: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 
 # ==================== Error Models ====================

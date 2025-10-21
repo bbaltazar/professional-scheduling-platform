@@ -130,15 +130,60 @@ class AvailabilitySlot(Base):
     specialist = relationship("Specialist", back_populates="availability_slots")
 
 
+class Consumer(Base):
+    __tablename__ = "consumers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    email = Column(String, unique=True, index=True)
+    phone = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    bookings = relationship("Booking", back_populates="consumer")
+    referrals = relationship("Referral", back_populates="consumer")
+
+
+class Referral(Base):
+    __tablename__ = "referrals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    consumer_id = Column(Integer, ForeignKey("consumers.id"))
+    specialist_id = Column(Integer, ForeignKey("specialists.id"))
+
+    # Referral source - exactly ONE of these will be populated
+    referred_by_specialist_id = Column(
+        Integer, ForeignKey("specialists.id"), nullable=True
+    )
+    referred_by_workplace_id = Column(
+        Integer, ForeignKey("workplaces.id"), nullable=True
+    )
+
+    referral_date = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    consumer = relationship("Consumer", back_populates="referrals")
+    specialist = relationship("Specialist", foreign_keys=[specialist_id])
+    referred_by_specialist = relationship(
+        "Specialist", foreign_keys=[referred_by_specialist_id]
+    )
+    referred_by_workplace = relationship("Workplace")
+
+
 class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
     service_id = Column(Integer, ForeignKey("services.id"))
+    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=True)  # New FK
+
+    # Legacy fields - keep for backward compatibility
     client_name = Column(String)
     client_email = Column(String)
     client_phone = Column(String)
+
     date = Column(Date)
     start_time = Column(Time)
     end_time = Column(Time)
@@ -148,6 +193,7 @@ class Booking(Base):
     # Relationships
     specialist = relationship("Specialist", back_populates="bookings")
     service = relationship("ServiceDB", back_populates="bookings")
+    consumer = relationship("Consumer", back_populates="bookings")
 
 
 class CalendarEvent(Base):
@@ -315,6 +361,39 @@ class VerificationCode(Base):
     is_used = Column(Boolean, default=False)
     created_at = Column(DateTime)
     expires_at = Column(DateTime)
+
+
+class ClientProfile(Base):
+    """
+    Professional's private notes and information about their clients.
+    One profile per (specialist, consumer) pair.
+    """
+
+    __tablename__ = "client_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    specialist_id = Column(Integer, ForeignKey("specialists.id"), nullable=False)
+    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=False)
+
+    # Professional's notes about the client
+    bio = Column(Text, nullable=True)  # Professional's description of client
+    score = Column(Integer, nullable=True)  # Rating 1-10 for internal use
+    notes = Column(Text, nullable=True)  # JSON array of appointment notes with dates
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    specialist = relationship("Specialist")
+    consumer = relationship("Consumer")
+
+    # Unique constraint: one profile per specialist-consumer pair
+    __table_args__ = (
+        sqlalchemy.UniqueConstraint(
+            "specialist_id", "consumer_id", name="unique_specialist_consumer"
+        ),
+    )
 
 
 # Create all tables

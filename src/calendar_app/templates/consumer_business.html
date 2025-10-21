@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ business_name }} - Select Professional</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/shared.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #FFD700;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateX(-5px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 120px 40px 60px;
+        }
+
+        /* Business Header */
+        .business-header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .business-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            letter-spacing: -0.02em;
+        }
+
+        .business-info {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+        }
+
+        .verified-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #FFD700;
+            border-radius: 50px;
+            color: #FFD700;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #FFD700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .professionals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .professional-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .professional-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .professional-card:hover::before {
+            left: 100%;
+        }
+
+        .professional-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 215, 0, 0.3);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .professional-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #0f0f23;
+        }
+
+        .professional-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #FFD700;
+        }
+
+        .professional-title {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+        }
+
+        .professional-bio {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 20px;
+            line-height: 1.5;
+            min-height: 60px;
+        }
+
+        .services-list {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+        }
+
+        .service-name {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .service-price {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .select-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #0f0f23;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .select-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.3);
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 215, 0, 0.6);
+            border-radius: 50%;
+            animation: float 20s infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 100px 20px 40px;
+            }
+
+            .business-header h1 {
+                font-size: 2rem;
+            }
+
+            .professionals-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 10s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 12s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 14s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 16s;"></div>
+    </div>
+
+    <a href="/consumer" class="back-link">← Back to Browse</a>
+
+    <div class="container">
+        <div class="business-header" id="businessHeader">
+            <!-- Business info will be loaded here -->
+        </div>
+
+        <h2 class="section-title">Our Professionals</h2>
+
+        <div id="professionalsContainer" class="professionals-grid">
+            <!-- Professionals will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // Get business ID from URL
+        const businessId = window.location.pathname.split('/').pop();
+
+        // Load business and professionals on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            loadBusinessInfo();
+            loadProfessionals();
+        });
+
+        async function loadBusinessInfo() {
+            try {
+                const response = await fetch(`/consumer/workplaces/${businessId}`);
+                if (!response.ok) throw new Error('Failed to load business');
+
+                const business = await response.json();
+                const header = document.getElementById('businessHeader');
+
+                header.innerHTML = `
+                    <h1>${business.name}</h1>
+                    <div class="business-info"> ${business.address}, ${business.city}, ${business.state} ${business.zip_code}</div>
+                    ${business.phone ? `<div class="business-info"> ${business.phone}</div>` : ''}
+                    ${business.website ? `<div class="business-info"> <a href="${business.website}" target="_blank" style="color: #FFD700;">${business.website}</a></div>` : ''}
+                    ${business.is_verified ? '<span class="verified-badge"> Verified Business</span>' : ''}
+                `;
+
+                // Update page title
+                document.title = `${business.name} - Select Professional`;
+            } catch (error) {
+                console.error('Error loading business:', error);
+            }
+        }
+
+        async function loadProfessionals() {
+            try {
+                const response = await fetch(`/consumer/workplaces/${businessId}/specialists`);
+                if (!response.ok) throw new Error('Failed to load professionals');
+
+                const specialists = await response.json();
+                const container = document.getElementById('professionalsContainer');
+
+                if (specialists.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.7); grid-column: 1 / -1; padding: 40px;">No professionals available at this business.</p>';
+                    return;
+                }
+
+                container.innerHTML = specialists.map(specialist => `
+                    <div class="professional-card" onclick="selectProfessional(${specialist.id})">
+                        <div class="professional-avatar">
+                            ${specialist.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div class="professional-name">${specialist.name}</div>
+                        <div class="professional-title">Elite Professional</div>
+                        <div class="professional-bio">${specialist.bio || 'Providing exceptional service and expertise'}</div>
+                        
+                        ${specialist.services && specialist.services.length > 0 ? `
+                            <div class="services-list">
+                                ${specialist.services.slice(0, 3).map(service => `
+                                    <div class="service-item">
+                                        <span class="service-name">${service.name}</span>
+                                        <span class="service-price">$${service.price}</span>
+                                    </div>
+                                `).join('')}
+                                ${specialist.services.length > 3 ? `<div style="text-align: center; color: rgba(255,255,255,0.5); margin-top: 10px; font-size: 0.9rem;">+${specialist.services.length - 3} more services</div>` : ''}
+                            </div>
+                        ` : ''}
+                        
+                        <button class="select-btn">Book Appointment</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading professionals:', error);
+                document.getElementById('professionalsContainer').innerHTML =
+                    '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading professionals. Please refresh the page.</p>';
+            }
+        }
+
+        function selectProfessional(specialistId) {
+            // Navigate to booking page with workplace_id for referral tracking
+            window.location.href = `/consumer/professional/${specialistId}?workplace_id=${businessId}`;
+        }
+    </script>
+</body>
+
+</html>

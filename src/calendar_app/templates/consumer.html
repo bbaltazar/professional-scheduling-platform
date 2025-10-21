@@ -73,6 +73,136 @@
             max-width: 600px;
             margin: 0 auto;
             font-weight: 300;
+            margin-bottom: 30px;
+        }
+
+        /* Browse Mode Toggle */
+        .browse-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .toggle-btn {
+            padding: 12px 30px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+            color: #FFD700;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #0f0f23;
+            border-color: #FFD700;
+        }
+
+        .browse-section {
+            display: none;
+        }
+
+        .browse-section.active {
+            display: block;
+        }
+
+        /* Filters Section */
+        .filters-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .filter-label {
+            display: block;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .filter-select,
+        .filter-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .filter-select:focus,
+        .filter-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #FFD700;
+        }
+
+        .filter-select option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .filter-button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #0f0f23;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .clear-filters {
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-filters:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        .results-info {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
         }
 
         .professionals-grid {
@@ -278,20 +408,283 @@
 
     <div class="container">
         <div class="header">
-            <h1>Select Your Professional</h1>
-            <p class="subtitle">Choose from our distinguished team of elite professionals</p>
+            <h1>Find Your Professional</h1>
+            <p class="subtitle">Browse by professional or explore businesses in your area</p>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="/search"
+                    style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #0f0f23; text-decoration: none; border-radius: 50px; font-weight: 600; transition: all 0.3s ease;">
+                     Advanced Search
+                </a>
+            </div>
+
+            <div class="browse-toggle">
+                <button class="toggle-btn active" onclick="switchBrowseMode('professionals')">
+                     Browse by Professional
+                </button>
+                <button class="toggle-btn" onclick="switchBrowseMode('businesses')">
+                     Browse by Business
+                </button>
+            </div>
         </div>
 
-        <div id="professionalsContainer" class="professionals-grid">
-            <!-- Professionals will be loaded here -->
+        <!-- Browse by Professionals Section -->
+        <div id="professionals-section" class="browse-section active">
+            <div id="professionalsContainer" class="professionals-grid">
+                <!-- Professionals will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Browse by Businesses Section -->
+        <div id="businesses-section" class="browse-section">
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <div>
+                        <label class="filter-label">Category</label>
+                        <select id="businessCategory" class="filter-select">
+                            <option value="">All Categories</option>
+                            <option value="medical"> Medical & Healthcare</option>
+                            <option value="dental"> Dental Care</option>
+                            <option value="wellness"> Wellness & Spa</option>
+                            <option value="therapy"> Therapy & Counseling</option>
+                            <option value="fitness"> Fitness & Sports</option>
+                            <option value="nutrition"> Nutrition & Diet</option>
+                            <option value="beauty"> Beauty & Salon</option>
+                            <option value="other"> Other Services</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="filter-label">Location</label>
+                        <select id="businessLocation" class="filter-select">
+                            <option value="">All Locations</option>
+                            <option value="San Francisco, CA">San Francisco, CA</option>
+                            <option value="Oakland, CA">Oakland, CA</option>
+                            <option value="Berkeley, CA">Berkeley, CA</option>
+                            <option value="San Jose, CA">San Jose, CA</option>
+                            <option value="Palo Alto, CA">Palo Alto, CA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="filter-label">Search</label>
+                        <input type="text" id="businessSearch" class="filter-input"
+                            placeholder="Search by name or service...">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="filter-button" onclick="applyBusinessFilters()">Apply Filters</button>
+                        <button class="clear-filters" onclick="clearBusinessFilters()">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="businessResultsInfo" class="results-info" style="display: none;"></div>
+
+            <div id="businessesContainer" class="professionals-grid">
+                <!-- Businesses will be loaded here -->
+            </div>
         </div>
     </div>
 
     <script>
+        let currentMode = 'professionals';
+        let allBusinesses = []; // Cache all businesses for filtering
+
         // Load professionals on page load
         document.addEventListener('DOMContentLoaded', function () {
             loadProfessionals();
         });
+
+        function switchBrowseMode(mode) {
+            currentMode = mode;
+
+            // Update toggle buttons
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Show/hide sections
+            document.getElementById('professionals-section').classList.toggle('active', mode === 'professionals');
+            document.getElementById('businesses-section').classList.toggle('active', mode === 'businesses');
+
+            // Load data for the selected mode
+            if (mode === 'businesses' && allBusinesses.length === 0) {
+                loadBusinesses();
+            }
+        }
+
+        // Categorize business based on name and description
+        function categorizeBusiness(business) {
+            const name = business.name.toLowerCase();
+            const desc = (business.description || '').toLowerCase();
+            const combined = name + ' ' + desc;
+
+            if (combined.includes('medical') || combined.includes('doctor') || combined.includes('clinic') ||
+                combined.includes('health') || combined.includes('hospital')) {
+                return 'medical';
+            }
+            if (combined.includes('dental') || combined.includes('dentist') || combined.includes('teeth')) {
+                return 'dental';
+            }
+            if (combined.includes('wellness') || combined.includes('spa') || combined.includes('massage')) {
+                return 'wellness';
+            }
+            if (combined.includes('therapy') || combined.includes('therapist') || combined.includes('counseling') ||
+                combined.includes('mental') || combined.includes('psychology')) {
+                return 'therapy';
+            }
+            if (combined.includes('fitness') || combined.includes('gym') || combined.includes('sports') ||
+                combined.includes('physical therapy')) {
+                return 'fitness';
+            }
+            if (combined.includes('nutrition') || combined.includes('dietitian') || combined.includes('diet')) {
+                return 'nutrition';
+            }
+            if (combined.includes('salon') || combined.includes('beauty') || combined.includes('hair') ||
+                combined.includes('nail') || combined.includes('makeup')) {
+                return 'beauty';
+            }
+            return 'other';
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                'medical': '',
+                'dental': '',
+                'wellness': '',
+                'therapy': '',
+                'fitness': '',
+                'nutrition': '',
+                'beauty': '',
+                'other': ''
+            };
+            return icons[category] || '';
+        }
+
+        function getCategoryName(category) {
+            const names = {
+                'medical': 'Medical & Healthcare',
+                'dental': 'Dental Care',
+                'wellness': 'Wellness & Spa',
+                'therapy': 'Therapy & Counseling',
+                'fitness': 'Fitness & Sports',
+                'nutrition': 'Nutrition & Diet',
+                'beauty': 'Beauty & Salon',
+                'other': 'Other Services'
+            };
+            return names[category] || 'Other Services';
+        }
+
+        async function loadBusinesses() {
+            try {
+                const response = await fetch('/consumer/workplaces?limit=100');
+                if (!response.ok) throw new Error('Failed to load businesses');
+
+                allBusinesses = await response.json();
+
+                // Add category to each business
+                allBusinesses.forEach(business => {
+                    business.category = categorizeBusiness(business);
+                });
+
+                displayBusinesses(allBusinesses);
+            } catch (error) {
+                console.error('Error loading businesses:', error);
+                document.getElementById('businessesContainer').innerHTML =
+                    '<p style="text-align: center; color: red; grid-column: 1 / -1; padding: 40px;">Error loading businesses. Please refresh the page.</p>';
+            }
+        }
+
+        function applyBusinessFilters() {
+            const category = document.getElementById('businessCategory').value;
+            const location = document.getElementById('businessLocation').value;
+            const search = document.getElementById('businessSearch').value.toLowerCase();
+
+            let filtered = allBusinesses;
+
+            // Filter by category
+            if (category) {
+                filtered = filtered.filter(b => b.category === category);
+            }
+
+            // Filter by location
+            if (location) {
+                filtered = filtered.filter(b => {
+                    const businessLocation = `${b.city}, ${b.state}`;
+                    return businessLocation === location;
+                });
+            }
+
+            // Filter by search
+            if (search) {
+                filtered = filtered.filter(b => {
+                    const name = b.name.toLowerCase();
+                    const desc = (b.description || '').toLowerCase();
+                    const addr = b.address.toLowerCase();
+                    return name.includes(search) || desc.includes(search) || addr.includes(search);
+                });
+            }
+
+            displayBusinesses(filtered);
+
+            // Show results info
+            const resultsInfo = document.getElementById('businessResultsInfo');
+            resultsInfo.style.display = 'block';
+            resultsInfo.textContent = `Showing ${filtered.length} of ${allBusinesses.length} businesses`;
+        }
+
+        function clearBusinessFilters() {
+            document.getElementById('businessCategory').value = '';
+            document.getElementById('businessLocation').value = '';
+            document.getElementById('businessSearch').value = '';
+            document.getElementById('businessResultsInfo').style.display = 'none';
+            displayBusinesses(allBusinesses);
+        }
+
+        function displayBusinesses(businesses) {
+            const container = document.getElementById('businessesContainer');
+
+            if (businesses.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.7); grid-column: 1 / -1; padding: 40px;">No businesses found matching your criteria.</p>';
+                return;
+            }
+
+            container.innerHTML = businesses.map(business => {
+                const categoryIcon = getCategoryIcon(business.category);
+                const categoryName = getCategoryName(business.category);
+
+                return `
+                    <div class="professional-card" onclick="selectBusiness(${business.id})">
+                        <div class="professional-avatar">
+                            ${business.is_verified ? '' : business.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div class="professional-name">${business.name}</div>
+                        <div class="professional-title">
+                            ${categoryIcon} ${categoryName}
+                        </div>
+                        <div class="professional-specialties">
+                            <span class="specialty-tag"> ${business.city}, ${business.state}</span>
+                            <span class="specialty-tag"> ${business.specialists_count} Professional${business.specialists_count !== 1 ? 's' : ''}</span>
+                            ${business.is_verified ? '<span class="specialty-tag" style="background: rgba(255, 215, 0, 0.2); border-color: #FFD700; color: #FFD700;"> Verified</span>' : ''}
+                        </div>
+                        ${business.description ? `
+                            <div class="professional-bio" style="font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-top: 10px; line-height: 1.5;">
+                                ${business.description.length > 120 ? business.description.substring(0, 120) + '...' : business.description}
+                            </div>
+                        ` : ''}
+                        <div class="professional-rating" style="margin-top: 10px;">
+                            <span class="rating-text" style="font-size: 0.85rem;"> ${business.address}</span>
+                        </div>
+                        <button class="select-btn">View Professionals</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectBusiness(businessId) {
+            // Navigate to business detail page showing professionals
+            window.location.href = `/consumer/business/${businessId}`;
+        }
 
         async function loadProfessionals() {
             try {
@@ -319,7 +712,7 @@
                 ).join('') : '<span class="specialty-tag">Premium Services</span>'}
                         </div>
                         <div class="professional-rating">
-                            <div class="stars">★★★★★</div>
+                            <div class="stars"></div>
                             <span class="rating-text">5.0 (${Math.floor(Math.random() * 50) + 20} reviews)</span>
                         </div>
                         <button class="select-btn">Select Professional</button>

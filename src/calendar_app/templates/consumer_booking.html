@@ -540,6 +540,11 @@
             }
 
             const formData = new FormData(document.getElementById('bookingForm'));
+
+            // Get workplace_id from URL query params if present (business-first flow)
+            const urlParams = new URLSearchParams(window.location.search);
+            const workplaceId = urlParams.get('workplace_id');
+
             const bookingData = {
                 specialist_id: specialistId,
                 service_id: serviceId,
@@ -547,7 +552,8 @@
                 start_time: selectedTimeSlot.start,
                 client_name: formData.get('client_name'),
                 client_email: formData.get('client_email'),
-                client_phone: formData.get('client_phone') || null
+                client_phone: formData.get('client_phone') || null,
+                source_workplace_id: workplaceId ? parseInt(workplaceId) : null  // Referral tracking
             };
 
             try {

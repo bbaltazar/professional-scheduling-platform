@@ -343,8 +343,16 @@
         }
 
         function selectService(serviceId) {
-            // Navigate to the booking page for this service
-            window.location.href = `/consumer/professional/${specialistId}/service/${serviceId}`;
+            // Get workplace_id from URL query params if present (business-first flow)
+            const urlParams = new URLSearchParams(window.location.search);
+            const workplaceId = urlParams.get('workplace_id');
+
+            // Navigate to the booking page for this service, preserving workplace_id
+            let bookingUrl = `/consumer/professional/${specialistId}/service/${serviceId}`;
+            if (workplaceId) {
+                bookingUrl += `?workplace_id=${workplaceId}`;
+            }
+            window.location.href = bookingUrl;
         }
     </script>
 </body>
