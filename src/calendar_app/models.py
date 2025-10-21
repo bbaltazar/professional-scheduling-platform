@@ -573,6 +573,7 @@ class ClientProfileCreate(BaseModel):
     bio: Optional[str] = None
     score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
     notes: Optional[List[AppointmentNote]] = []
+    is_favorite: Optional[bool] = False
 
 
 class ClientProfileUpdate(BaseModel):
@@ -581,6 +582,7 @@ class ClientProfileUpdate(BaseModel):
     bio: Optional[str] = None
     score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
     notes: Optional[List[AppointmentNote]] = None
+    is_favorite: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -595,6 +597,7 @@ class ClientProfileResponse(BaseModel):
     bio: Optional[str] = None
     score: Optional[int] = None
     notes: Optional[List[AppointmentNote]] = []
+    is_favorite: Optional[bool] = False
     created_at: datetime
     updated_at: datetime
 
@@ -614,6 +617,7 @@ class ClientSummary(BaseModel):
     next_booking_date: Optional[datetime] = None
     score: Optional[int] = None
     has_profile: bool = False
+    is_favorite: Optional[bool] = False
 
     class Config:
         from_attributes = True

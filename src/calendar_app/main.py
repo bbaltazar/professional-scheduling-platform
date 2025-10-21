@@ -17,7 +17,17 @@ try:
     DATEUTIL_AVAILABLE = True
 except ImportError:
     DATEUTIL_AVAILABLE = False
-from fastapi import FastAPI, Depends, HTTPException, Request, Cookie, Response, Query
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException,
+    Request,
+    Cookie,
+    Response,
+    Query,
+    UploadFile,
+    File,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +38,8 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import jwt
+import csv
+import io
 
 try:
     from .database import (
@@ -2129,11 +2141,9 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
 
         # Get or create consumer using normalized matching
         matching_consumers = find_matching_consumers(
-            db, 
-            email=booking.client_email,
-            phone=booking.client_phone
+            db, email=booking.client_email, phone=booking.client_phone
         )
-        
+
         if matching_consumers:
             # Use first matching consumer (they should all be the same person)
             consumer = matching_consumers[0]
@@ -2157,6 +2167,17 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
                 referred_by_workplace_id=booking.source_workplace_id,
             )
             db.add(referral)
+
+            # Auto-create client profile with next available rank
+            next_rank = get_next_client_rank(db, booking.specialist_id)
+            client_profile = ClientProfile(
+                specialist_id=booking.specialist_id,
+                consumer_id=consumer.id,
+                bio=None,
+                score=next_rank,
+                notes=None,
+            )
+            db.add(client_profile)
 
         # Create the booking
         db_booking = Booking(
@@ -3216,15 +3237,15 @@ def find_matching_consumers(
 
     for consumer in all_consumers:
         matched = False
-        
+
         # Check email match (case-insensitive)
         if norm_email and normalize_email(consumer.email) == norm_email:
             matched = True
-        
+
         # Check phone match (normalized - digits only)
         if norm_phone and normalize_phone(consumer.phone) == norm_phone:
             matched = True
-        
+
         if matched:
             matching_consumers.append(consumer)
 
@@ -3276,10 +3297,24 @@ def consolidate_consumer_bookings(
     return all_bookings
 
 
+def get_next_client_rank(db: Session, specialist_id: int) -> int:
+    """
+    Get the next available rank for a new client.
+    Returns the highest existing rank + 1, or 1 if no clients exist.
+    """
+    max_rank = (
+        db.query(func.max(ClientProfile.score))
+        .filter(ClientProfile.specialist_id == specialist_id)
+        .scalar()
+    )
+    return (max_rank or 0) + 1
+
+
 @app.get("/professional/clients")
 async def get_professional_clients(specialist_id: int, db: Session = Depends(get_db)):
     """
-    Get all unique clients who have booked with this professional.
+    Get all unique clients for this professional.
+    Includes both clients with bookings and clients added via CSV (with profiles but no bookings).
     Consolidates clients by email OR phone matching.
     Returns ClientSummary list with booking stats.
     """
@@ -3348,6 +3383,7 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
         profile = None
         has_profile = False
         score = None
+        is_favorite = False
         if consumer_id:
             profile = (
                 db.query(ClientProfile)
@@ -3360,6 +3396,7 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
             if profile:
                 has_profile = True
                 score = profile.score
+                is_favorite = profile.is_favorite or False
 
         # Build summary
         client_summary = {
@@ -3386,14 +3423,60 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
             ),
             "score": score,
             "has_profile": has_profile,
+            "is_favorite": is_favorite,
         }
 
         client_summaries.append(client_summary)
 
-    # Sort by last booking date (most recent first)
-    client_summaries.sort(
-        key=lambda x: x["last_booking_date"] or datetime.min, reverse=True
+    # Also include clients who have profiles but no bookings (e.g., from CSV upload)
+    profiles_without_bookings = (
+        db.query(ClientProfile)
+        .filter(ClientProfile.specialist_id == specialist_id)
+        .all()
     )
+
+    for profile in profiles_without_bookings:
+        # Skip if we already processed this consumer
+        if profile.consumer_id in seen_consumers:
+            continue
+
+        consumer = db.query(Consumer).filter(Consumer.id == profile.consumer_id).first()
+        if not consumer:
+            continue  # Skip if consumer was deleted
+
+        seen_consumers.add(consumer.id)
+
+        # Build summary for client with no bookings
+        client_summary = {
+            "consumer_id": consumer.id,
+            "name": consumer.name,
+            "email": consumer.email,
+            "phone": consumer.phone,
+            "total_bookings": 0,
+            "last_booking_date": None,
+            "next_booking_date": None,
+            "score": profile.score,
+            "has_profile": True,
+            "is_favorite": profile.is_favorite or False,
+        }
+
+        client_summaries.append(client_summary)
+
+    # Sort by rank (score) if available, then by last booking date
+    def sort_key(client):
+        # Primary: Sort by rank (lower is better)
+        rank = client["score"] if client["score"] is not None else 999999
+
+        # Secondary: Sort by last booking date (more recent first)
+        last_booking = client["last_booking_date"]
+        if last_booking:
+            booking_sort = -last_booking.timestamp()
+        else:
+            booking_sort = 0  # No bookings go last within same rank
+
+        return (rank, booking_sort)
+
+    client_summaries.sort(key=sort_key)
 
     return client_summaries
 
@@ -3520,14 +3603,16 @@ async def update_client_profile(
     bio: Optional[str] = None,
     score: Optional[int] = None,
     notes: Optional[str] = None,  # JSON string of notes array
+    is_favorite: Optional[bool] = None,
     db: Session = Depends(get_db),
 ):
     """
     Update or create a client profile with professional's notes.
+    Score is now used as ranking (1 = top client, higher numbers = lower priority).
     """
-    # Validate score
-    if score is not None and (score < 1 or score > 10):
-        raise HTTPException(status_code=400, detail="Score must be between 1 and 10")
+    # Validate score (now ranking - allow any positive integer)
+    if score is not None and score < 1:
+        raise HTTPException(status_code=400, detail="Ranking must be at least 1")
 
     # Verify consumer exists
     consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
@@ -3545,13 +3630,17 @@ async def update_client_profile(
     )
 
     if not profile:
-        # Create new profile
+        # Create new profile with auto-ranking if score not provided
+        if score is None:
+            score = get_next_client_rank(db, specialist_id)
+
         profile = ClientProfile(
             specialist_id=specialist_id,
             consumer_id=consumer_id,
             bio=bio,
             score=score,
             notes=notes,
+            is_favorite=is_favorite if is_favorite is not None else False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -3564,6 +3653,8 @@ async def update_client_profile(
             profile.score = score
         if notes is not None:
             profile.notes = notes
+        if is_favorite is not None:
+            profile.is_favorite = is_favorite
         profile.updated_at = datetime.utcnow()
 
     db.commit()
@@ -3637,3 +3728,153 @@ async def delete_client(
         "deleted_consumer_record": remaining_bookings == 0,
     }
 
+
+@app.post("/professional/clients/upload-csv")
+async def upload_clients_csv(
+    specialist_id: int = Query(..., description="Specialist ID"),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload a CSV file to bulk import clients.
+    Expected CSV format: name,email,phone
+    - Header row is optional (will be auto-detected)
+    - Name is required
+    - Email OR Phone must be provided (at least one)
+    - Duplicates (by email or phone) will be skipped
+    - Creates Consumer records and ClientProfile records
+    """
+    # Validate file type
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+
+    # Verify specialist exists
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Specialist not found")
+
+    try:
+        # Read file content
+        content = await file.read()
+        decoded_content = content.decode("utf-8")
+        csv_reader = csv.reader(io.StringIO(decoded_content))
+
+        # Read all rows
+        rows = list(csv_reader)
+        if not rows:
+            raise HTTPException(status_code=400, detail="CSV file is empty")
+
+        # Detect if first row is header
+        first_row = rows[0]
+        has_header = False
+        if len(first_row) >= 2:
+            # Check if first row looks like headers (contains common header words)
+            header_keywords = ["name", "email", "phone", "mail", "contact"]
+            if any(
+                keyword in str(cell).lower()
+                for cell in first_row
+                for keyword in header_keywords
+            ):
+                has_header = True
+                rows = rows[1:]  # Skip header row
+
+        # Get starting rank for CSV upload (next available rank)
+        starting_rank = get_next_client_rank(db, specialist_id)
+        current_rank = starting_rank
+
+        # Process rows
+        created_count = 0
+        skipped_count = 0
+        errors = []
+
+        for idx, row in enumerate(rows, start=2 if has_header else 1):
+            if not row or len(row) < 1:
+                continue  # Skip empty rows
+
+            # Parse row (handle different column counts)
+            name = row[0].strip() if len(row) > 0 and row[0].strip() else None
+            email = row[1].strip() if len(row) > 1 and row[1].strip() else None
+            phone = row[2].strip() if len(row) > 2 and row[2].strip() else None
+
+            # Validate: Name is required
+            if not name:
+                errors.append(f"Row {idx}: Missing name")
+                skipped_count += 1
+                continue
+
+            # Validate: Email OR Phone must be provided
+            if not email and not phone:
+                errors.append(f"Row {idx}: Must provide email OR phone")
+                skipped_count += 1
+                continue
+
+            # Validate email format if provided
+            if email and ("@" not in email or "." not in email):
+                errors.append(f"Row {idx}: Invalid email format '{email}'")
+                skipped_count += 1
+                continue
+
+            # Check if consumer already exists (by email or phone)
+            existing_consumer = None
+            if email:
+                existing_consumer = (
+                    db.query(Consumer).filter(Consumer.email == email).first()
+                )
+            if not existing_consumer and phone:
+                existing_consumer = (
+                    db.query(Consumer).filter(Consumer.phone == phone).first()
+                )
+
+            if existing_consumer:
+                consumer = existing_consumer
+                # Check if profile already exists for this specialist
+                existing_profile = (
+                    db.query(ClientProfile)
+                    .filter(
+                        ClientProfile.specialist_id == specialist_id,
+                        ClientProfile.consumer_id == consumer.id,
+                    )
+                    .first()
+                )
+                if existing_profile:
+                    skipped_count += 1
+                    continue  # Already have this client
+            else:
+                # Create new consumer (name is required at this point)
+                consumer = Consumer(name=name, email=email, phone=phone)
+                db.add(consumer)
+                db.flush()  # Get the consumer.id
+
+            # Create client profile for this specialist with auto-rank
+            profile = ClientProfile(
+                specialist_id=specialist_id,
+                consumer_id=consumer.id,
+                bio=None,
+                score=current_rank,  # Assign rank based on CSV row order
+                notes=None,
+            )
+            db.add(profile)
+            created_count += 1
+            current_rank += 1  # Increment rank for next client
+
+        db.commit()
+
+        return {
+            "message": f"CSV processed successfully",
+            "created": created_count,
+            "skipped": skipped_count,
+            "errors": errors[:10],  # Return first 10 errors only
+            "total_rows": len(rows),
+            "starting_rank": starting_rank,
+            "ending_rank": current_rank - 1,
+        }
+
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=400, detail="File encoding error. Please use UTF-8 encoding"
+        )
+    except csv.Error as e:
+        raise HTTPException(status_code=400, detail=f"CSV parsing error: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
