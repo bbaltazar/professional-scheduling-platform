@@ -388,7 +388,7 @@
                     </div>
                     <div class="form-group">
                         <label for="clientPhone">Phone Number</label>
-                        <input type="tel" id="clientPhone" name="client_phone" placeholder="+1 (555) 123-4567">
+                        <input type="tel" id="clientPhone" name="client_phone" placeholder="(555) 555-5555 or 5555555555" maxlength="14">
                     </div>
                 </form>
 
@@ -404,6 +404,59 @@
         const serviceId = {{ service.id }};
         let selectedDate = null;
         let selectedTimeSlot = null;
+
+        // Phone number validation utilities
+        function normalizePhone(phone) {
+            if (!phone) return '';
+            // Remove all non-digit characters
+            const digits = phone.replace(/\D/g, '');
+            // Remove leading 1 if present (country code)
+            const normalized = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+            return normalized.length === 10 ? normalized : '';
+        }
+
+        function validatePhone(phone) {
+            if (!phone) return true; // Phone is optional
+            const normalized = normalizePhone(phone);
+            
+            // Must be exactly 10 digits (area code + number)
+            if (normalized.length !== 10) return false;
+            
+            // Extract area code and exchange
+            const areaCode = normalized.slice(0, 3);
+            const exchange = normalized.slice(3, 6);
+            
+            // Reject invalid area codes (cannot start with 0 or 1)
+            if (areaCode[0] === '0' || areaCode[0] === '1') return false;
+            
+            // Reject 555 area code (directory assistance)
+            if (areaCode === '555') return false;
+            
+            // Reject fake exchange codes (555-XXXX pattern)
+            if (exchange === '555') return false;
+            
+            // Reject all same digit (e.g., 1111111111)
+            if (new Set(normalized).size === 1) return false;
+            
+            // Reject sequential digits
+            if (normalized === '1234567890' || normalized === '0123456789') return false;
+            
+            // Reject common test numbers
+            if (normalized === '0000000000' || normalized === '9999999999') return false;
+            
+            // Reject if area code and exchange are the same
+            if (areaCode === exchange) return false;
+            
+            return true;
+        }
+
+        function formatPhone(phone) {
+            const normalized = normalizePhone(phone);
+            if (normalized.length === 10) {
+                return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
+            }
+            return phone;
+        }
 
         // Load available dates on page load
         document.addEventListener('DOMContentLoaded', function () {
@@ -540,6 +593,13 @@
             }
 
             const formData = new FormData(document.getElementById('bookingForm'));
+            const clientPhone = formData.get('client_phone');
+
+            // Validate phone number if provided
+            if (clientPhone && !validatePhone(clientPhone)) {
+                alert('Invalid phone number. Please enter a valid 10-digit US phone number.');
+                return;
+            }
 
             // Get workplace_id from URL query params if present (business-first flow)
             const urlParams = new URLSearchParams(window.location.search);
@@ -552,7 +612,7 @@
                 start_time: selectedTimeSlot.start,
                 client_name: formData.get('client_name'),
                 client_email: formData.get('client_email'),
-                client_phone: formData.get('client_phone') || null,
+                client_phone: clientPhone ? normalizePhone(clientPhone) : null,
                 source_workplace_id: workplaceId ? parseInt(workplaceId) : null  // Referral tracking
             };
 

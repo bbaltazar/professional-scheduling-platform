@@ -1100,6 +1100,35 @@
             color: #D4AF37;
         }
 
+        /* Problem row styles for invalid phone numbers */
+        .problem-row {
+            background: rgba(239, 68, 68, 0.08) !important;
+            border-left: 3px solid rgba(239, 68, 68, 0.6) !important;
+        }
+
+        .problem-row:hover {
+            background: rgba(239, 68, 68, 0.12) !important;
+            cursor: pointer;
+        }
+
+        .problem-row td {
+            position: relative;
+        }
+
+        /* Subtle pulse animation for problem rows */
+        @keyframes problemPulse {
+            0%, 100% {
+                border-left-color: rgba(239, 68, 68, 0.6);
+            }
+            50% {
+                border-left-color: rgba(239, 68, 68, 0.9);
+            }
+        }
+
+        .problem-row {
+            animation: problemPulse 3s ease-in-out infinite;
+        }
+
         .modal {
             position: fixed;
             z-index: 10000;
@@ -1260,7 +1289,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="regPhone">Contact Number (Optional)</label>
-                                <input type="tel" id="regPhone" name="phone" placeholder="+1 (555) 123-4567">
+                                <input type="tel" id="regPhone" name="phone" placeholder="(555) 555-5555 or 5555555555" maxlength="14">
                             </div>
                         </div>
                         <button type="button" class="btn" onclick="registerUser()"
@@ -1709,7 +1738,7 @@
                 <div class="section">
                     <h2><span class="section-icon"></span>Your Clients</h2>
                     <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 30px;">
-                        Manage your client relationships. View booking history, add notes, and rank your clients.
+                        Manage your client relationships. View booking history and add notes.
                     </p>
 
                     <!-- Client Search/Filter -->
@@ -1823,21 +1852,6 @@
                             <label>Your Notes About This Client</label>
                             <textarea id="modalClientBio" rows="3"
                                 placeholder="Add your notes about this client..."></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Client Ranking (1 = Top Client)</label>
-                            <div style="display: flex; gap: 15px; align-items: center;">
-                                <input type="number" id="modalClientScore" min="1" max="100" value="1"
-                                    style="flex: 0 0 100px; padding: 10px; font-size: 1.2rem; text-align: center; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; color: #D4AF37; font-weight: 700;"
-                                    oninput="updateRankDisplay(this.value)">
-                                <span id="scoreDisplay"
-                                    style="font-size: 1.2rem; color: rgba(212, 175, 55, 0.7); flex: 1;">of <span
-                                        id="totalClientsInModal">0</span> clients</span>
-                            </div>
-                            <div style="color: rgba(212, 175, 55, 0.6); font-size: 0.85rem; margin-top: 8px;">
-                                Lower numbers = higher priority. Rank 1 is your top client.
-                            </div>
                         </div>
 
                         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -2003,6 +2017,130 @@
         {% else %}
         let currentSpecialistId = null;
         {% endif %}
+
+        // ==================== UTILITY FUNCTIONS ====================
+        
+        // Normalize phone number to 10 digits
+        function normalizePhone(phone) {
+            if (!phone) return null;
+            
+            // Remove all non-digit characters (parentheses, dashes, spaces, etc.)
+            const digits = phone.replace(/\D/g, '');
+            
+            // Remove leading 1 if present (country code)
+            const normalized = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+            
+            // Return null if not exactly 10 digits
+            return normalized.length === 10 ? normalized : null;
+        }
+
+        // Validate phone number
+        function validatePhone(phone) {
+            if (!phone) return { valid: true, normalized: null }; // Optional field
+            
+            const normalized = normalizePhone(phone);
+            
+            if (!normalized) {
+                return { 
+                    valid: false, 
+                    normalized: null, 
+                    error: 'Phone number must be exactly 10 digits' 
+                };
+            }
+            
+            // Extract area code and exchange
+            const areaCode = normalized.slice(0, 3);
+            const exchange = normalized.slice(3, 6);
+            
+            // Reject invalid area codes (cannot start with 0 or 1)
+            if (areaCode[0] === '0' || areaCode[0] === '1') {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid area code (cannot start with 0 or 1)'
+                };
+            }
+            
+            // Reject 555 area code (directory assistance)
+            if (areaCode === '555') {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid area code (555 is reserved)'
+                };
+            }
+            
+            // Reject fake exchange codes (555-XXXX pattern)
+            if (exchange === '555') {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid phone number (555 exchange is reserved for fictional use)'
+                };
+            }
+            
+            // Reject all same digit (e.g., 1111111111)
+            if (new Set(normalized).size === 1) {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid phone number (repeating digits)'
+                };
+            }
+            
+            // Reject sequential digits
+            if (normalized === '1234567890' || normalized === '0123456789') {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid phone number (sequential digits)'
+                };
+            }
+            
+            // Reject common test numbers
+            if (normalized === '0000000000' || normalized === '9999999999') {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid phone number (test number)'
+                };
+            }
+            
+            // Reject if area code and exchange are the same
+            if (areaCode === exchange) {
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Invalid phone number (area code and exchange cannot match)'
+                };
+            }
+            
+            return { valid: true, normalized: normalized };
+        }
+
+        // Format phone for display (optional - formats as (555) 555-5555)
+        function formatPhone(phone) {
+            const normalized = normalizePhone(phone);
+            if (!normalized) return phone;
+            
+            return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
+        }
+
+        // Format phone for display in table with validation check
+        function formatPhoneForDisplay(phone) {
+            if (!phone) return '—';
+            
+            const validation = validatePhone(phone);
+            if (validation.valid && validation.normalized) {
+                // Valid phone - format it nicely
+                return `(${validation.normalized.slice(0, 3)}) ${validation.normalized.slice(3, 6)}-${validation.normalized.slice(6)}`;
+            } else {
+                // Invalid phone - return original with error indicator
+                return { formatted: phone, isInvalid: true, error: validation.error || 'Invalid format' };
+            }
+        }
+
+        // ==================== TAB NAVIGATION ====================
 
         // Tab Switching Function
         function switchTab(tabName) {
@@ -2597,9 +2735,20 @@
                     return;
                 }
 
+                // Validate and normalize phone if provided
+                if (phone) {
+                    const phoneValidation = validatePhone(phone);
+                    if (!phoneValidation.valid) {
+                        showResponse('verificationResponse', phoneValidation.error, 'error');
+                        return;
+                    }
+                    requestData.phone = phoneValidation.normalized;
+                } else {
+                    requestData.phone = null;
+                }
+
                 requestData.name = name;
                 if (bio) requestData.bio = bio;
-                if (phone) requestData.phone = phone;
             }
 
             try {
@@ -2760,6 +2909,14 @@
 
             const startTime = formatTime(booking.start_time);
             const endTime = formatTime(booking.end_time);
+            
+            // Format phone number for display
+            const phoneDisplay = booking.client_phone ? formatPhoneForDisplay(booking.client_phone) : null;
+            const phoneHtml = phoneDisplay 
+                ? (typeof phoneDisplay === 'object' && phoneDisplay.isInvalid 
+                    ? `<div style="color: rgba(251, 191, 36, 0.8); font-size: 0.95rem; margin-top: 2px;"> ${phoneDisplay.formatted} ⚠️</div>` 
+                    : `<div style="color: rgba(212, 175, 55, 0.8); font-size: 0.95rem; margin-top: 2px;"> ${phoneDisplay}</div>`)
+                : '';
 
             return `
                 <div class="booking-card" data-booking-id="${booking.id}" data-status="${booking.status}">
@@ -2767,7 +2924,7 @@
                         <div class="booking-client-info">
                             <div class="booking-client-name"> ${booking.client_name}</div>
                             <div class="booking-client-email"> ${booking.client_email}</div>
-                            ${booking.client_phone ? `<div style="color: rgba(212, 175, 55, 0.8); font-size: 0.95rem; margin-top: 2px;"> ${booking.client_phone}</div>` : ''}
+                            ${phoneHtml}
                         </div>
                         <div class="booking-status ${booking.status}">${booking.status}</div>
                     </div>
@@ -3616,18 +3773,27 @@
                 const starIcon = isFavorite ? '⭐' : '☆';
                 const starClass = isFavorite ? 'favorite-active' : 'favorite-inactive';
 
+                // Format phone and check for validation issues
+                const phoneDisplay = formatPhoneForDisplay(client.phone);
+                const hasPhoneIssue = typeof phoneDisplay === 'object' && phoneDisplay.isInvalid;
+                const phoneText = hasPhoneIssue ? phoneDisplay.formatted : phoneDisplay;
+                const phoneError = hasPhoneIssue ? phoneDisplay.error : null;
+                
+                const problemRowClass = hasPhoneIssue ? 'problem-row' : '';
+                const phoneWarning = hasPhoneIssue ? ` <span style="color: #fbbf24; font-size: 0.9em; margin-left: 5px;" title="${phoneError}">⚠️</span>` : '';
+
                 const checkboxCell = editModeActive ? `<td><input type="checkbox" class="client-checkbox" data-consumer-id="${client.consumer_id}" onchange="updateSelectedCount()"></td>` : '';
                 const rowClick = editModeActive ? '' : `onclick="viewClientDetail(${client.consumer_id})"`;
 
                 return `
-                            <tr ${rowClick}>
+                            <tr ${rowClick} class="${problemRowClass}">
                                 ${checkboxCell}
                                 <td class="favorite-cell" onclick="event.stopPropagation(); toggleFavorite(${client.consumer_id}, ${!isFavorite})">
                                     <span class="favorite-star ${starClass}">${starIcon}</span>
                                 </td>
                                 <td class="client-name-cell">${client.name}</td>
                                 <td>${client.email || '—'}</td>
-                                <td>${client.phone || '—'}</td>
+                                <td>${phoneText}${phoneWarning}</td>
                                 <td>${client.total_bookings}</td>
                                 <td>${lastBooking}</td>
                                 <td>${nextBooking}</td>
@@ -3895,28 +4061,26 @@
             // Set header info
             document.getElementById('modalClientName').textContent = client.consumer.name;
             document.getElementById('modalClientEmail').textContent = client.consumer.email || 'Not provided';
-            document.getElementById('modalClientPhone').textContent = client.consumer.phone || 'Not provided';
+            
+            // Format phone number for display
+            const phoneDisplay = formatPhoneForDisplay(client.consumer.phone);
+            const phoneText = typeof phoneDisplay === 'object' && phoneDisplay.isInvalid 
+                ? `${phoneDisplay.formatted} ⚠️ Invalid` 
+                : phoneDisplay;
+            document.getElementById('modalClientPhone').textContent = phoneText;
+            
             document.getElementById('modalClientSince').textContent = client.first_booking_date ?
                 new Date(client.first_booking_date).toLocaleDateString() : 'Unknown';
             document.getElementById('modalClientRevenue').textContent = `$${client.total_revenue.toFixed(2)}`;
 
             // Set profile data
-            const totalClients = allClients.length;
-            const rankInput = document.getElementById('modalClientScore');
-            rankInput.max = totalClients || 100; // Set max to total clients
-            document.getElementById('totalClientsInModal').textContent = totalClients;
-
             if (client.profile) {
                 document.getElementById('modalClientBio').value = client.profile.bio || '';
-                rankInput.value = client.profile.score || 1;
-                updateRankDisplay(client.profile.score || 1);
 
                 // Display appointment notes
                 displayAppointmentNotes(client.profile.notes || []);
             } else {
                 document.getElementById('modalClientBio').value = '';
-                rankInput.value = totalClients || 1;  // Default to last rank
-                updateRankDisplay(totalClients || 1);
                 displayAppointmentNotes([]);
             }
 
@@ -3931,18 +4095,6 @@
         function closeClientModal() {
             document.getElementById('clientModal').style.display = 'none';
             currentClientDetail = null;
-        }
-
-        // Update rank display
-        function updateRankDisplay(value) {
-            // Value is just the rank number, no special display needed
-            const totalClients = allClients.length;
-            document.getElementById('totalClientsInModal').textContent = totalClients;
-        }
-
-        // Legacy function name for compatibility
-        function updateScoreDisplay(value) {
-            updateRankDisplay(value);
         }
 
         // Display appointment notes
@@ -3997,10 +4149,10 @@
             if (!currentSpecialistId || !currentClientDetail) return;
 
             const bio = document.getElementById('modalClientBio').value;
-            const score = parseInt(document.getElementById('modalClientScore').value);
 
-            // Get existing notes from profile
+            // Get existing notes and score from profile
             const existingNotes = currentClientDetail.profile?.notes || [];
+            const existingScore = currentClientDetail.profile?.score || null;
 
             const messageDiv = document.getElementById('profileSaveMessage');
             messageDiv.textContent = 'Saving...';
@@ -4012,7 +4164,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         bio: bio,
-                        score: score,
+                        score: existingScore,
                         notes: JSON.stringify(existingNotes)
                     })
                 });
@@ -4025,7 +4177,6 @@
                 // Update the client in allClients array
                 const clientIndex = allClients.findIndex(c => c.consumer_id === currentClientDetail.consumer.id);
                 if (clientIndex !== -1) {
-                    allClients[clientIndex].score = score;
                     allClients[clientIndex].has_profile = true;
                 }
 
@@ -4254,13 +4405,8 @@
                     <ul style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem; margin-left: 20px;">
                         <li>${result.created} clients added</li>
                         <li>${result.skipped} duplicates skipped</li>
-                        <li>${result.total_rows} total rows processed</li>`;
-
-                if (result.starting_rank && result.ending_rank) {
-                    message += `<li>Ranked ${result.starting_rank} to ${result.ending_rank}</li>`;
-                }
-
-                message += `</ul>`;
+                        <li>${result.total_rows} total rows processed</li>
+                    </ul>`;
 
                 if (result.errors && result.errors.length > 0) {
                     message += `<p style="color: #fbbf24; margin-top: 10px; font-size: 0.9rem;">⚠ ${result.errors.length} rows had errors</p>

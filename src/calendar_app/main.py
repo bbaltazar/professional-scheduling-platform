@@ -916,6 +916,16 @@ async def send_verification_code(
             status_code=400, detail="Either email or phone number must be provided"
         )
 
+    # Validate and normalize phone number if provided
+    if request.phone:
+        normalized_phone = normalize_phone(request.phone)
+        if not normalized_phone:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid phone number. Must be a valid 10-digit US phone number."
+            )
+        request.phone = normalized_phone
+
     # Clean up expired codes first
     verification_service.cleanup_expired_codes(db)
 
@@ -2040,6 +2050,16 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
     try:
         print(f"DEBUG: Received booking request: {booking}")
 
+        # Validate phone number format if provided
+        if booking.client_phone:
+            normalized_phone = normalize_phone(booking.client_phone)
+            if not normalized_phone:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid phone number. Must be a valid 10-digit US phone number."
+                )
+            booking.client_phone = normalized_phone
+
         # Validate specialist exists
         specialist = (
             db.query(Specialist).filter(Specialist.id == booking.specialist_id).first()
@@ -2145,7 +2165,7 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
         )
 
         if matching_consumers:
-            # Use first matching consumer (they should all be the same person)
+            # Use most recent matching consumer (sorted by updated_at DESC)
             consumer = matching_consumers[0]
         else:
             # Create new consumer
@@ -3210,11 +3230,65 @@ def normalize_email(email):
 
 
 def normalize_phone(phone):
-    """Normalize phone for comparison (remove all non-digits)"""
+    """
+    Normalize phone for comparison and storage.
+    - Removes all non-digit characters (parentheses, dashes, spaces, etc.)
+    - Removes leading '1' if present (country code)
+    - Rejects fake/test phone numbers (555-XXXX, repeating digits, etc.)
+    - Returns None if not exactly 10 digits or if fake/invalid
+    """
     if not phone:
         return None
+    
     # Remove all non-digit characters
-    return "".join(c for c in phone if c.isdigit())
+    digits = "".join(c for c in phone if c.isdigit())
+    
+    # Remove leading 1 if present (country code) and we have 11 digits
+    if digits.startswith('1') and len(digits) == 11:
+        digits = digits[1:]
+    
+    # Return None if not exactly 10 digits
+    if len(digits) != 10:
+        return None
+    
+    # Extract area code and exchange (first 6 digits)
+    area_code = digits[0:3]
+    exchange = digits[3:6]
+    
+    # Reject invalid area codes
+    # Area codes cannot start with 0 or 1
+    if area_code[0] in ('0', '1'):
+        return None
+    
+    # Reject reserved/invalid area codes
+    # 555 area code is reserved for directory assistance
+    if area_code == '555':
+        return None
+    
+    # Reject fake exchange codes (555-XXXX pattern)
+    # Exchange 555 (digits 4-6) is reserved for fictional use
+    if exchange == '555':
+        return None
+    
+    # Reject obviously fake patterns
+    # All same digit (e.g., 1111111111, 2222222222)
+    if len(set(digits)) == 1:
+        return None
+    
+    # Sequential digits (e.g., 1234567890, 0123456789)
+    if digits in ('1234567890', '0123456789'):
+        return None
+    
+    # Reject common test numbers
+    # 0000000000, 9999999999
+    if digits in ('0000000000', '9999999999'):
+        return None
+    
+    # Reject if area code and exchange are the same (e.g., 555-555-XXXX)
+    if area_code == exchange:
+        return None
+    
+    return digits
 
 
 def find_matching_consumers(
@@ -3224,6 +3298,7 @@ def find_matching_consumers(
     Find all consumers that match the given email OR phone.
     Uses normalized, case-insensitive matching.
     This handles client consolidation - same person using different contact info.
+    Returns consumers sorted by most recent first (updated_at DESC).
     """
     if not email and not phone:
         return []
@@ -3249,7 +3324,11 @@ def find_matching_consumers(
         if matched:
             matching_consumers.append(consumer)
 
-    return matching_consumers
+    # Sort by most recent first (updated_at DESC, then created_at DESC)
+    matching_consumers.sort(
+        key=lambda c: (c.updated_at or c.created_at or datetime.min),
+        reverse=True
+    )
 
     return matching_consumers
 
@@ -3345,9 +3424,9 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
             # Legacy booking without consumer record
             matching_consumers = []
 
-        # Get primary consumer (first match or create summary from booking)
+        # Get primary consumer (most recent match or create summary from booking)
         if matching_consumers:
-            primary_consumer = matching_consumers[0]
+            primary_consumer = matching_consumers[0]  # Already sorted by most recent
             consumer_id = primary_consumer.id
 
             # Skip if we've already processed this consumer
@@ -3372,11 +3451,14 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
         # Calculate stats
         total_bookings = len(client_bookings)
         sorted_bookings = sorted(client_bookings, key=lambda b: b.date)
-        last_booking = sorted_bookings[-1] if sorted_bookings else None
-
+        
         # Separate past and future
         today = date.today()
+        past_bookings = [b for b in sorted_bookings if b.date < today]
         future_bookings = [b for b in sorted_bookings if b.date >= today]
+        
+        # Last booking should be the most recent PAST booking
+        last_booking = past_bookings[-1] if past_bookings else None
         next_booking = future_bookings[0] if future_bookings else None
 
         # Get profile if exists
@@ -3813,6 +3895,17 @@ async def upload_clients_csv(
                 errors.append(f"Row {idx}: Invalid email format '{email}'")
                 skipped_count += 1
                 continue
+
+            # Validate and normalize phone if provided
+            if phone:
+                normalized_phone = normalize_phone(phone)
+                if not normalized_phone:
+                    errors.append(
+                        f"Row {idx}: Phone '{phone}' must be exactly 10 digits"
+                    )
+                    skipped_count += 1
+                    continue
+                phone = normalized_phone  # Use normalized version
 
             # Check if consumer already exists (by email or phone)
             existing_consumer = None
