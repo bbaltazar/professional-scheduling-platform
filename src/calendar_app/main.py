@@ -4,9 +4,10 @@ poetry run uvicorn main:app --reload
 
 from __future__ import annotations
 from typing import Union, List, Optional
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 import secrets
 import json
+import re
 from contextlib import asynccontextmanager
 
 # Note: dateutil will need to be installed: pip install python-dateutil
@@ -59,6 +60,7 @@ try:
         Consumer,
         Referral,
         ClientProfile,
+        ClientContactChangeLog,
     )
     from .verification_service import verification_service
     from .yelp_service import yelp_service, YelpAPIError
@@ -3761,6 +3763,242 @@ async def update_client_profile(
         "notes": notes_list,
         "created_at": profile.created_at.isoformat(),
         "updated_at": profile.updated_at.isoformat(),
+    }
+
+
+class UpdateClientContactRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@app.put("/professional/clients/{consumer_id}")
+async def update_client_contact(
+    consumer_id: int,
+    request: UpdateClientContactRequest,
+    specialist_id: int = Query(..., description="Specialist ID"),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a client's contact information (name, email, phone).
+    Professionals can fix invalid or outdated contact details.
+    At least one of email or phone must be provided.
+    All changes are logged in the changelog for audit purposes.
+    """
+    # Extract values from request body
+    name = request.name
+    email = request.email
+    phone = request.phone
+    
+    # Verify consumer exists
+    consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
+    if not consumer:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Verify this consumer is associated with the specialist (has bookings)
+    booking_exists = (
+        db.query(Booking)
+        .filter(
+            Booking.consumer_id == consumer_id,
+            Booking.specialist_id == specialist_id
+        )
+        .first()
+    )
+    if not booking_exists:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update contact info for your own clients"
+        )
+
+    # Validation: name is required
+    if name is not None:
+        name = name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+    else:
+        # Keep existing name if not provided
+        name = consumer.name
+
+    # Clean and validate email and phone
+    email_cleaned = email.strip() if email else ""
+    phone_cleaned = phone.strip() if phone else ""
+    
+    # If both are empty strings from the form, check if consumer has existing values
+    # At least one of email or phone must be present (either new or existing)
+    final_email = email_cleaned if email_cleaned else consumer.email
+    final_phone = phone_cleaned if phone_cleaned else consumer.phone
+    
+    if not final_email and not final_phone:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one of email or phone must be provided"
+        )
+
+    # Email validation - only validate if a new email was provided
+    if email_cleaned:
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email_cleaned):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+
+    # Phone validation (must be exactly 10 digits when cleaned) - only validate if new phone provided
+    if phone_cleaned:
+        # Extract digits only
+        digits_only = re.sub(r'\D', '', phone_cleaned)
+        if len(digits_only) != 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone must be exactly 10 digits"
+            )
+        # Store as 10 digits only (no formatting)
+        phone_cleaned = digits_only
+    
+    # Use existing values if not provided in the update
+    if not email_cleaned:
+        email_cleaned = consumer.email
+    if not phone_cleaned:
+        phone_cleaned = consumer.phone
+
+    # Track what changed - store old values before updating
+    changes = []
+    changes_dict = {}
+    
+    if name and name != consumer.name:
+        changes.append({
+            "field": "name",
+            "old_value": consumer.name,
+            "new_value": name
+        })
+        changes_dict["name"] = {"old": consumer.name, "new": name}
+    
+    if email_cleaned is not None and email_cleaned != consumer.email:
+        changes.append({
+            "field": "email",
+            "old_value": consumer.email,
+            "new_value": email_cleaned
+        })
+        changes_dict["email"] = {"old": consumer.email, "new": email_cleaned}
+    
+    if phone_cleaned is not None and phone_cleaned != consumer.phone:
+        changes.append({
+            "field": "phone",
+            "old_value": consumer.phone,
+            "new_value": phone_cleaned
+        })
+        changes_dict["phone"] = {"old": consumer.phone, "new": phone_cleaned}
+
+    # Update consumer fields (always update to ensure consistency)
+    if name:
+        consumer.name = name
+    consumer.email = email_cleaned
+    consumer.phone = phone_cleaned
+    
+    # Only update timestamp if there were actual changes
+    if changes:
+        consumer.updated_at = datetime.now(timezone.utc)
+
+    try:
+        # Create changelog entries only if there were changes
+        if changes:
+            for change in changes:
+                changelog_entry = ClientContactChangeLog(
+                    consumer_id=consumer_id,
+                    specialist_id=specialist_id,
+                    field_changed=change["field"],
+                    old_value=change["old_value"],
+                    new_value=change["new_value"],
+                    changes_json=json.dumps(changes_dict) if len(changes) > 1 else None,
+                    changed_at=datetime.now(timezone.utc)
+                )
+                db.add(changelog_entry)
+        
+        # Always commit to persist consumer field updates
+        db.commit()
+        db.refresh(consumer)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return {
+        "success": True,
+        "message": "Contact information updated successfully" if changes else "No changes detected",
+        "changes_made": len(changes),
+        "consumer": {
+            "id": consumer.id,
+            "name": consumer.name,
+            "email": consumer.email,
+            "phone": consumer.phone,
+        }
+    }
+
+
+@app.get("/professional/clients/{consumer_id}/changelog")
+async def get_client_changelog(
+    consumer_id: int,
+    specialist_id: int = Query(..., description="Specialist ID"),
+    limit: int = Query(50, description="Maximum number of entries to return"),
+    db: Session = Depends(get_db),
+):
+    """
+    Get the changelog history for a client's contact information.
+    Shows all edits made by the professional, including what changed and when.
+    """
+    # Verify consumer exists
+    consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
+    if not consumer:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Verify this consumer is associated with the specialist
+    booking_exists = (
+        db.query(Booking)
+        .filter(
+            Booking.consumer_id == consumer_id,
+            Booking.specialist_id == specialist_id
+        )
+        .first()
+    )
+    if not booking_exists:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only view changelog for your own clients"
+        )
+
+    # Get changelog entries, most recent first
+    changelog_entries = (
+        db.query(ClientContactChangeLog)
+        .filter(
+            ClientContactChangeLog.consumer_id == consumer_id,
+            ClientContactChangeLog.specialist_id == specialist_id
+        )
+        .order_by(ClientContactChangeLog.changed_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Format the response
+    history = []
+    for entry in changelog_entries:
+        history_item = {
+            "id": entry.id,
+            "field_changed": entry.field_changed,
+            "old_value": entry.old_value,
+            "new_value": entry.new_value,
+            "changed_at": entry.changed_at.isoformat(),
+        }
+        
+        # Include multiple changes if this was part of a bulk update
+        if entry.changes_json:
+            try:
+                history_item["all_changes"] = json.loads(entry.changes_json)
+            except:
+                pass
+        
+        history.append(history_item)
+
+    return {
+        "consumer_id": consumer_id,
+        "consumer_name": consumer.name,
+        "total_changes": len(history),
+        "history": history
     }
 
 
