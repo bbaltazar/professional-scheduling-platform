@@ -404,23 +404,30 @@ class ClientContactChangeLog(Base):
     Audit log for tracking changes to client contact information.
     Records who changed what, when, and what the values were before/after.
     """
+
     __tablename__ = "client_contact_changelog"
 
     id = Column(Integer, primary_key=True, index=True)
-    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=False, index=True)
-    specialist_id = Column(Integer, ForeignKey("specialists.id"), nullable=False, index=True)
-    
+    consumer_id = Column(
+        Integer, ForeignKey("consumers.id"), nullable=False, index=True
+    )
+    specialist_id = Column(
+        Integer, ForeignKey("specialists.id"), nullable=False, index=True
+    )
+
     # What changed
-    field_changed = Column(String, nullable=False)  # 'name', 'email', 'phone', or 'multiple'
+    field_changed = Column(
+        String, nullable=False
+    )  # 'name', 'email', 'phone', or 'multiple'
     old_value = Column(String, nullable=True)
     new_value = Column(String, nullable=True)
-    
+
     # Additional context for bulk changes
     changes_json = Column(Text, nullable=True)  # JSON with multiple field changes
-    
+
     # When it happened
     changed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    
+
     # Relationships
     consumer = relationship("Consumer")
     specialist = relationship("Specialist")

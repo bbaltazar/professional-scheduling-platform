@@ -1279,7 +1279,8 @@
                             </div>
                             <div class="form-group">
                                 <label for="regPhone">Contact Number (Optional)</label>
-                                <input type="tel" id="regPhone" name="phone" placeholder="(555) 555-5555 or 5555555555" maxlength="14">
+                                <input type="tel" id="regPhone" name="phone" placeholder="(555) 555-5555 or 5555555555"
+                                    maxlength="14">
                             </div>
                         </div>
                         <button type="button" class="btn" onclick="registerUser()"
@@ -1739,7 +1740,8 @@
                         <button class="btn btn-accent" onclick="openCsvUploadModal()" style="padding: 12px 24px;">
                             <span style="margin-right: 4px;">📤</span> Upload Client List
                         </button>
-                        <button class="btn btn-outline" id="editModeBtn" onclick="toggleEditMode()" style="padding: 12px 24px;">
+                        <button class="btn btn-outline" id="editModeBtn" onclick="toggleEditMode()"
+                            style="padding: 12px 24px;">
                             <span style="margin-right: 4px;">✏️</span> Edit Clients
                         </button>
                     </div>
@@ -1753,21 +1755,27 @@
                                 <input type="checkbox" id="selectAllClients" onchange="toggleSelectAll()"
                                     style="width: 18px; height: 18px; cursor: pointer;">
                                 <label for="selectAllClients"
-                                    style="color: rgba(255, 255, 255, 0.9); cursor: pointer; font-weight: 500;">Select All</label>
-                                <span id="selectedCount" style="color: var(--color-accent); margin-left: 10px; font-weight: 600;">0
+                                    style="color: rgba(255, 255, 255, 0.9); cursor: pointer; font-weight: 500;">Select
+                                    All</label>
+                                <span id="selectedCount"
+                                    style="color: var(--color-accent); margin-left: 10px; font-weight: 600;">0
                                     selected</span>
                             </div>
                             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn btn-accent" onclick="bulkFavorite()" disabled id="bulkFavoriteBtn" style="padding: 10px 20px;">
+                                <button class="btn btn-accent" onclick="bulkFavorite()" disabled id="bulkFavoriteBtn"
+                                    style="padding: 10px 20px;">
                                     ⭐ Favorite
                                 </button>
-                                <button class="btn btn-outline" onclick="bulkUnfavorite()" disabled id="bulkUnfavoriteBtn" style="padding: 10px 20px;">
+                                <button class="btn btn-outline" onclick="bulkUnfavorite()" disabled
+                                    id="bulkUnfavoriteBtn" style="padding: 10px 20px;">
                                     ☆ Unfavorite
                                 </button>
-                                <button class="btn btn-outline" onclick="bulkMessage()" disabled id="bulkMessageBtn" style="padding: 10px 20px;">
+                                <button class="btn btn-outline" onclick="bulkMessage()" disabled id="bulkMessageBtn"
+                                    style="padding: 10px 20px;">
                                     💬 Message
                                 </button>
-                                <button class="btn btn-danger" onclick="bulkDeleteClients()" disabled id="bulkDeleteBtn" style="padding: 10px 20px;">
+                                <button class="btn btn-danger" onclick="bulkDeleteClients()" disabled id="bulkDeleteBtn"
+                                    style="padding: 10px 20px;">
                                     🗑️ Delete
                                 </button>
                                 <button class="btn btn-outline" onclick="toggleEditMode()" style="padding: 10px 20px;">
@@ -1807,90 +1815,115 @@
             </div>
 
             <!-- Client Detail Modal -->
-                        <div id="clientModal" class="modal" style="display:none;">
-                            <div class="modal-content" style="max-width:960px; max-height:90vh; overflow-y:auto;">
-                                <button class="modal-close" aria-label="Close client details" onclick="closeClientModal()">×</button>
-                                <h2 id="modalClientName" class="font-display" style="margin:0 0 28px; font-size:1.9rem; letter-spacing:.5px; background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover)); -webkit-background-clip:text; color:transparent;">Client Details</h2>
+            <div id="clientModal" class="modal" style="display:none;">
+                <div class="modal-content" style="max-width:960px; max-height:90vh; overflow-y:auto;">
+                    <button class="modal-close" aria-label="Close client details"
+                        onclick="closeClientModal()">×</button>
+                    <h2 id="modalClientName" class="font-display"
+                        style="margin:0 0 28px; font-size:1.9rem; letter-spacing:.5px; background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover)); -webkit-background-clip:text; color:transparent;">
+                        Client Details</h2>
 
-                                <!-- Contact Information - Editable -->
-                                <section class="card" style="margin-bottom:30px;">
-                                    <h3 style="margin:0 0 16px 0; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">Contact Information</h3>
-                                    
-                                    <!-- Simple form - always visible -->
-                                    <div style="display: grid; gap: 14px;">
-                                        <div class="form-group">
-                                            <label for="clientName">Name *</label>
-                                            <input type="text" id="clientName" placeholder="Client name" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="clientEmail">Email</label>
-                                            <input type="email" id="clientEmail" placeholder="client@example.com">
-                                            <span style="font-size: 0.7rem; color: var(--color-text-tertiary); margin-top: 2px; display: block;">Email or Phone required</span>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="clientPhone">Phone</label>
-                                            <input type="tel" id="clientPhone" placeholder="(555) 123-4567">
-                                            <span style="font-size: 0.7rem; color: var(--color-text-tertiary); margin-top: 2px; display: block;">10 digits, will be auto-formatted</span>
-                                        </div>
-                                    </div>
-                                </section>
+                    <!-- Contact Information - Editable -->
+                    <section class="card" style="margin-bottom:30px;">
+                        <h3
+                            style="margin:0 0 16px 0; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">
+                            Contact Information</h3>
 
-                                <!-- Stats Grid -->
-                                <section class="card" style="margin-bottom:30px;">
-                                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:18px;">
-                                        <div>
-                                            <div class="muted" style="margin-bottom:4px;">Client Since</div>
-                                            <div id="modalClientSince">-</div>
-                                        </div>
-                                        <div>
-                                            <div class="muted" style="margin-bottom:4px;">Total Revenue</div>
-                                            <div id="modalClientRevenue">-</div>
-                                        </div>
-                                    </div>
-                                </section>
+                        <!-- Simple form - always visible -->
+                        <div style="display: grid; gap: 14px;">
+                            <div class="form-group">
+                                <label for="clientName">Name *</label>
+                                <input type="text" id="clientName" placeholder="Client name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="clientEmail">Email</label>
+                                <input type="email" id="clientEmail" placeholder="client@example.com">
+                                <span
+                                    style="font-size: 0.7rem; color: var(--color-text-tertiary); margin-top: 2px; display: block;">Email
+                                    or Phone required</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="clientPhone">Phone</label>
+                                <input type="tel" id="clientPhone" placeholder="(555) 123-4567">
+                                <span
+                                    style="font-size: 0.7rem; color: var(--color-text-tertiary); margin-top: 2px; display: block;">10
+                                    digits, will be auto-formatted</span>
+                            </div>
+                        </div>
+                    </section>
 
-                                <!-- Contact Edit History -->
-                                <section class="card" id="changelogSection" style="margin-bottom:30px; display:none;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                                        <h3 style="margin:0; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">📝 Edit History</h3>
-                                        <button class="btn btn-outline" onclick="toggleChangelog()" style="padding: 6px 14px; font-size: 0.8rem;">
-                                            Hide
-                                        </button>
-                                    </div>
-                                    <p style="color: var(--color-text-tertiary); font-size: 0.75rem; margin-bottom: 12px;">Track of all contact information changes</p>
-                                    <div id="changelogList" style="max-height: 300px; overflow-y: auto;"></div>
-                                </section>
+                    <!-- Stats Grid -->
+                    <section class="card" style="margin-bottom:30px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:18px;">
+                            <div>
+                                <div class="muted" style="margin-bottom:4px;">Client Since</div>
+                                <div id="modalClientSince">-</div>
+                            </div>
+                            <div>
+                                <div class="muted" style="margin-bottom:4px;">Total Revenue</div>
+                                <div id="modalClientRevenue">-</div>
+                            </div>
+                        </div>
+                    </section>
 
-                                <!-- Profile Notes -->
-                                <section class="card" style="margin-bottom:30px;">
-                                    <h3 style="margin:0 0 16px; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">Client Profile</h3>
-                                    <div class="form-group" style="margin-bottom:16px;">
-                                        <label for="modalClientBio">Your Notes About This Client</label>
-                                        <textarea id="modalClientBio" rows="3" placeholder="Add your notes about this client..."></textarea>
-                                    </div>
-                                    <div class="flex" style="gap:12px; margin-top:4px;">
-                                        <button class="btn btn-danger" style="flex:0 0 auto;" onclick="confirmDeleteClient()">🗑️ Delete Client</button>
-                                    </div>
-                                </section>
+                    <!-- Contact Edit History -->
+                    <section class="card" id="changelogSection" style="margin-bottom:30px; display:none;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <h3
+                                style="margin:0; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">
+                                📝 Edit History</h3>
+                            <button class="btn btn-outline" onclick="toggleChangelog()"
+                                style="padding: 6px 14px; font-size: 0.8rem;">
+                                Hide
+                            </button>
+                        </div>
+                        <p style="color: var(--color-text-tertiary); font-size: 0.75rem; margin-bottom: 12px;">Track of
+                            all contact information changes</p>
+                        <div id="changelogList" style="max-height: 300px; overflow-y: auto;"></div>
+                    </section>
 
-                                <!-- Appointment Notes -->
-                                <section class="card" style="margin-bottom:30px;">
-                                    <h3 style="margin:0 0 16px; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">Quick Note</h3>
-                                    <p style="color: var(--color-text-tertiary); font-size: 0.75rem; margin-bottom: 12px;">Add a general note about this client (not tied to a specific appointment)</p>
-                                    <div class="flex-col" style="gap:10px; margin-bottom:10px;">
-                                        <textarea id="newAppointmentNote" rows="2" placeholder="Add a general note about this client..."></textarea>
-                                        <button class="btn btn-outline" onclick="addAppointmentNote()">Add Note</button>
-                                    </div>
-                                    <div id="appointmentNotesList" style="margin-top:12px;"></div>
-                                </section>
+                    <!-- Profile Notes -->
+                    <section class="card" style="margin-bottom:30px;">
+                        <h3
+                            style="margin:0 0 16px; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">
+                            Client Profile</h3>
+                        <div class="form-group" style="margin-bottom:16px;">
+                            <label for="modalClientBio">Your Notes About This Client</label>
+                            <textarea id="modalClientBio" rows="3"
+                                placeholder="Add your notes about this client..."></textarea>
+                        </div>
+                        <div class="flex" style="gap:12px; margin-top:4px;">
+                            <button class="btn btn-danger" style="flex:0 0 auto;" onclick="confirmDeleteClient()">🗑️
+                                Delete Client</button>
+                        </div>
+                    </section>
 
-                                <!-- Save & Close Button -->
-                                <div style="position: sticky; bottom: 0; background: var(--color-bg-elevated); padding: 16px 0; margin: 20px 0; border-top: 2px solid var(--color-border); z-index: 10;">
-                                    <button class="btn btn-accent" onclick="saveAllAndClose()" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 600;">
-                                        💾 Save & Close
-                                    </button>
-                                    <div id="saveAllMessage" class="muted" style="margin-top:10px; text-align: center;" aria-live="polite"></div>
-                                </div>
+                    <!-- Appointment Notes -->
+                    <section class="card" style="margin-bottom:30px;">
+                        <h3
+                            style="margin:0 0 16px; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">
+                            Quick Note</h3>
+                        <p style="color: var(--color-text-tertiary); font-size: 0.75rem; margin-bottom: 12px;">Add a
+                            general note about this client (not tied to a specific appointment)</p>
+                        <div class="flex-col" style="gap:10px; margin-bottom:10px;">
+                            <textarea id="newAppointmentNote" rows="2"
+                                placeholder="Add a general note about this client..."></textarea>
+                            <button class="btn btn-outline" onclick="addAppointmentNote()">Add Note</button>
+                        </div>
+                        <div id="appointmentNotesList" style="margin-top:12px;"></div>
+                    </section>
+
+                    <!-- Save & Close Button -->
+                    <div
+                        style="position: sticky; bottom: 0; background: var(--color-bg-elevated); padding: 16px 0; margin: 20px 0; border-top: 2px solid var(--color-border); z-index: 10;">
+                        <button class="btn btn-accent" onclick="saveAllAndClose()"
+                            style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 600;">
+                            💾 Save & Close
+                        </button>
+                        <div id="saveAllMessage" class="muted" style="margin-top:10px; text-align: center;"
+                            aria-live="polite"></div>
+                    </div>
 
                     <!-- Booking History -->
                     <div>
@@ -1908,7 +1941,9 @@
 
                         <!-- Past Appointments -->
                         <div>
-                            <h4 style="color: rgba(212, 175, 55, 0.9); margin-bottom: 15px;">Past Appointments <span style="font-size: 0.75rem; color: var(--color-text-tertiary); font-weight: 400; margin-left: 8px;">(Click to add notes)</span></h4>
+                            <h4 style="color: rgba(212, 175, 55, 0.9); margin-bottom: 15px;">Past Appointments <span
+                                    style="font-size: 0.75rem; color: var(--color-text-tertiary); font-weight: 400; margin-left: 8px;">(Click
+                                    to add notes)</span></h4>
                             <div id="modalPastBookings">
                                 <div style="color: rgba(212, 175, 55, 0.6); padding: 20px; text-align: center;">No past
                                     appointments</div>
@@ -1970,7 +2005,8 @@
                     <div
                         style="background: rgba(139, 168, 255, 0.08); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(139, 168, 255, 0.2);">
                         <p style="color: rgba(255, 255, 255, 0.9); margin-bottom: 15px; font-weight: 500;">
-                            <span style="color: var(--color-accent);">📋 Required Format:</span> Your CSV should include these columns:
+                            <span style="color: var(--color-accent);">📋 Required Format:</span> Your CSV should include
+                            these columns:
                         </p>
                         <div
                             style="background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; color: var(--color-accent); line-height: 1.6;">
@@ -1979,10 +2015,13 @@
                             <div>Jane Doe,jane@example.com,5550200</div>
                             <div>Bob Johnson,,5550300</div>
                         </div>
-                        <div style="margin-top: 16px; padding: 12px; background: rgba(139, 168, 255, 0.1); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+                        <div
+                            style="margin-top: 16px; padding: 12px; background: rgba(139, 168, 255, 0.1); border-radius: 8px; border-left: 3px solid var(--color-accent);">
                             <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; line-height: 1.5;">
-                                <div style="margin-bottom: 6px;"><strong style="color: var(--color-accent);">✓ Name</strong> — Required for all clients</div>
-                                <div><strong style="color: var(--color-accent);">✓ Email or Phone</strong> — At least one must be provided</div>
+                                <div style="margin-bottom: 6px;"><strong style="color: var(--color-accent);">✓
+                                        Name</strong> — Required for all clients</div>
+                                <div><strong style="color: var(--color-accent);">✓ Email or Phone</strong> — At least
+                                    one must be provided</div>
                             </div>
                         </div>
                     </div>
@@ -2033,17 +2072,17 @@
         {% endif %}
 
         // ==================== UTILITY FUNCTIONS ====================
-        
+
         // Normalize phone number to 10 digits
         function normalizePhone(phone) {
             if (!phone) return null;
-            
+
             // Remove all non-digit characters (parentheses, dashes, spaces, etc.)
             const digits = phone.replace(/\D/g, '');
-            
+
             // Remove leading 1 if present (country code)
             const normalized = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
-            
+
             // Return null if not exactly 10 digits
             return normalized.length === 10 ? normalized : null;
         }
@@ -2051,21 +2090,21 @@
         // Validate phone number
         function validatePhone(phone) {
             if (!phone) return { valid: true, normalized: null }; // Optional field
-            
+
             const normalized = normalizePhone(phone);
-            
+
             if (!normalized) {
-                return { 
-                    valid: false, 
-                    normalized: null, 
-                    error: 'Phone number must be exactly 10 digits' 
+                return {
+                    valid: false,
+                    normalized: null,
+                    error: 'Phone number must be exactly 10 digits'
                 };
             }
-            
+
             // Extract area code and exchange
             const areaCode = normalized.slice(0, 3);
             const exchange = normalized.slice(3, 6);
-            
+
             // Reject invalid area codes (cannot start with 0 or 1)
             if (areaCode[0] === '0' || areaCode[0] === '1') {
                 return {
@@ -2074,7 +2113,7 @@
                     error: 'Invalid area code (cannot start with 0 or 1)'
                 };
             }
-            
+
             // Reject 555 area code (directory assistance)
             if (areaCode === '555') {
                 return {
@@ -2083,7 +2122,7 @@
                     error: 'Invalid area code (555 is reserved)'
                 };
             }
-            
+
             // Reject fake exchange codes (555-XXXX pattern)
             if (exchange === '555') {
                 return {
@@ -2092,7 +2131,7 @@
                     error: 'Invalid phone number (555 exchange is reserved for fictional use)'
                 };
             }
-            
+
             // Reject all same digit (e.g., 1111111111)
             if (new Set(normalized).size === 1) {
                 return {
@@ -2101,7 +2140,7 @@
                     error: 'Invalid phone number (repeating digits)'
                 };
             }
-            
+
             // Reject sequential digits
             if (normalized === '1234567890' || normalized === '0123456789') {
                 return {
@@ -2110,7 +2149,7 @@
                     error: 'Invalid phone number (sequential digits)'
                 };
             }
-            
+
             // Reject common test numbers
             if (normalized === '0000000000' || normalized === '9999999999') {
                 return {
@@ -2119,7 +2158,7 @@
                     error: 'Invalid phone number (test number)'
                 };
             }
-            
+
             // Reject if area code and exchange are the same
             if (areaCode === exchange) {
                 return {
@@ -2128,7 +2167,7 @@
                     error: 'Invalid phone number (area code and exchange cannot match)'
                 };
             }
-            
+
             return { valid: true, normalized: normalized };
         }
 
@@ -2136,14 +2175,14 @@
         function formatPhone(phone) {
             const normalized = normalizePhone(phone);
             if (!normalized) return phone;
-            
+
             return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
         }
 
         // Format phone for display in table with validation check
         function formatPhoneForDisplay(phone) {
             if (!phone) return '—';
-            
+
             const validation = validatePhone(phone);
             if (validation.valid && validation.normalized) {
                 // Valid phone - format it nicely
@@ -2923,12 +2962,12 @@
 
             const startTime = formatTime(booking.start_time);
             const endTime = formatTime(booking.end_time);
-            
+
             // Format phone number for display
             const phoneDisplay = booking.client_phone ? formatPhoneForDisplay(booking.client_phone) : null;
-            const phoneHtml = phoneDisplay 
-                ? (typeof phoneDisplay === 'object' && phoneDisplay.isInvalid 
-                    ? `<span class="tag tag-danger">${phoneDisplay.formatted} (invalid)</span>` 
+            const phoneHtml = phoneDisplay
+                ? (typeof phoneDisplay === 'object' && phoneDisplay.isInvalid
+                    ? `<span class="tag tag-danger">${phoneDisplay.formatted} (invalid)</span>`
                     : `<span class="text-secondary" style="font-size:0.8rem;">${phoneDisplay}</span>`)
                 : '';
 
@@ -3767,7 +3806,7 @@
                 const hasPhoneIssue = typeof phoneDisplay === 'object' && phoneDisplay.isInvalid;
                 const phoneText = hasPhoneIssue ? phoneDisplay.formatted : phoneDisplay;
                 const phoneError = hasPhoneIssue ? phoneDisplay.error : null;
-                
+
                 const problemRowClass = hasPhoneIssue ? 'problem-row' : '';
                 // Build phone cell content (no emoji, elegant styling)
                 const phoneWarning = hasPhoneIssue ? ` <span class="tag tag-danger" style="margin-left:6px;" title="${phoneError}">Invalid</span>` : '';
@@ -3808,18 +3847,18 @@
                     const legend = document.createElement('div');
                     legend.className = 'muted';
                     legend.style.marginTop = '10px';
-                    legend.setAttribute('role','note');
-                    legend.setAttribute('aria-live','polite');
+                    legend.setAttribute('role', 'note');
+                    legend.setAttribute('aria-live', 'polite');
                     legend.innerHTML = '<span class="tag tag-danger" style="margin-right:6px;">Invalid</span> Rows with a red background have invalid phone numbers. <button class="btn btn-outline" style="padding:4px 10px; font-size:0.55rem; letter-spacing:.5px; margin-left:8px;" onclick="dismissInvalidLegend(this)">Dismiss</button>';
                     container.appendChild(legend);
                 }
             }
         }
 
-        function dismissInvalidLegend(button){
-            localStorage.setItem('dismissInvalidPhoneLegend','true');
+        function dismissInvalidLegend(button) {
+            localStorage.setItem('dismissInvalidPhoneLegend', 'true');
             const wrapper = button.closest('div');
-            if(wrapper){ wrapper.remove(); }
+            if (wrapper) { wrapper.remove(); }
         }
 
         // Render skeleton loader for clients table
@@ -4203,12 +4242,12 @@
 
             // Set header info
             document.getElementById('modalClientName').textContent = client.consumer.name;
-            
+
             // Populate contact form fields
             document.getElementById('clientName').value = client.consumer.name || '';
             document.getElementById('clientEmail').value = client.consumer.email || '';
             document.getElementById('clientPhone').value = client.consumer.phone || '';
-            
+
             document.getElementById('modalClientSince').textContent = client.first_booking_date ?
                 new Date(client.first_booking_date).toLocaleDateString() : 'Unknown';
             document.getElementById('modalClientRevenue').textContent = `$${client.total_revenue.toFixed(2)}`;
@@ -4435,7 +4474,7 @@
 
                 // 2. Save profile info
                 const bio = document.getElementById('modalClientBio').value.trim();
-                
+
                 const profileResponse = await fetch(
                     `/professional/clients/${currentClientDetail.consumer.id}/profile?specialist_id=${currentSpecialistId}`,
                     {
@@ -4533,7 +4572,7 @@
             const noteSection = document.getElementById(`note-section-${bookingId}`);
             const noteDisplay = document.getElementById(`note-display-${bookingId}`);
             const noteInput = document.getElementById(`note-input-${bookingId}`);
-            
+
             if (noteSection.style.display === 'none' || noteSection.style.display === '') {
                 noteSection.style.display = 'block';
                 // Focus on textarea after a brief delay to ensure it's visible
@@ -4608,38 +4647,38 @@
 
             try {
                 const response = await fetch(`/professional/clients/${currentClientDetail.consumer.id}/changelog?specialist_id=${currentSpecialistId}&limit=20`);
-                
+
                 if (!response.ok) {
                     console.error('Failed to load changelog');
                     return;
                 }
 
                 const data = await response.json();
-                
+
                 // Show/hide the section based on whether there's history
                 const section = document.getElementById('changelogSection');
                 const listDiv = document.getElementById('changelogList');
-                
+
                 if (data.total_changes === 0) {
                     section.style.display = 'none';
                     return;
                 }
 
                 section.style.display = 'block';
-                
+
                 // Build the changelog HTML
                 let html = '';
                 data.history.forEach(entry => {
                     const date = new Date(entry.changed_at);
                     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                    
+
                     const fieldLabel = {
                         'name': 'Name',
                         'email': 'Email',
                         'phone': 'Phone'
                     }[entry.field_changed] || entry.field_changed;
-                    
+
                     html += `
                         <div style="padding: 12px; background: var(--color-bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--color-accent);">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
@@ -4659,7 +4698,7 @@
                         </div>
                     `;
                 });
-                
+
                 listDiv.innerHTML = html;
 
             } catch (error) {

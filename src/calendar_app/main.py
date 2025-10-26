@@ -923,8 +923,8 @@ async def send_verification_code(
         normalized_phone = normalize_phone(request.phone)
         if not normalized_phone:
             raise HTTPException(
-                status_code=400, 
-                detail="Invalid phone number. Must be a valid 10-digit US phone number."
+                status_code=400,
+                detail="Invalid phone number. Must be a valid 10-digit US phone number.",
             )
         request.phone = normalized_phone
 
@@ -2058,7 +2058,7 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
             if not normalized_phone:
                 raise HTTPException(
                     status_code=400,
-                    detail="Invalid phone number. Must be a valid 10-digit US phone number."
+                    detail="Invalid phone number. Must be a valid 10-digit US phone number.",
                 )
             booking.client_phone = normalized_phone
 
@@ -3241,55 +3241,55 @@ def normalize_phone(phone):
     """
     if not phone:
         return None
-    
+
     # Remove all non-digit characters
     digits = "".join(c for c in phone if c.isdigit())
-    
+
     # Remove leading 1 if present (country code) and we have 11 digits
-    if digits.startswith('1') and len(digits) == 11:
+    if digits.startswith("1") and len(digits) == 11:
         digits = digits[1:]
-    
+
     # Return None if not exactly 10 digits
     if len(digits) != 10:
         return None
-    
+
     # Extract area code and exchange (first 6 digits)
     area_code = digits[0:3]
     exchange = digits[3:6]
-    
+
     # Reject invalid area codes
     # Area codes cannot start with 0 or 1
-    if area_code[0] in ('0', '1'):
+    if area_code[0] in ("0", "1"):
         return None
-    
+
     # Reject reserved/invalid area codes
     # 555 area code is reserved for directory assistance
-    if area_code == '555':
+    if area_code == "555":
         return None
-    
+
     # Reject fake exchange codes (555-XXXX pattern)
     # Exchange 555 (digits 4-6) is reserved for fictional use
-    if exchange == '555':
+    if exchange == "555":
         return None
-    
+
     # Reject obviously fake patterns
     # All same digit (e.g., 1111111111, 2222222222)
     if len(set(digits)) == 1:
         return None
-    
+
     # Sequential digits (e.g., 1234567890, 0123456789)
-    if digits in ('1234567890', '0123456789'):
+    if digits in ("1234567890", "0123456789"):
         return None
-    
+
     # Reject common test numbers
     # 0000000000, 9999999999
-    if digits in ('0000000000', '9999999999'):
+    if digits in ("0000000000", "9999999999"):
         return None
-    
+
     # Reject if area code and exchange are the same (e.g., 555-555-XXXX)
     if area_code == exchange:
         return None
-    
+
     return digits
 
 
@@ -3328,8 +3328,7 @@ def find_matching_consumers(
 
     # Sort by most recent first (updated_at DESC, then created_at DESC)
     matching_consumers.sort(
-        key=lambda c: (c.updated_at or c.created_at or datetime.min),
-        reverse=True
+        key=lambda c: (c.updated_at or c.created_at or datetime.min), reverse=True
     )
 
     return matching_consumers
@@ -3453,12 +3452,12 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
         # Calculate stats
         total_bookings = len(client_bookings)
         sorted_bookings = sorted(client_bookings, key=lambda b: b.date)
-        
+
         # Separate past and future
         today = date.today()
         past_bookings = [b for b in sorted_bookings if b.date < today]
         future_bookings = [b for b in sorted_bookings if b.date >= today]
-        
+
         # Last booking should be the most recent PAST booking
         last_booking = past_bookings[-1] if past_bookings else None
         next_booking = future_bookings[0] if future_bookings else None
@@ -3789,7 +3788,7 @@ async def update_client_contact(
     name = request.name
     email = request.email
     phone = request.phone
-    
+
     # Verify consumer exists
     consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
     if not consumer:
@@ -3799,15 +3798,14 @@ async def update_client_contact(
     booking_exists = (
         db.query(Booking)
         .filter(
-            Booking.consumer_id == consumer_id,
-            Booking.specialist_id == specialist_id
+            Booking.consumer_id == consumer_id, Booking.specialist_id == specialist_id
         )
         .first()
     )
     if not booking_exists:
         raise HTTPException(
             status_code=403,
-            detail="You can only update contact info for your own clients"
+            detail="You can only update contact info for your own clients",
         )
 
     # Validation: name is required
@@ -3822,36 +3820,34 @@ async def update_client_contact(
     # Clean and validate email and phone
     email_cleaned = email.strip() if email else ""
     phone_cleaned = phone.strip() if phone else ""
-    
+
     # If both are empty strings from the form, check if consumer has existing values
     # At least one of email or phone must be present (either new or existing)
     final_email = email_cleaned if email_cleaned else consumer.email
     final_phone = phone_cleaned if phone_cleaned else consumer.phone
-    
+
     if not final_email and not final_phone:
         raise HTTPException(
-            status_code=400,
-            detail="At least one of email or phone must be provided"
+            status_code=400, detail="At least one of email or phone must be provided"
         )
 
     # Email validation - only validate if a new email was provided
     if email_cleaned:
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if not re.match(email_pattern, email_cleaned):
             raise HTTPException(status_code=400, detail="Invalid email format")
 
     # Phone validation (must be exactly 10 digits when cleaned) - only validate if new phone provided
     if phone_cleaned:
         # Extract digits only
-        digits_only = re.sub(r'\D', '', phone_cleaned)
+        digits_only = re.sub(r"\D", "", phone_cleaned)
         if len(digits_only) != 10:
             raise HTTPException(
-                status_code=400,
-                detail="Phone must be exactly 10 digits"
+                status_code=400, detail="Phone must be exactly 10 digits"
             )
         # Store as 10 digits only (no formatting)
         phone_cleaned = digits_only
-    
+
     # Use existing values if not provided in the update
     if not email_cleaned:
         email_cleaned = consumer.email
@@ -3861,29 +3857,21 @@ async def update_client_contact(
     # Track what changed - store old values before updating
     changes = []
     changes_dict = {}
-    
+
     if name and name != consumer.name:
-        changes.append({
-            "field": "name",
-            "old_value": consumer.name,
-            "new_value": name
-        })
+        changes.append({"field": "name", "old_value": consumer.name, "new_value": name})
         changes_dict["name"] = {"old": consumer.name, "new": name}
-    
+
     if email_cleaned is not None and email_cleaned != consumer.email:
-        changes.append({
-            "field": "email",
-            "old_value": consumer.email,
-            "new_value": email_cleaned
-        })
+        changes.append(
+            {"field": "email", "old_value": consumer.email, "new_value": email_cleaned}
+        )
         changes_dict["email"] = {"old": consumer.email, "new": email_cleaned}
-    
+
     if phone_cleaned is not None and phone_cleaned != consumer.phone:
-        changes.append({
-            "field": "phone",
-            "old_value": consumer.phone,
-            "new_value": phone_cleaned
-        })
+        changes.append(
+            {"field": "phone", "old_value": consumer.phone, "new_value": phone_cleaned}
+        )
         changes_dict["phone"] = {"old": consumer.phone, "new": phone_cleaned}
 
     # Update consumer fields (always update to ensure consistency)
@@ -3891,7 +3879,7 @@ async def update_client_contact(
         consumer.name = name
     consumer.email = email_cleaned
     consumer.phone = phone_cleaned
-    
+
     # Only update timestamp if there were actual changes
     if changes:
         consumer.updated_at = datetime.now(timezone.utc)
@@ -3907,10 +3895,10 @@ async def update_client_contact(
                     old_value=change["old_value"],
                     new_value=change["new_value"],
                     changes_json=json.dumps(changes_dict) if len(changes) > 1 else None,
-                    changed_at=datetime.now(timezone.utc)
+                    changed_at=datetime.now(timezone.utc),
                 )
                 db.add(changelog_entry)
-        
+
         # Always commit to persist consumer field updates
         db.commit()
         db.refresh(consumer)
@@ -3920,14 +3908,18 @@ async def update_client_contact(
 
     return {
         "success": True,
-        "message": "Contact information updated successfully" if changes else "No changes detected",
+        "message": (
+            "Contact information updated successfully"
+            if changes
+            else "No changes detected"
+        ),
         "changes_made": len(changes),
         "consumer": {
             "id": consumer.id,
             "name": consumer.name,
             "email": consumer.email,
             "phone": consumer.phone,
-        }
+        },
     }
 
 
@@ -3951,15 +3943,13 @@ async def get_client_changelog(
     booking_exists = (
         db.query(Booking)
         .filter(
-            Booking.consumer_id == consumer_id,
-            Booking.specialist_id == specialist_id
+            Booking.consumer_id == consumer_id, Booking.specialist_id == specialist_id
         )
         .first()
     )
     if not booking_exists:
         raise HTTPException(
-            status_code=403,
-            detail="You can only view changelog for your own clients"
+            status_code=403, detail="You can only view changelog for your own clients"
         )
 
     # Get changelog entries, most recent first
@@ -3967,7 +3957,7 @@ async def get_client_changelog(
         db.query(ClientContactChangeLog)
         .filter(
             ClientContactChangeLog.consumer_id == consumer_id,
-            ClientContactChangeLog.specialist_id == specialist_id
+            ClientContactChangeLog.specialist_id == specialist_id,
         )
         .order_by(ClientContactChangeLog.changed_at.desc())
         .limit(limit)
@@ -3984,21 +3974,21 @@ async def get_client_changelog(
             "new_value": entry.new_value,
             "changed_at": entry.changed_at.isoformat(),
         }
-        
+
         # Include multiple changes if this was part of a bulk update
         if entry.changes_json:
             try:
                 history_item["all_changes"] = json.loads(entry.changes_json)
             except:
                 pass
-        
+
         history.append(history_item)
 
     return {
         "consumer_id": consumer_id,
         "consumer_name": consumer.name,
         "total_changes": len(history),
-        "history": history
+        "history": history,
     }
 
 
