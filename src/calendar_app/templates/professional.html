@@ -1228,7 +1228,7 @@
                     Welcome to your elite professional platform. Enter your email to continue.
                 </p>
 
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault(); proceedWithEmail();">
                     <!-- Simple Email Input -->
                     <div class="form-group" style="margin-bottom: 30px;">
                         <label for="userEmail"
@@ -1240,7 +1240,7 @@
 
                     <!-- Action Buttons -->
                     <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button type="button" class="btn" onclick="proceedWithEmail()"
+                        <button type="submit" class="btn"
                             style="flex: 1; min-width: 120px;">Next</button>
                         <button type="button" class="btn btn-add" onclick="showSignUp()"
                             style="flex: 1; min-width: 120px;">Sign Up</button>
@@ -1253,7 +1253,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="regName">Professional Name *</label>
-                                <input type="text" id="regName" name="name" required
+                                <input type="text" id="regName" name="name"
                                     placeholder="Dr. Alexandra Sterling">
                             </div>
                             <div class="form-group">
@@ -2279,6 +2279,35 @@
             // Load existing services and availability if user is authenticated
             if (currentSpecialistId) {
                 loadExistingData();
+            }
+
+            // Add Enter key support for login form
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                console.log('Login form found, adding submit listener');
+                loginForm.addEventListener('submit', function(event) {
+                    console.log('Form submit event triggered');
+                    event.preventDefault();
+                    proceedWithEmail();
+                });
+            } else {
+                console.log('Login form NOT found');
+            }
+
+            // Also add keypress listener directly to email input
+            const emailInput = document.getElementById('userEmail');
+            if (emailInput) {
+                console.log('Email input found, adding keypress listener');
+                emailInput.addEventListener('keypress', function(event) {
+                    console.log('Key pressed:', event.key);
+                    if (event.key === 'Enter') {
+                        console.log('Enter key detected, calling proceedWithEmail');
+                        event.preventDefault();
+                        proceedWithEmail();
+                    }
+                });
+            } else {
+                console.log('Email input NOT found');
             }
         });
 
