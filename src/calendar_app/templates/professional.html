@@ -801,6 +801,195 @@
             border-color: #D4AF37;
         }
 
+        /* Weekly Calendar Styles */
+        .calendar-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .weekly-calendar {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .time-column {
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .time-header {
+            height: 50px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .time-label {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding-right: 12px;
+            padding-top: 0;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        .day-column {
+            background: rgba(255, 255, 255, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .day-header {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #FFD700;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        .time-slots {
+            position: relative;
+            height: 680px;
+            background: 
+                repeating-linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.05) 0px,
+                    rgba(255, 255, 255, 0.05) 1px,
+                    transparent 1px,
+                    transparent 20px,
+                    rgba(255, 255, 255, 0.15) 20px,
+                    rgba(255, 255, 255, 0.15) 21px,
+                    transparent 21px,
+                    transparent 40px
+                );
+            min-height: 200px;
+            transition: height 0.3s ease;
+        }
+
+        .time-slot {
+            position: absolute;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.7), rgba(255, 165, 0, 0.7));
+            border: 2px solid #FFD700;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #000;
+            overflow: hidden;
+        }
+
+        .time-slot:hover {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9));
+            transform: scale(1.02);
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        }
+
+        .time-slot .delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            z-index: 3;
+        }
+
+        .time-slot:hover .delete-btn {
+            display: flex;
+        }
+
+        .resize-handle {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: transparent;
+            cursor: ns-resize;
+            z-index: 2;
+            display: none;
+        }
+
+        .resize-handle-top {
+            top: -4px;
+        }
+
+        .resize-handle-bottom {
+            bottom: -4px;
+        }
+
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 2px;
+        }
+
+        .time-slot:hover .resize-handle {
+            display: block;
+        }
+
+        .time-slot.resizing {
+            opacity: 0.8;
+        }
+
+        .selection-preview {
+            position: absolute;
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px dashed #FFD700;
+            pointer-events: none;
+            border-radius: 6px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50px;
+            color: #FFD700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-small:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: #FFD700;
+        }
+
         .checkbox-label {
             display: flex;
             align-items: center;
@@ -1223,10 +1412,20 @@
             {% if not authenticated %}
             <!-- Simplified Login Section -->
             <div class="section" id="loginSection">
-                <h2><span class="section-icon"></span>Professional Access</h2>
-                <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 40px;">
+                <h2><span class="section-icon">🔐</span>Professional Access</h2>
+                <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 20px;">
                     Welcome to your elite professional platform. Enter your email to continue.
                 </p>
+                
+                <!-- Informational Box -->
+                <div style="background: rgba(255, 215, 0, 0.1); border-left: 4px solid #D4AF37; padding: 20px; margin-bottom: 30px; border-radius: 8px;">
+                    <p style="margin: 0; color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                        <strong>📧 How it works:</strong><br>
+                        • If you have an existing account, we'll send a verification code to your email<br>
+                        • New to our platform? Click "Sign Up" to create your professional account<br>
+                        • Check your inbox and spam folder for the verification email
+                    </p>
+                </div>
 
                 <form id="loginForm" onsubmit="event.preventDefault(); proceedWithEmail();">
                     <!-- Simple Email Input -->
@@ -1479,56 +1678,169 @@
 
                 <!-- Recurring Schedule Section -->
                 <div class="section">
-                    <h2><span class="section-icon"></span>Recurring Schedule</h2>
-                    <p class="section-subtitle">Set up automatic availability patterns</p>
+                    <h2><span class="section-icon">📅</span>Weekly Recurring Schedule</h2>
+                    <p class="section-subtitle">Click and drag to set your weekly availability</p>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Schedule Type</label>
-                            <select id="recurrenceType" class="form-select">
-                                <option value="weekly">Weekly</option>
-                                <option value="daily">Daily</option>
-                            </select>
+                    <!-- Calendar Grid -->
+                    <div class="calendar-wrapper">
+                        <div class="calendar-controls" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                <button type="button" class="btn-small" onclick="clearWeeklySchedule()">🗑️ Clear All</button>
+                                <button type="button" class="btn-small" onclick="copyDaySchedule()">📋 Copy Day</button>
+                            </div>
+                            
+                            <!-- Time Range and Day Filters -->
+                            <div style="display: flex; flex-direction: column; gap: 15px; align-items: flex-end;">
+                                <!-- Time Range Filter -->
+                                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <label style="color: rgba(255,255,255,0.7); font-size: 0.9rem; white-space: nowrap;">Time Range:</label>
+                                        <select id="timeRangeStart" onchange="updateCalendarView()" style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
+                                            <option value="0">12 AM</option>
+                                            <option value="1">1 AM</option>
+                                            <option value="2">2 AM</option>
+                                            <option value="3">3 AM</option>
+                                            <option value="4">4 AM</option>
+                                            <option value="5">5 AM</option>
+                                            <option value="6" selected>6 AM</option>
+                                            <option value="7">7 AM</option>
+                                            <option value="8">8 AM</option>
+                                            <option value="9">9 AM</option>
+                                            <option value="10">10 AM</option>
+                                            <option value="11">11 AM</option>
+                                            <option value="12">12 PM</option>
+                                            <option value="13">1 PM</option>
+                                            <option value="14">2 PM</option>
+                                            <option value="15">3 PM</option>
+                                            <option value="16">4 PM</option>
+                                            <option value="17">5 PM</option>
+                                            <option value="18">6 PM</option>
+                                            <option value="19">7 PM</option>
+                                            <option value="20">8 PM</option>
+                                            <option value="21">9 PM</option>
+                                            <option value="22">10 PM</option>
+                                            <option value="23">11 PM</option>
+                                        </select>
+                                        <span style="color: rgba(255,255,255,0.5);">to</span>
+                                        <select id="timeRangeEnd" onchange="updateCalendarView()" style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
+                                            <option value="1">1 AM</option>
+                                            <option value="2">2 AM</option>
+                                            <option value="3">3 AM</option>
+                                            <option value="4">4 AM</option>
+                                            <option value="5">5 AM</option>
+                                            <option value="6">6 AM</option>
+                                            <option value="7">7 AM</option>
+                                            <option value="8">8 AM</option>
+                                            <option value="9">9 AM</option>
+                                            <option value="10">10 AM</option>
+                                            <option value="11">11 AM</option>
+                                            <option value="12">12 PM</option>
+                                            <option value="13">1 PM</option>
+                                            <option value="14">2 PM</option>
+                                            <option value="15">3 PM</option>
+                                            <option value="16">4 PM</option>
+                                            <option value="17">5 PM</option>
+                                            <option value="18">6 PM</option>
+                                            <option value="19">7 PM</option>
+                                            <option value="20">8 PM</option>
+                                            <option value="21">9 PM</option>
+                                            <option value="22">10 PM</option>
+                                            <option value="23" selected>11 PM</option>
+                                            <option value="24">12 AM (next day)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Day Visibility Filter -->
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <label style="color: rgba(255,255,255,0.7); font-size: 0.9rem; white-space: nowrap;">Show Days:</label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle0" checked onchange="toggleDayVisibility(0)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Mon</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle1" checked onchange="toggleDayVisibility(1)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Tue</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle2" checked onchange="toggleDayVisibility(2)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Wed</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle3" checked onchange="toggleDayVisibility(3)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Thu</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle4" checked onchange="toggleDayVisibility(4)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Fri</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle5" checked onchange="toggleDayVisibility(5)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Sat</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle6" checked onchange="toggleDayVisibility(6)" style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Sun</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group" id="daysOfWeekGroup">
-                            <label>Days of Week</label>
-                            <div class="days-selector">
-                                <label class="day-option"><input type="checkbox" value="0"> Monday</label>
-                                <label class="day-option"><input type="checkbox" value="1"> Tuesday</label>
-                                <label class="day-option"><input type="checkbox" value="2"> Wednesday</label>
-                                <label class="day-option"><input type="checkbox" value="3"> Thursday</label>
-                                <label class="day-option"><input type="checkbox" value="4"> Friday</label>
-                                <label class="day-option"><input type="checkbox" value="5"> Saturday</label>
-                                <label class="day-option"><input type="checkbox" value="6"> Sunday</label>
+                        <div id="weeklyCalendar" class="weekly-calendar">
+                            <!-- Time labels column -->
+                            <div class="time-column" id="timeColumn">
+                                <div class="time-header"></div>
+                                <!-- Time labels will be dynamically generated -->
+                            </div>
+
+                            <!-- Day columns (Monday - Sunday) -->
+                            <div class="day-column" data-day="0">
+                                <div class="day-header">Monday</div>
+                                <div class="time-slots" data-day="0"></div>
+                            </div>
+                            <div class="day-column" data-day="1">
+                                <div class="day-header">Tuesday</div>
+                                <div class="time-slots" data-day="1"></div>
+                            </div>
+                            <div class="day-column" data-day="2">
+                                <div class="day-header">Wednesday</div>
+                                <div class="time-slots" data-day="2"></div>
+                            </div>
+                            <div class="day-column" data-day="3">
+                                <div class="day-header">Thursday</div>
+                                <div class="time-slots" data-day="3"></div>
+                            </div>
+                            <div class="day-column" data-day="4">
+                                <div class="day-header">Friday</div>
+                                <div class="time-slots" data-day="4"></div>
+                            </div>
+                            <div class="day-column" data-day="5">
+                                <div class="day-header">Saturday</div>
+                                <div class="time-slots" data-day="5"></div>
+                            </div>
+                            <div class="day-column" data-day="6">
+                                <div class="day-header">Sunday</div>
+                                <div class="time-slots" data-day="6"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Start Time</label>
-                            <input type="time" id="recurringStartTime" value="09:00">
+                    <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; gap: 10px;">
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">Effective Start Date</label>
+                                <input type="date" id="recurringStartDate" style="padding: 10px; font-size: 0.95rem;">
+                            </div>
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">End Date (Optional)</label>
+                                <input type="date" id="recurringEndDate" style="padding: 10px; font-size: 0.95rem;">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>End Time</label>
-                            <input type="time" id="recurringEndTime" value="17:00">
-                        </div>
+                        <button type="button" class="btn" onclick="saveWeeklySchedule()" style="min-width: 200px;">
+                            💾 Save Weekly Schedule
+                        </button>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Start Date</label>
-                            <input type="date" id="recurringStartDate">
-                        </div>
-                        <div class="form-group">
-                            <label>End Date (Optional)</label>
-                            <input type="date" id="recurringEndDate">
-                        </div>
-                    </div>
-
-                    <button type="button" class="btn" onclick="createRecurringSchedule()">Create Recurring
-                        Schedule</button>
                     <div id="recurringResponse" class="response"></div>
 
                     <!-- Existing Recurring Schedules -->
@@ -3092,6 +3404,617 @@
             const fullDay = document.getElementById('ptoFullDay').checked;
             const timeFields = document.getElementById('ptoTimeFields');
             timeFields.style.display = fullDay ? 'none' : 'grid';
+        }
+
+        // Weekly Calendar Drag & Drop Functionality
+        let weeklyScheduleData = {}; // {day: [{start: hour (decimal), end: hour (decimal)}]}
+        let isSelecting = false;
+        let isResizing = false;
+        let resizingDay = null;
+        let resizingIndex = null;
+        let resizingEdge = null; // 'top' or 'bottom'
+        let currentDay = null;
+        let startHour = null;
+        let previewElement = null;
+        let viewStartHour = 6; // Default view starts at 6 AM
+        let viewEndHour = 23; // Default view ends at 11 PM
+        const GRANULARITY_MINUTES = 5; // 5-minute increments
+        const GRANULARITY_HOURS = GRANULARITY_MINUTES / 60; // 0.0833... hours
+
+        // Initialize calendar on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWeeklyCalendar();
+        });
+
+        function initializeWeeklyCalendar() {
+            const calendar = document.getElementById('weeklyCalendar');
+            if (!calendar) return;
+
+            // Initialize schedule data for each day (midnight to midnight = 24 hours)
+            for (let day = 0; day < 7; day++) {
+                weeklyScheduleData[day] = [];
+            }
+
+            // Generate initial time labels
+            updateCalendarView();
+
+            // Add mouse event listeners to each day column
+            for (let day = 0; day < 7; day++) {
+                const slotsContainer = calendar.querySelector(`.time-slots[data-day="${day}"]`);
+                
+                // Add mouse event listeners
+                slotsContainer.addEventListener('mousedown', (e) => startSelection(e, day));
+                slotsContainer.addEventListener('mousemove', (e) => updateSelection(e, day));
+                slotsContainer.addEventListener('mouseup', (e) => endSelection(e, day));
+                slotsContainer.addEventListener('mouseleave', cancelSelection);
+            }
+
+            // Set default start date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('recurringStartDate').value = today;
+        }
+
+        function updateCalendarView() {
+            // Get selected time range
+            viewStartHour = parseInt(document.getElementById('timeRangeStart').value);
+            viewEndHour = parseInt(document.getElementById('timeRangeEnd').value);
+
+            // Validate range
+            if (viewEndHour <= viewStartHour) {
+                alert('End time must be after start time');
+                document.getElementById('timeRangeEnd').value = Math.min(viewStartHour + 8, 24); // Default to 8 hours
+                viewEndHour = parseInt(document.getElementById('timeRangeEnd').value);
+            }
+
+            // Keep constant height, adjust spacing per hour
+            const FIXED_HEIGHT = 680; // Fixed total height in pixels
+            const hoursInView = viewEndHour - viewStartHour;
+            const heightPerHour = FIXED_HEIGHT / hoursInView;
+
+            console.log('Calendar view update:', { 
+                viewStartHour, 
+                viewEndHour, 
+                hoursInView, 
+                heightPerHour,
+                FIXED_HEIGHT 
+            });
+
+            // Generate time labels with dynamic height
+            const timeColumn = document.getElementById('timeColumn');
+            timeColumn.innerHTML = '<div class="time-header"></div>';
+            
+            for (let hour = viewStartHour; hour < viewEndHour; hour++) {
+                const label = document.createElement('div');
+                label.className = 'time-label';
+                label.textContent = formatHour(hour);
+                label.style.height = heightPerHour + 'px';
+                timeColumn.appendChild(label);
+            }
+
+            // Set fixed height for time-slots containers
+            document.querySelectorAll('.time-slots').forEach(slots => {
+                slots.style.height = FIXED_HEIGHT + 'px';
+            });
+
+            // Update grid background to match new hour spacing
+            updateGridBackground(heightPerHour);
+
+            // Re-render all day schedules with new view
+            for (let day = 0; day < 7; day++) {
+                renderDaySchedule(day);
+            }
+        }
+
+        function updateGridBackground(heightPerHour) {
+            // Update the repeating grid to match the hour spacing
+            const halfHourHeight = heightPerHour / 2;
+            const gridPattern = `
+                repeating-linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.05) 0px,
+                    rgba(255, 255, 255, 0.05) 1px,
+                    transparent 1px,
+                    transparent ${halfHourHeight}px,
+                    rgba(255, 255, 255, 0.15) ${halfHourHeight}px,
+                    rgba(255, 255, 255, 0.15) ${halfHourHeight + 1}px,
+                    transparent ${halfHourHeight + 1}px,
+                    transparent ${heightPerHour}px
+                )
+            `;
+            
+            document.querySelectorAll('.time-slots').forEach(slots => {
+                slots.style.background = gridPattern;
+            });
+        }
+
+        function toggleDayVisibility(day) {
+            const checkbox = document.getElementById(`dayToggle${day}`);
+            const dayColumn = document.querySelector(`.day-column[data-day="${day}"]`);
+            
+            if (dayColumn) {
+                dayColumn.style.display = checkbox.checked ? 'flex' : 'none';
+            }
+            
+            // Recalculate grid layout based on visible days
+            updateGridLayout();
+        }
+
+        function updateGridLayout() {
+            const calendar = document.getElementById('weeklyCalendar');
+            const visibleDays = [];
+            
+            // Count visible day columns
+            for (let i = 0; i < 7; i++) {
+                const checkbox = document.getElementById(`dayToggle${i}`);
+                if (checkbox && checkbox.checked) {
+                    visibleDays.push(i);
+                }
+            }
+            
+            // Update grid-template-columns: 80px for time column + equal columns for visible days
+            const numVisibleDays = visibleDays.length;
+            if (numVisibleDays > 0) {
+                calendar.style.gridTemplateColumns = `80px repeat(${numVisibleDays}, 1fr)`;
+            } else {
+                // Show at least the time column
+                calendar.style.gridTemplateColumns = `80px`;
+            }
+        }
+
+        // Helper function to snap time to 5-minute increments
+        function snapToGranularity(timeInHours) {
+            // Convert to minutes, round to nearest 5 minutes, convert back to hours
+            const totalMinutes = timeInHours * 60;
+            const snappedMinutes = Math.round(totalMinutes / GRANULARITY_MINUTES) * GRANULARITY_MINUTES;
+            return snappedMinutes / 60;
+        }
+
+        // Helper function to snap time to 30-minute intervals (on the hour and half-hour)
+        function snapToHalfHour(timeInHours) {
+            // Convert to minutes, round to nearest 30 minutes, convert back to hours
+            const totalMinutes = timeInHours * 60;
+            const snappedMinutes = Math.round(totalMinutes / 30) * 30;
+            return snappedMinutes / 60;
+        }
+
+        // Helper function to format time with minutes
+        function formatTimeWithMinutes(timeInHours) {
+            const hours = Math.floor(timeInHours);
+            const minutes = Math.round((timeInHours - hours) * 60);
+            
+            if (hours === 24) return '12:00 AM';
+            
+            const period = hours >= 12 ? 'PM' : 'AM';
+            const displayHour = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+            const displayMinutes = minutes.toString().padStart(2, '0');
+            
+            if (minutes === 0) {
+                return `${displayHour} ${period}`;
+            }
+            return `${displayHour}:${displayMinutes} ${period}`;
+        }
+
+        function startSelection(e, day) {
+            if (e.target.classList.contains('delete-btn')) return;
+            if (e.target.classList.contains('resize-handle')) return;
+            if (e.target.classList.contains('time-slot')) {
+                // Clicked on existing block - do nothing, let hover show delete button
+                return;
+            }
+
+            isSelecting = true;
+            currentDay = day;
+            
+            const rect = e.currentTarget.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const hoursInView = viewEndHour - viewStartHour;
+            const rawHour = (y / rect.height) * hoursInView + viewStartHour;
+            startHour = snapToHalfHour(rawHour); // Snap to 30-minute intervals
+            
+            console.log('Click debug:', {
+                y,
+                rectHeight: rect.height,
+                hoursInView,
+                rawHour,
+                startHour,
+                viewStartHour,
+                viewEndHour
+            });
+
+            // Create preview element at snapped position
+            previewElement = document.createElement('div');
+            previewElement.className = 'selection-preview';
+            e.currentTarget.appendChild(previewElement);
+            
+            // Calculate snapped Y position for preview
+            const snappedY = ((startHour - viewStartHour) / hoursInView) * rect.height;
+            updatePreview(snappedY, snappedY, e.currentTarget);
+        }
+
+        function startResize(e, day, index, edge) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            isResizing = true;
+            resizingDay = day;
+            resizingIndex = index;
+            resizingEdge = edge;
+
+            // Add visual feedback
+            const blockEl = e.target.closest('.time-slot');
+            if (blockEl) {
+                blockEl.classList.add('resizing');
+            }
+
+            // Add global mouse event listeners
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', endResize);
+        }
+
+        function handleResize(e) {
+            if (!isResizing) return;
+
+            const slotsContainer = document.querySelector(`.time-slots[data-day="${resizingDay}"]`);
+            const rect = slotsContainer.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const hoursInView = viewEndHour - viewStartHour;
+            const rawHour = (y / rect.height) * hoursInView + viewStartHour;
+            
+            // Snap to 5-minute increments
+            const snappedHour = snapToGranularity(rawHour);
+            
+            // Clamp to valid range (0-24)
+            const clampedHour = Math.max(0, Math.min(24, snappedHour));
+
+            const block = weeklyScheduleData[resizingDay][resizingIndex];
+            const minBlockSize = 0.25; // 15 minutes minimum
+            
+            if (resizingEdge === 'top') {
+                // Resizing from top - adjust start time
+                // Ensure minimum block size
+                if (clampedHour < block.end - minBlockSize) {
+                    block.start = clampedHour;
+                }
+            } else if (resizingEdge === 'bottom') {
+                // Resizing from bottom - adjust end time
+                // Ensure minimum block size
+                if (clampedHour > block.start + minBlockSize) {
+                    block.end = clampedHour;
+                }
+            }
+
+            // Re-render the day to show updated block
+            renderDaySchedule(resizingDay);
+        }
+
+        function endResize(e) {
+            if (!isResizing) return;
+
+            isResizing = false;
+
+            // Merge overlapping blocks after resize
+            if (resizingDay !== null) {
+                mergeOverlappingBlocks(resizingDay);
+                renderDaySchedule(resizingDay);
+            }
+
+            resizingDay = null;
+            resizingIndex = null;
+            resizingEdge = null;
+
+            // Remove global event listeners
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', endResize);
+        }
+
+        function updateSelection(e, day) {
+            if (!isSelecting || currentDay !== day) return;
+
+            const rect = e.currentTarget.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const hoursInView = viewEndHour - viewStartHour;
+            
+            // Calculate the current mouse position in hours and snap it
+            const rawCurrentHour = (y / rect.height) * hoursInView + viewStartHour;
+            const currentHour = snapToHalfHour(rawCurrentHour);
+            
+            // Convert snapped times to pixel positions
+            const startY = ((startHour - viewStartHour) / hoursInView) * rect.height;
+            const endY = ((currentHour - viewStartHour) / hoursInView) * rect.height;
+            
+            updatePreview(startY, endY, e.currentTarget);
+        }
+
+        function updatePreview(startY, endY, container) {
+            if (!previewElement) return;
+
+            const top = Math.min(startY, endY);
+            const height = Math.abs(endY - startY);
+            
+            previewElement.style.top = top + 'px';
+            previewElement.style.height = Math.max(height, 20) + 'px';
+            previewElement.style.left = '2px';
+            previewElement.style.right = '2px';
+        }
+
+        function endSelection(e, day) {
+            if (!isSelecting || currentDay !== day) return;
+
+            const rect = e.currentTarget.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const hoursInView = viewEndHour - viewStartHour;
+            const rawEndHour = (y / rect.height) * hoursInView + viewStartHour;
+            let endHour = snapToHalfHour(rawEndHour); // Snap to 30-minute intervals
+
+            // Ensure at least 15 minute block (0.25 hours)
+            const minBlockSize = 0.25;
+            if (endHour <= startHour) {
+                endHour = startHour + minBlockSize;
+            } else if (endHour - startHour < minBlockSize) {
+                endHour = startHour + minBlockSize;
+            }
+
+            // Clamp to 24-hour range
+            endHour = Math.min(endHour, 24);
+
+            // Add to schedule data
+            weeklyScheduleData[day].push({
+                start: startHour,
+                end: endHour
+            });
+
+            // Merge overlapping blocks
+            mergeOverlappingBlocks(day);
+
+            // Render the block
+            renderDaySchedule(day);
+
+            // Clean up
+            isSelecting = false;
+            currentDay = null;
+            startHour = null;
+            if (previewElement) {
+                previewElement.remove();
+                previewElement = null;
+            }
+        }
+
+        function cancelSelection() {
+            if (previewElement) {
+                previewElement.remove();
+                previewElement = null;
+            }
+            isSelecting = false;
+            currentDay = null;
+            startHour = null;
+        }
+
+        function mergeOverlappingBlocks(day) {
+            const blocks = weeklyScheduleData[day];
+            if (blocks.length <= 1) return;
+
+            // Sort by start time
+            blocks.sort((a, b) => a.start - b.start);
+
+            // Merge overlapping
+            const merged = [blocks[0]];
+            for (let i = 1; i < blocks.length; i++) {
+                const current = blocks[i];
+                const last = merged[merged.length - 1];
+
+                if (current.start <= last.end) {
+                    // Overlapping, merge
+                    last.end = Math.max(last.end, current.end);
+                } else {
+                    merged.push(current);
+                }
+            }
+
+            weeklyScheduleData[day] = merged;
+        }
+
+        function renderDaySchedule(day) {
+            const slotsContainer = document.querySelector(`.time-slots[data-day="${day}"]`);
+            
+            // Clear existing blocks
+            slotsContainer.querySelectorAll('.time-slot').forEach(el => el.remove());
+
+            // Get container height - use fixed height to match updateCalendarView
+            const FIXED_HEIGHT = 680;
+            const totalHeight = parseFloat(slotsContainer.style.height) || FIXED_HEIGHT;
+            const hoursInView = viewEndHour - viewStartHour;
+            
+            console.log('Render day schedule:', {
+                day,
+                totalHeight,
+                hoursInView,
+                viewStartHour,
+                viewEndHour,
+                heightPerHour: totalHeight / hoursInView
+            });
+
+            // Render each block
+            weeklyScheduleData[day].forEach((block, index) => {
+                // Only show blocks that are at least partially visible in current view
+                if (block.end <= viewStartHour || block.start >= viewEndHour) {
+                    return; // Block is completely outside view
+                }
+
+                // Clamp block to visible range for display
+                const visibleStart = Math.max(block.start, viewStartHour);
+                const visibleEnd = Math.min(block.end, viewEndHour);
+
+                const blockEl = document.createElement('div');
+                blockEl.className = 'time-slot';
+                blockEl.dataset.day = day;
+                blockEl.dataset.index = index;
+                
+                const top = ((visibleStart - viewStartHour) / hoursInView) * totalHeight;
+                const height = ((visibleEnd - visibleStart) / hoursInView) * totalHeight;
+                
+                console.log('Block positioning:', {
+                    blockStart: block.start,
+                    blockEnd: block.end,
+                    visibleStart,
+                    visibleEnd,
+                    top,
+                    height
+                });
+                
+                blockEl.style.top = top + 'px';
+                blockEl.style.height = height + 'px';
+                
+                const startTime = formatTimeWithMinutes(block.start);
+                const endTime = formatTimeWithMinutes(block.end);
+                
+                // Add resize handles
+                const topHandle = document.createElement('div');
+                topHandle.className = 'resize-handle resize-handle-top';
+                topHandle.dataset.edge = 'top';
+                topHandle.addEventListener('mousedown', (e) => startResize(e, day, index, 'top'));
+                
+                const bottomHandle = document.createElement('div');
+                bottomHandle.className = 'resize-handle resize-handle-bottom';
+                bottomHandle.dataset.edge = 'bottom';
+                bottomHandle.addEventListener('mousedown', (e) => startResize(e, day, index, 'bottom'));
+                
+                // Show time label if block is tall enough
+                if (height > 30) {
+                    blockEl.innerHTML = `
+                        ${startTime} - ${endTime}
+                        <button class="delete-btn" onclick="deleteTimeBlock(${day}, ${index}); event.stopPropagation();">×</button>
+                    `;
+                } else {
+                    blockEl.innerHTML = `
+                        <button class="delete-btn" onclick="deleteTimeBlock(${day}, ${index}); event.stopPropagation();">×</button>
+                    `;
+                    blockEl.title = `${startTime} - ${endTime}`;
+                }
+                
+                blockEl.appendChild(topHandle);
+                blockEl.appendChild(bottomHandle);
+                slotsContainer.appendChild(blockEl);
+            });
+        }
+
+        function formatHour(hour) {
+            if (hour === 24) return '12 AM';
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+            return `${displayHour} ${period}`;
+        }
+
+        function deleteTimeBlock(day, index) {
+            weeklyScheduleData[day].splice(index, 1);
+            renderDaySchedule(day);
+        }
+
+        function clearWeeklySchedule() {
+            if (!confirm('Clear all availability blocks from the weekly schedule?')) return;
+            
+            for (let day = 0; day < 7; day++) {
+                weeklyScheduleData[day] = [];
+                renderDaySchedule(day);
+            }
+        }
+
+        function copyDaySchedule() {
+            const sourceDay = prompt('Copy FROM which day? (0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun)');
+            if (sourceDay === null || sourceDay === '') return;
+            
+            const sourceDayNum = parseInt(sourceDay);
+            if (isNaN(sourceDayNum) || sourceDayNum < 0 || sourceDayNum > 6) {
+                alert('Invalid day number. Use 0-6.');
+                return;
+            }
+
+            const targetDays = prompt('Copy TO which days? (comma-separated, e.g., 1,3,4)');
+            if (targetDays === null || targetDays === '') return;
+
+            const targetDayNums = targetDays.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d) && d >= 0 && d <= 6);
+            
+            if (targetDayNums.length === 0) {
+                alert('No valid target days specified.');
+                return;
+            }
+
+            // Copy schedule
+            targetDayNums.forEach(targetDay => {
+                weeklyScheduleData[targetDay] = JSON.parse(JSON.stringify(weeklyScheduleData[sourceDayNum]));
+                renderDaySchedule(targetDay);
+            });
+
+            alert(`Schedule copied to selected days!`);
+        }
+
+        async function saveWeeklySchedule() {
+            if (!currentSpecialistId) {
+                showResponse('recurringResponse', 'Please establish your profile first', 'error');
+                return;
+            }
+
+            const startDate = document.getElementById('recurringStartDate').value;
+            const endDate = document.getElementById('recurringEndDate').value;
+
+            if (!startDate) {
+                showResponse('recurringResponse', 'Please select a start date', 'error');
+                return;
+            }
+
+            // Check if any days have schedule
+            const hasSchedule = Object.values(weeklyScheduleData).some(day => day.length > 0);
+            if (!hasSchedule) {
+                showResponse('recurringResponse', 'Please add at least one availability block', 'error');
+                return;
+            }
+
+            // Helper function to convert decimal hours to HH:MM format
+            function hoursToTimeString(decimalHours) {
+                const hours = Math.floor(decimalHours);
+                const minutes = Math.round((decimalHours - hours) * 60);
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            }
+
+            // Convert schedule data to backend format
+            const schedules = [];
+            for (let day = 0; day < 7; day++) {
+                weeklyScheduleData[day].forEach(block => {
+                    schedules.push({
+                        recurrence_type: 'weekly',
+                        days_of_week: [day],
+                        start_time: hoursToTimeString(block.start),
+                        end_time: hoursToTimeString(block.end),
+                        start_date: startDate,
+                        end_date: endDate || null
+                    });
+                });
+            }
+
+            // Save each schedule
+            try {
+                let successCount = 0;
+                for (const schedule of schedules) {
+                    const response = await fetch(`/specialist/${currentSpecialistId}/recurring-schedule`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(schedule)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    }
+                }
+
+                if (successCount === schedules.length) {
+                    showResponse('recurringResponse', ` Weekly schedule saved successfully! ${successCount} time blocks created.`, 'success');
+                    loadRecurringSchedules();
+                } else {
+                    showResponse('recurringResponse', `⚠️ Partially saved: ${successCount}/${schedules.length} blocks created`, 'error');
+                }
+            } catch (error) {
+                showResponse('recurringResponse', `Connection error: ${error.message}`, 'error');
+            }
         }
 
         async function createRecurringSchedule() {
