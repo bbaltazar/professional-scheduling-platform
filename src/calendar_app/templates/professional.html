@@ -990,6 +990,78 @@
             border-color: #FFD700;
         }
 
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header h3 {
+            color: #FFD700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: #FFD700;
+        }
+
+        .modal-body {
+            margin-bottom: 30px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
         .checkbox-label {
             display: flex;
             align-items: center;
@@ -1687,6 +1759,7 @@
                             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                                 <button type="button" class="btn-small" onclick="clearWeeklySchedule()">🗑️ Clear All</button>
                                 <button type="button" class="btn-small" onclick="copyDaySchedule()">📋 Copy Day</button>
+                                <button type="button" class="btn-small" onclick="openApplyWeeksModal()">📆 Apply to Upcoming Weeks</button>
                             </div>
                             
                             <!-- Time Range and Day Filters -->
@@ -1912,6 +1985,52 @@
                     <div id="existingPTOBlocks" style="margin-top: 30px;">
                         <h3>Scheduled Time Off</h3>
                         <div id="ptoBlocksList" class="schedules-list"></div>
+                    </div>
+                </div>
+
+                <!-- Apply to Upcoming Weeks Modal -->
+                <div id="applyWeeksModal" class="modal-overlay" onclick="if(event.target === this) closeApplyWeeksModal()">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>📆 Apply to Upcoming Weeks</h3>
+                            <button type="button" class="modal-close" onclick="closeApplyWeeksModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 20px;">
+                                Apply your current weekly schedule to multiple upcoming weeks
+                            </p>
+                            
+                            <div class="form-group">
+                                <label style="color: #FFD700; margin-bottom: 8px; display: block;">Number of Weeks</label>
+                                <select id="numberOfWeeks" onchange="updateApplyPreview()" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 1rem;">
+                                    <option value="1">1 week</option>
+                                    <option value="2">2 weeks</option>
+                                    <option value="3">3 weeks</option>
+                                    <option value="4" selected>4 weeks</option>
+                                    <option value="5">5 weeks</option>
+                                    <option value="6">6 weeks</option>
+                                    <option value="7">7 weeks</option>
+                                    <option value="8">8 weeks</option>
+                                    <option value="9">9 weeks</option>
+                                    <option value="10">10 weeks</option>
+                                    <option value="11">11 weeks</option>
+                                    <option value="12">12 weeks</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label style="color: #FFD700; margin-bottom: 8px; display: block;">Starting From</label>
+                                <input type="date" id="applyStartDate" onchange="updateApplyPreview()" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 1rem;">
+                            </div>
+
+                            <div id="applyPreview" style="margin-top: 20px; padding: 15px; background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+                                <strong style="color: #FFD700;">Preview:</strong> <span id="previewText">Select dates to see preview</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeApplyWeeksModal()">Cancel</button>
+                            <button type="button" class="btn" onclick="applyToUpcomingWeeks()">Apply Schedule</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3918,6 +4037,150 @@
             }
         }
 
+        function openApplyWeeksModal() {
+            // Check if there's any schedule to apply
+            const hasSchedule = Object.values(weeklyScheduleData).some(day => day.length > 0);
+            if (!hasSchedule) {
+                alert('Please create a weekly schedule first before applying it to upcoming weeks.');
+                return;
+            }
+
+            // Set default start date to next Monday
+            const today = new Date();
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7 || 7));
+            document.getElementById('applyStartDate').value = nextMonday.toISOString().split('T')[0];
+
+            // Show modal and update preview
+            document.getElementById('applyWeeksModal').classList.add('active');
+            updateApplyPreview();
+        }
+
+        function updateApplyPreview() {
+            const numberOfWeeks = parseInt(document.getElementById('numberOfWeeks').value);
+            const startDate = document.getElementById('applyStartDate').value;
+            const previewText = document.getElementById('previewText');
+
+            if (!startDate) {
+                previewText.textContent = 'Select a start date to see preview';
+                return;
+            }
+
+            // Calculate end date
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + (numberOfWeeks * 7) - 1);
+
+            // Format dates nicely
+            const startFormatted = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            const endFormatted = end.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+            // Count total blocks across all days
+            let totalBlocks = 0;
+            const daysWithSchedule = [];
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            
+            for (let day = 0; day < 7; day++) {
+                if (weeklyScheduleData[day].length > 0) {
+                    totalBlocks += weeklyScheduleData[day].length;
+                    daysWithSchedule.push(dayNames[day]);
+                }
+            }
+
+            // Build preview message
+            let message = `This will apply your schedule to ${numberOfWeeks} week${numberOfWeeks > 1 ? 's' : ''} (${startFormatted} - ${endFormatted}).\n\n`;
+            message += `📅 Days with availability: ${daysWithSchedule.join(', ')}\n`;
+            message += `⏰ Total time blocks per week: ${totalBlocks}\n`;
+            message += `✨ Total blocks to create: ${totalBlocks * numberOfWeeks}`;
+
+            previewText.innerHTML = message.replace(/\n/g, '<br>');
+        }
+
+        function closeApplyWeeksModal() {
+            document.getElementById('applyWeeksModal').classList.remove('active');
+        }
+
+        async function applyToUpcomingWeeks() {
+            if (!currentSpecialistId) {
+                alert('Please establish your profile first');
+                closeApplyWeeksModal();
+                return;
+            }
+
+            const numberOfWeeks = parseInt(document.getElementById('numberOfWeeks').value);
+            const startDate = document.getElementById('applyStartDate').value;
+
+            if (!startDate) {
+                alert('Please select a start date');
+                return;
+            }
+
+            // Check if there's any schedule to apply
+            const hasSchedule = Object.values(weeklyScheduleData).some(day => day.length > 0);
+            if (!hasSchedule) {
+                alert('No schedule to apply. Please create a weekly schedule first.');
+                closeApplyWeeksModal();
+                return;
+            }
+
+            // Calculate end date
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + (numberOfWeeks * 7) - 1);
+
+            // Helper function to convert decimal hours to HH:MM format
+            function hoursToTimeString(decimalHours) {
+                const hours = Math.floor(decimalHours);
+                const minutes = Math.round((decimalHours - hours) * 60);
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            }
+
+            // Convert schedule data to backend format
+            const schedules = [];
+            for (let day = 0; day < 7; day++) {
+                weeklyScheduleData[day].forEach(block => {
+                    schedules.push({
+                        recurrence_type: 'weekly',
+                        days_of_week: [day],
+                        start_time: hoursToTimeString(block.start),
+                        end_time: hoursToTimeString(block.end),
+                        start_date: startDate,
+                        end_date: end.toISOString().split('T')[0]
+                    });
+                });
+            }
+
+            // Save each schedule
+            try {
+                let successCount = 0;
+                for (const schedule of schedules) {
+                    const response = await fetch(`/specialist/${currentSpecialistId}/recurring-schedule`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(schedule)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        console.error('Failed to save schedule:', await response.text());
+                    }
+                }
+
+                if (successCount > 0) {
+                    alert(`✅ Successfully applied schedule to ${numberOfWeeks} week(s)!\n\nCreated ${successCount} recurring availability blocks from ${startDate} to ${end.toISOString().split('T')[0]}`);
+                    closeApplyWeeksModal();
+                    loadRecurringSchedules(); // Refresh the recurring schedules list
+                } else {
+                    alert('Failed to apply schedule. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error applying schedule:', error);
+                alert('Error applying schedule. Please check your connection and try again.');
+            }
+        }
+
         function copyDaySchedule() {
             const sourceDay = prompt('Copy FROM which day? (0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun)');
             if (sourceDay === null || sourceDay === '') return;
@@ -4105,7 +4368,8 @@
             }
 
             container.innerHTML = schedules.map(schedule => {
-                const daysOfWeek = schedule.days_of_week ? JSON.parse(schedule.days_of_week) : [];
+                // days_of_week is already an array from the API, no need to parse
+                const daysOfWeek = schedule.days_of_week || [];
                 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 const selectedDays = daysOfWeek.map(day => dayNames[day]).join(', ');
 

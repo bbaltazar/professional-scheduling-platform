@@ -1640,6 +1640,8 @@ def get_recurring_schedules(
         .all()
     )
 
+    print(f"DEBUG: Found {len(recurring_events)} recurring events for specialist {specialist_id}")
+
     schedules = []
     for event in recurring_events:
         recurrence_rule = None
@@ -1649,7 +1651,10 @@ def get_recurring_schedules(
 
                 recurrence_data = json.loads(event.recurrence_rule)
                 recurrence_rule = RecurrenceRule(**recurrence_data)
-            except:
+                print(f"DEBUG: Parsed recurrence rule for event {event.id}: {recurrence_rule}")
+            except Exception as e:
+                print(f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}")
+                print(f"DEBUG: Raw recurrence_rule: {event.recurrence_rule}")
                 continue
 
         schedules.append(
