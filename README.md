@@ -53,6 +53,7 @@ calendar_app/
 - **Backend**: FastAPI 0.104+
 - **ORM**: SQLAlchemy 2.0+
 - **Database**: SQLite (can be swapped for PostgreSQL)
+- **Migrations**: Alembic 1.13+ (database schema versioning)
 - **Authentication**: JWT (python-jose)
 - **Templates**: Jinja2
 - **Testing**: pytest with TestClient
@@ -85,9 +86,14 @@ calendar_app/
 
 4. **Initialize the database**
    ```bash
-   # The database will be created automatically on first run
-   poetry run python scripts/populate_db.py  # Optional: add test data
+   # Apply database migrations
+   ./scripts/migrate.sh upgrade
+   
+   # Optional: add test data
+   poetry run python scripts/populate_db.py
    ```
+   
+   See [ALEMBIC_GUIDE.md](ALEMBIC_GUIDE.md) for detailed migration documentation.
 
 ### Running the Application
 

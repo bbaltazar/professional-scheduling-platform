@@ -237,11 +237,38 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Élite Scheduling Platform",
-    description="A luxury scheduling platform for professionals and clients",
+    description="""
+    ## Professional Appointment Scheduling Platform
+    
+    A comprehensive scheduling system for service professionals and their clients.
+    
+    ### Features
+    * **Professional Management**: Create profile, manage services, set availability
+    * **Booking System**: Real-time availability, automated scheduling
+    * **Analytics**: Track appointment durations, client insights, recommendations
+    * **Workplace Integration**: Connect with businesses, Yelp integration
+    * **Client Management**: Track client history, preferences, and communication
+    
+    ### Authentication
+    Use phone/email verification to access professional endpoints.
+    
+    ### Rate Limits
+    Standard endpoints: No limit (development)
+    
+    ### Support
+    For API support, contact: support@elitescheduling.com
+    """,
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/api/docs",  # Better URL structure
+    redoc_url="/api/redoc",  # Better URL structure
     lifespan=lifespan,
+    contact={
+        "name": "Élite Scheduling Support",
+        "email": "support@elitescheduling.com",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
 )
 
 # Add CORS middleware
@@ -1647,7 +1674,9 @@ def get_recurring_schedules(
         .all()
     )
 
-    print(f"DEBUG: Found {len(recurring_events)} recurring events for specialist {specialist_id}")
+    print(
+        f"DEBUG: Found {len(recurring_events)} recurring events for specialist {specialist_id}"
+    )
 
     schedules = []
     for event in recurring_events:
@@ -1658,9 +1687,13 @@ def get_recurring_schedules(
 
                 recurrence_data = json.loads(event.recurrence_rule)
                 recurrence_rule = RecurrenceRule(**recurrence_data)
-                print(f"DEBUG: Parsed recurrence rule for event {event.id}: {recurrence_rule}")
+                print(
+                    f"DEBUG: Parsed recurrence rule for event {event.id}: {recurrence_rule}"
+                )
             except Exception as e:
-                print(f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}")
+                print(
+                    f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}"
+                )
                 print(f"DEBUG: Raw recurrence_rule: {event.recurrence_rule}")
                 continue
 
@@ -2254,24 +2287,27 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
 def get_specialist_bookings(specialist_id: int, db: Session = Depends(get_db)):
     """
     Get all bookings for a specialist with service details.
+    Optimized with eager loading to prevent N+1 queries.
     """
+    from sqlalchemy.orm import joinedload
+
+    # ✅ Optimized: Single query with eager loading (was N+1 before)
     bookings = (
         db.query(Booking)
+        .options(
+            joinedload(Booking.sessions),  # Eager load appointment sessions
+            joinedload(Booking.service),  # Eager load service details
+        )
         .filter(Booking.specialist_id == specialist_id)
-        .join(ServiceDB)
         .all()
     )
 
     # Add service details to each booking
     booking_responses = []
     for booking in bookings:
-        # Check if there's an active appointment session
-        session = db.query(AppointmentSession).filter(
-            AppointmentSession.booking_id == booking.id
-        ).first()
-        
-        print(f"DEBUG: Booking {booking.id}, Session: {session.id if session else None}")  # Debug
-        
+        # Session is already loaded, no additional query needed
+        session = booking.sessions[0] if booking.sessions else None
+
         booking_dict = {
             "id": booking.id,
             "specialist_id": booking.specialist_id,
@@ -2284,12 +2320,16 @@ def get_specialist_bookings(specialist_id: int, db: Session = Depends(get_db)):
             "start_time": booking.start_time,
             "end_time": booking.end_time,
             "status": booking.status,
-            "service": {
-                "id": booking.service.id,
-                "name": booking.service.name,
-                "price": booking.service.price,
-                "duration": booking.service.duration,
-            },
+            "service": (
+                {
+                    "id": booking.service.id,
+                    "name": booking.service.name,
+                    "price": booking.service.price,
+                    "duration": booking.service.duration,
+                }
+                if booking.service
+                else None
+            ),
             # Add session information
             "session_id": session.id if session else None,
             "session_started": session.actual_start if session else None,
@@ -2336,7 +2376,10 @@ def update_booking_status(
 # ==================== Appointment Session Tracking Endpoints ====================
 
 
-@app.post("/specialist/{specialist_id}/appointment-session/start", response_model=AppointmentSessionResponse)
+@app.post(
+    "/specialist/{specialist_id}/appointment-session/start",
+    response_model=AppointmentSessionResponse,
+)
 def start_appointment_session(
     specialist_id: int,
     session: AppointmentSessionCreate,
@@ -2348,39 +2391,48 @@ def start_appointment_session(
     This records the actual start time for duration analytics.
     """
     if current_specialist.id != specialist_id:
-        raise HTTPException(status_code=403, detail="Can only track your own appointments")
-    
+        raise HTTPException(
+            status_code=403, detail="Can only track your own appointments"
+        )
+
     # Verify booking exists and belongs to specialist
-    booking = db.query(Booking).filter(
-        Booking.id == session.booking_id,
-        Booking.specialist_id == specialist_id
-    ).first()
-    
+    booking = (
+        db.query(Booking)
+        .filter(
+            Booking.id == session.booking_id, Booking.specialist_id == specialist_id
+        )
+        .first()
+    )
+
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    
+
     # Check if session already exists for this booking
-    existing_session = db.query(AppointmentSession).filter(
-        AppointmentSession.booking_id == session.booking_id
-    ).first()
-    
+    existing_session = (
+        db.query(AppointmentSession)
+        .filter(AppointmentSession.booking_id == session.booking_id)
+        .first()
+    )
+
     if existing_session:
         # If session already exists and is not completed, return it (idempotent)
         if existing_session.actual_end is None:
             return existing_session
         else:
-            raise HTTPException(status_code=400, detail="Session already completed for this booking")
-    
+            raise HTTPException(
+                status_code=400, detail="Session already completed for this booking"
+            )
+
     # Create session
     actual_start = session.actual_start or datetime.utcnow()
     scheduled_start = datetime.combine(booking.date, booking.start_time)
     scheduled_end = datetime.combine(booking.date, booking.end_time)
     scheduled_duration = int((scheduled_end - scheduled_start).total_seconds() / 60)
-    
+
     # Determine if started early or late
     was_early = actual_start < scheduled_start
     was_late = actual_start > scheduled_start
-    
+
     db_session = AppointmentSession(
         booking_id=booking.id,
         specialist_id=specialist_id,
@@ -2394,15 +2446,18 @@ def start_appointment_session(
         was_late=was_late,
         session_notes=session.session_notes,
     )
-    
+
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
-    
+
     return db_session
 
 
-@app.patch("/specialist/{specialist_id}/appointment-session/{session_id}/complete", response_model=AppointmentSessionResponse)
+@app.patch(
+    "/specialist/{specialist_id}/appointment-session/{session_id}/complete",
+    response_model=AppointmentSessionResponse,
+)
 def complete_appointment_session(
     specialist_id: int,
     session_id: int,
@@ -2415,50 +2470,59 @@ def complete_appointment_session(
     This calculates the actual duration and overtime status.
     """
     if current_specialist.id != specialist_id:
-        raise HTTPException(status_code=403, detail="Can only track your own appointments")
-    
+        raise HTTPException(
+            status_code=403, detail="Can only track your own appointments"
+        )
+
     # Find the session
-    session = db.query(AppointmentSession).filter(
-        AppointmentSession.id == session_id,
-        AppointmentSession.specialist_id == specialist_id
-    ).first()
-    
+    session = (
+        db.query(AppointmentSession)
+        .filter(
+            AppointmentSession.id == session_id,
+            AppointmentSession.specialist_id == specialist_id,
+        )
+        .first()
+    )
+
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     if session.actual_end:
         raise HTTPException(status_code=400, detail="Session already completed")
-    
+
     # Update session
     actual_end = update.actual_end or datetime.utcnow()
     session.actual_end = actual_end
-    
+
     # Calculate actual duration
     if session.actual_start:
         actual_duration = int((actual_end - session.actual_start).total_seconds() / 60)
         session.actual_duration_minutes = actual_duration
-        
+
         # Determine if went overtime
         session.went_overtime = actual_end > session.scheduled_end
-    
+
     if update.session_notes:
         session.session_notes = update.session_notes
-    
+
     session.updated_at = datetime.utcnow()
-    
+
     db.commit()
     db.refresh(session)
-    
+
     # Also update booking status to completed
     booking = db.query(Booking).filter(Booking.id == session.booking_id).first()
     if booking and booking.status != "completed":
         booking.status = "completed"
         db.commit()
-    
+
     return session
 
 
-@app.get("/specialist/{specialist_id}/appointment-sessions", response_model=List[AppointmentSessionResponse])
+@app.get(
+    "/specialist/{specialist_id}/appointment-sessions",
+    response_model=List[AppointmentSessionResponse],
+)
 def get_appointment_sessions(
     specialist_id: int,
     consumer_id: Optional[int] = None,
@@ -2471,25 +2535,30 @@ def get_appointment_sessions(
     Get appointment session history with optional filters.
     """
     if current_specialist.id != specialist_id:
-        raise HTTPException(status_code=403, detail="Can only view your own appointment history")
-    
+        raise HTTPException(
+            status_code=403, detail="Can only view your own appointment history"
+        )
+
     query = db.query(AppointmentSession).filter(
         AppointmentSession.specialist_id == specialist_id,
-        AppointmentSession.actual_end != None  # Only completed sessions
+        AppointmentSession.actual_end != None,  # Only completed sessions
     )
-    
+
     if consumer_id:
         query = query.filter(AppointmentSession.consumer_id == consumer_id)
-    
+
     if service_id:
         query = query.filter(AppointmentSession.service_id == service_id)
-    
+
     sessions = query.order_by(AppointmentSession.created_at.desc()).limit(limit).all()
-    
+
     return sessions
 
 
-@app.get("/specialist/{specialist_id}/client/{consumer_id}/duration-insights", response_model=ClientDurationInsight)
+@app.get(
+    "/specialist/{specialist_id}/client/{consumer_id}/duration-insights",
+    response_model=ClientDurationInsight,
+)
 def get_client_duration_insights(
     specialist_id: int,
     consumer_id: int,
@@ -2502,33 +2571,43 @@ def get_client_duration_insights(
     """
     if current_specialist.id != specialist_id:
         raise HTTPException(status_code=403, detail="Unauthorized")
-    
+
     # Get all completed sessions for this client
-    sessions = db.query(AppointmentSession).filter(
-        AppointmentSession.specialist_id == specialist_id,
-        AppointmentSession.consumer_id == consumer_id,
-        AppointmentSession.actual_end != None
-    ).all()
-    
+    sessions = (
+        db.query(AppointmentSession)
+        .filter(
+            AppointmentSession.specialist_id == specialist_id,
+            AppointmentSession.consumer_id == consumer_id,
+            AppointmentSession.actual_end != None,
+        )
+        .all()
+    )
+
     if not sessions:
-        raise HTTPException(status_code=404, detail="No session history for this client")
-    
+        raise HTTPException(
+            status_code=404, detail="No session history for this client"
+        )
+
     # Get consumer name
     consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
     client_name = consumer.name if consumer else f"Client {consumer_id}"
-    
+
     # Calculate statistics
-    durations = [s.actual_duration_minutes for s in sessions if s.actual_duration_minutes]
-    
+    durations = [
+        s.actual_duration_minutes for s in sessions if s.actual_duration_minutes
+    ]
+
     if not durations:
-        raise HTTPException(status_code=404, detail="No completed sessions with duration data")
-    
+        raise HTTPException(
+            status_code=404, detail="No completed sessions with duration data"
+        )
+
     avg_duration = sum(durations) / len(durations)
     sorted_durations = sorted(durations)
     median_duration = sorted_durations[len(sorted_durations) // 2]
     min_duration = min(durations)
     max_duration = max(durations)
-    
+
     # Calculate typical overtime
     overtimes = [
         (s.actual_duration_minutes - s.scheduled_duration_minutes)
@@ -2536,16 +2615,16 @@ def get_client_duration_insights(
         if s.actual_duration_minutes and s.scheduled_duration_minutes
     ]
     typical_overtime = sum(overtimes) / len(overtimes) if overtimes else 0
-    
+
     # Calculate consistency score (inverse of standard deviation, normalized)
     if len(durations) > 1:
         variance = sum((d - avg_duration) ** 2 for d in durations) / len(durations)
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
         # Normalize: perfect consistency = 1, high variance = 0
         consistency_score = max(0, min(1, 1 - (std_dev / avg_duration)))
     else:
         consistency_score = 1.0
-    
+
     return ClientDurationInsight(
         consumer_id=consumer_id,
         client_name=client_name,
@@ -2555,11 +2634,14 @@ def get_client_duration_insights(
         min_duration_minutes=min_duration,
         max_duration_minutes=max_duration,
         typical_overtime_minutes=round(typical_overtime, 1),
-        consistency_score=round(consistency_score, 2)
+        consistency_score=round(consistency_score, 2),
     )
 
 
-@app.get("/specialist/{specialist_id}/duration-recommendation", response_model=DurationRecommendation)
+@app.get(
+    "/specialist/{specialist_id}/duration-recommendation",
+    response_model=DurationRecommendation,
+)
 def get_duration_recommendation(
     specialist_id: int,
     consumer_id: int,
@@ -2573,68 +2655,89 @@ def get_duration_recommendation(
     """
     if current_specialist.id != specialist_id:
         raise HTTPException(status_code=403, detail="Unauthorized")
-    
+
     # Get service default duration
-    service = db.query(ServiceDB).filter(
-        ServiceDB.id == service_id,
-        ServiceDB.specialist_id == specialist_id
-    ).first()
-    
+    service = (
+        db.query(ServiceDB)
+        .filter(ServiceDB.id == service_id, ServiceDB.specialist_id == specialist_id)
+        .first()
+    )
+
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
+
     # Try to get client-specific history
-    client_sessions = db.query(AppointmentSession).filter(
-        AppointmentSession.specialist_id == specialist_id,
-        AppointmentSession.consumer_id == consumer_id,
-        AppointmentSession.actual_end != None
-    ).all()
-    
+    client_sessions = (
+        db.query(AppointmentSession)
+        .filter(
+            AppointmentSession.specialist_id == specialist_id,
+            AppointmentSession.consumer_id == consumer_id,
+            AppointmentSession.actual_end != None,
+        )
+        .all()
+    )
+
     # Get service-wide history
-    service_sessions = db.query(AppointmentSession).filter(
-        AppointmentSession.specialist_id == specialist_id,
-        AppointmentSession.service_id == service_id,
-        AppointmentSession.actual_end != None
-    ).all()
-    
+    service_sessions = (
+        db.query(AppointmentSession)
+        .filter(
+            AppointmentSession.specialist_id == specialist_id,
+            AppointmentSession.service_id == service_id,
+            AppointmentSession.actual_end != None,
+        )
+        .all()
+    )
+
     client_insight = None
     service_insight = None
-    
+
     # Calculate client-specific insights
     if client_sessions and len(client_sessions) >= 2:
-        client_durations = [s.actual_duration_minutes for s in client_sessions if s.actual_duration_minutes]
+        client_durations = [
+            s.actual_duration_minutes
+            for s in client_sessions
+            if s.actual_duration_minutes
+        ]
         if client_durations:
             client_avg = sum(client_durations) / len(client_durations)
             consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
-            
+
             client_insight = ClientDurationInsight(
                 consumer_id=consumer_id,
                 client_name=consumer.name if consumer else f"Client {consumer_id}",
                 total_sessions=len(client_sessions),
                 average_duration_minutes=round(client_avg, 1),
-                median_duration_minutes=sorted(client_durations)[len(client_durations) // 2],
+                median_duration_minutes=sorted(client_durations)[
+                    len(client_durations) // 2
+                ],
                 min_duration_minutes=min(client_durations),
                 max_duration_minutes=max(client_durations),
                 typical_overtime_minutes=0,
-                consistency_score=1.0
+                consistency_score=1.0,
             )
-    
+
     # Calculate service-wide insights
     if service_sessions and len(service_sessions) >= 3:
-        service_durations = [s.actual_duration_minutes for s in service_sessions if s.actual_duration_minutes]
+        service_durations = [
+            s.actual_duration_minutes
+            for s in service_sessions
+            if s.actual_duration_minutes
+        ]
         if service_durations:
             service_avg = sum(service_durations) / len(service_durations)
-            variance = sum((d - service_avg) ** 2 for d in service_durations) / len(service_durations)
-            
+            variance = sum((d - service_avg) ** 2 for d in service_durations) / len(
+                service_durations
+            )
+
             service_insight = ServiceDurationInsight(
                 service_id=service_id,
                 service_name=service.name,
                 total_sessions=len(service_sessions),
                 average_duration_minutes=round(service_avg, 1),
                 scheduled_duration_minutes=service.duration,
-                typical_variance_minutes=round(variance ** 0.5, 1)
+                typical_variance_minutes=round(variance**0.5, 1),
             )
-    
+
     # Determine recommendation
     if client_insight and client_insight.total_sessions >= 3:
         # Prioritize client history if sufficient data
@@ -2645,19 +2748,21 @@ def get_duration_recommendation(
         # Fall back to service history
         recommended = int(service_insight.average_duration_minutes)
         confidence = "medium"
-        based_on = f"Based on {service_insight.total_sessions} appointments for this service"
+        based_on = (
+            f"Based on {service_insight.total_sessions} appointments for this service"
+        )
     else:
         # Use service default
         recommended = service.duration
         confidence = "low"
         based_on = "Using service default duration (insufficient historical data)"
-    
+
     return DurationRecommendation(
         recommended_duration_minutes=recommended,
         confidence=confidence,
         based_on=based_on,
         client_history=client_insight,
-        service_history=service_insight
+        service_history=service_insight,
     )
 
 
@@ -4481,9 +4586,7 @@ async def upload_clients_csv(
             # Validate and normalize phone (required)
             normalized_phone = normalize_phone(phone)
             if not normalized_phone:
-                errors.append(
-                    f"Row {idx}: Phone '{phone}' must be exactly 10 digits"
-                )
+                errors.append(f"Row {idx}: Phone '{phone}' must be exactly 10 digits")
                 skipped_count += 1
                 continue
             phone = normalized_phone  # Use normalized version

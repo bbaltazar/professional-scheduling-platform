@@ -8,7 +8,7 @@ organized by functional areas for better maintainability.
 from __future__ import annotations
 from typing import Union, List, Optional
 from datetime import date, time, datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 
 
 # ==================== Core Service Models ====================
@@ -202,16 +202,62 @@ class AvailabilityQuery(BaseModel):
 
 
 class BookingCreate(BaseModel):
-    specialist_id: int
-    service_id: int
-    booking_date: date
-    start_time: time
-    client_name: str
-    client_email: EmailStr
-    client_phone: Optional[str] = None
-    notes: Optional[str] = None
+    """Request model for creating a booking with validation"""
+
+    specialist_id: int = Field(..., gt=0, description="Specialist ID must be positive")
+    service_id: int = Field(..., gt=0, description="Service ID must be positive")
+    booking_date: date = Field(..., description="Booking date")
+    start_time: time = Field(..., description="Appointment start time")
+    client_name: str = Field(
+        ..., min_length=2, max_length=100, description="Client full name"
+    )
+    client_email: EmailStr = Field(..., description="Valid email address")
+    client_phone: Optional[str] = Field(
+        None, description="Phone number in E.164 format"
+    )
+    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
     # Referral tracking - pass workplace_id if booking through business
-    source_workplace_id: Optional[int] = None
+    source_workplace_id: Optional[int] = Field(
+        None, gt=0, description="Source workplace ID"
+    )
+
+    @validator("booking_date")
+    def date_must_be_today_or_future(cls, v):
+        """Validate booking date is not in the past"""
+        from datetime import date as dt_date
+
+        if v < dt_date.today():
+            raise ValueError("Booking date cannot be in the past")
+        return v
+
+    @validator("start_time")
+    def time_must_be_business_hours(cls, v):
+        """Validate time is during reasonable business hours"""
+        if v.hour < 6 or v.hour >= 23:
+            raise ValueError("Booking must be between 6:00 AM and 11:00 PM")
+        return v
+
+    @validator("client_name")
+    def name_must_not_be_whitespace(cls, v):
+        """Validate name is not just whitespace"""
+        if not v or not v.strip():
+            raise ValueError("Client name cannot be empty or whitespace")
+        return v.strip()
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "specialist_id": 1,
+                "service_id": 2,
+                "booking_date": "2025-11-01",
+                "start_time": "10:00:00",
+                "client_name": "John Doe",
+                "client_email": "john.doe@example.com",
+                "client_phone": "+14155551234",
+                "notes": "First time client",
+                "source_workplace_id": None,
+            }
+        }
 
 
 class BookingResponse(BaseModel):
@@ -263,6 +309,7 @@ class BookingStatusUpdate(BaseModel):
 
 class AppointmentSessionCreate(BaseModel):
     """Create a new appointment session when appointment starts"""
+
     booking_id: int
     actual_start: Optional[datetime] = None  # If None, use current time
     session_notes: Optional[str] = None
@@ -270,6 +317,7 @@ class AppointmentSessionCreate(BaseModel):
 
 class AppointmentSessionUpdate(BaseModel):
     """Update appointment session when appointment ends"""
+
     actual_end: Optional[datetime] = None  # If None, use current time
     session_notes: Optional[str] = None
 
@@ -299,6 +347,7 @@ class AppointmentSessionResponse(BaseModel):
 
 class ClientDurationInsight(BaseModel):
     """Analytics for a specific client's appointment history"""
+
     consumer_id: int
     client_name: str
     total_sessions: int
@@ -312,6 +361,7 @@ class ClientDurationInsight(BaseModel):
 
 class ServiceDurationInsight(BaseModel):
     """Analytics for a specific service's duration across all clients"""
+
     service_id: int
     service_name: str
     total_sessions: int
@@ -322,6 +372,7 @@ class ServiceDurationInsight(BaseModel):
 
 class DurationRecommendation(BaseModel):
     """Smart recommendation for booking duration"""
+
     recommended_duration_minutes: int
     confidence: str  # 'high', 'medium', 'low'
     based_on: str  # Description of what data was used

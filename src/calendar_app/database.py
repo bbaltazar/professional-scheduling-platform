@@ -134,10 +134,12 @@ class Consumer(Base):
     __tablename__ = "consumers"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    email = Column(String, unique=True, index=True)
-    phone = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    name = Column(String, index=True)  # ✅ Already indexed
+    email = Column(String, unique=True, index=True)  # ✅ Already indexed
+    phone = Column(String, index=True)  # ✅ Now indexed for lookup
+    created_at = Column(
+        DateTime, default=datetime.utcnow, index=True
+    )  # ✅ Indexed for sorting
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
@@ -175,19 +177,25 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
-    specialist_id = Column(Integer, ForeignKey("specialists.id"))
-    service_id = Column(Integer, ForeignKey("services.id"))
-    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=True)  # New FK
+    specialist_id = Column(
+        Integer, ForeignKey("specialists.id"), index=True
+    )  # ✅ Indexed for fast lookups
+    service_id = Column(
+        Integer, ForeignKey("services.id"), index=True
+    )  # ✅ Indexed for filtering
+    consumer_id = Column(
+        Integer, ForeignKey("consumers.id"), nullable=True, index=True
+    )  # ✅ Indexed
 
     # Legacy fields - keep for backward compatibility
-    client_name = Column(String)
-    client_email = Column(String)
+    client_name = Column(String, index=True)  # ✅ Indexed for search
+    client_email = Column(String, index=True)  # ✅ Indexed for lookup
     client_phone = Column(String)
 
-    date = Column(Date)
+    date = Column(Date, index=True)  # ✅ Indexed for date queries
     start_time = Column(Time)
     end_time = Column(Time)
-    status = Column(String, default="confirmed")  # confirmed, cancelled, completed
+    status = Column(String, default="confirmed", index=True)  # ✅ Indexed for filtering
     notes = Column(String)
 
     # Relationships
@@ -202,34 +210,45 @@ class AppointmentSession(Base):
     Records when appointments actually start and end to help professionals
     understand real-world timing vs scheduled timing.
     """
+
     __tablename__ = "appointment_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
-    specialist_id = Column(Integer, ForeignKey("specialists.id"), nullable=False)
-    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=True)
-    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
-    
+    booking_id = Column(
+        Integer, ForeignKey("bookings.id"), nullable=False, index=True
+    )  # ✅ Indexed
+    specialist_id = Column(
+        Integer, ForeignKey("specialists.id"), nullable=False, index=True
+    )  # ✅ Indexed
+    consumer_id = Column(
+        Integer, ForeignKey("consumers.id"), nullable=True, index=True
+    )  # ✅ Indexed
+    service_id = Column(
+        Integer, ForeignKey("services.id"), nullable=True, index=True
+    )  # ✅ Indexed
+
     # Scheduled times (from booking)
     scheduled_start = Column(DateTime, nullable=False)
     scheduled_end = Column(DateTime, nullable=False)
     scheduled_duration_minutes = Column(Integer, nullable=False)
-    
+
     # Actual times (tracked in real-time)
-    actual_start = Column(DateTime, nullable=True)  # When professional marks "started"
-    actual_end = Column(DateTime, nullable=True)    # When professional marks "completed"
+    actual_start = Column(
+        DateTime, nullable=True, index=True
+    )  # ✅ Indexed for date queries
+    actual_end = Column(DateTime, nullable=True)
     actual_duration_minutes = Column(Integer, nullable=True)  # Calculated
-    
+
     # Session metadata
     was_early = Column(Boolean, default=False)  # Started before scheduled_start
-    was_late = Column(Boolean, default=False)   # Started after scheduled_start
+    was_late = Column(Boolean, default=False)  # Started after scheduled_start
     went_overtime = Column(Boolean, default=False)  # Ended after scheduled_end
-    
+
     # Notes and tracking
     session_notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     booking = relationship("Booking", backref="sessions")
     specialist = relationship("Specialist")
@@ -474,8 +493,11 @@ class ClientContactChangeLog(Base):
     specialist = relationship("Specialist")
 
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+# Database initialization is now handled by Alembic migrations
+# To create tables: alembic upgrade head
+# To create a migration after model changes: alembic revision --autogenerate -m "description"
+# Old approach (commented out for reference):
+# Base.metadata.create_all(bind=engine)
 
 
 # Dependency to get DB session
