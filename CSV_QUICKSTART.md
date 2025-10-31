@@ -14,14 +14,15 @@ Bulk import your client list from a CSV file - no more manual entry!
 Create a CSV file with your client information:
 
 ```csv
-name,email,phone
-John Smith,john@example.com,555-0100
-Jane Doe,jane@example.com,555-0200
+name,phone,email
+John Smith,555-0100,john@example.com
+Jane Doe,555-0200,jane@example.com
 ```
 
 **Important:**
-- ✅ Email is REQUIRED
-- ✅ Name and phone are optional
+- ✅ Name is REQUIRED
+- ✅ Phone is REQUIRED (10 digits)
+- ✅ Email is optional
 - ✅ Header row is optional (auto-detected)
 
 ### Step 2: Upload Your File
@@ -52,13 +53,13 @@ Use the included sample file to test:
 
 ### ✅ DO:
 - Use UTF-8 encoding for your CSV
-- Include email addresses for all clients
-- Use standard email format (name@domain.com)
-- Keep phone numbers in any format you prefer
+- Include name and phone for all clients
+- Use 10-digit phone numbers (any format works)
+- Keep email addresses in standard format if provided
 
 ### ❌ DON'T:
-- Upload files without email addresses
-- Use special characters in email addresses
+- Upload files without names or phone numbers
+- Use phone numbers with fewer than 10 digits
 - Upload non-CSV files (.xlsx, .txt, etc.)
 - Worry about duplicates (system handles them)
 
@@ -69,27 +70,19 @@ Use the included sample file to test:
 2. Save As → CSV UTF-8 (.csv)
 3. Upload to the platform
 
-### Scenario 2: Name Missing
-If you don't have names, the system will use the email prefix:
+### Scenario 2: Email Missing
+No problem! Just leave email empty:
 ```csv
-email
-john.smith@example.com
-```
-Will create client named: "john.smith"
-
-### Scenario 3: Phone Missing
-No problem! Just leave phone empty:
-```csv
-name,email,phone
-John Smith,john@example.com,
-Jane Doe,jane@example.com,555-0200
+name,phone,email
+John Smith,555-0100,
+Jane Doe,555-0200,jane@example.com
 ```
 
-### Scenario 4: Different Column Order
-The system auto-detects headers, so any order works:
+### Scenario 3: Different Column Order
+The system expects columns in this order:
 ```csv
-email,name,phone
-john@example.com,John Smith,555-0100
+name,phone,email
+John Smith,555-0100,john@example.com
 ```
 
 ## 🎨 What You'll See
@@ -102,12 +95,13 @@ john@example.com,John Smith,555-0100
 │                                          │
 │  📋 CSV Format:                          │
 │  ┌────────────────────────────────────┐ │
-│  │ name,email,phone                   │ │
-│  │ John Smith,john@example.com,555-..│ │
+│  │ name,phone,email                   │ │
+│  │ John Smith,555-0100,john@example..│ │
 │  └────────────────────────────────────┘ │
 │                                          │
-│  • Email is required                     │
-│  • Name & phone are optional             │
+│  • Name is required                      │
+│  • Phone is required (10 digits)         │
+│  • Email is optional                     │
 │  • Header row is optional                │
 │  • Duplicates will be skipped            │
 │                                          │
@@ -141,8 +135,12 @@ john@example.com,John Smith,555-0100
 - Check: File → Properties → Type should be CSV
 
 ### "Missing email"
-- Solution: Ensure every row has an email address
-- Check: Column 2 should have valid emails
+- Solution: Email is optional - you can leave it blank
+- Check: Name and phone must be filled
+
+### "Missing phone number"
+- Solution: Ensure every row has a phone number
+- Check: Column 2 should have 10-digit phone numbers
 
 ### "File encoding error"
 - Solution: Save your file as UTF-8
@@ -150,8 +148,13 @@ john@example.com,John Smith,555-0100
 - Google Sheets: Download → CSV
 
 ### "Row X: Invalid email format"
-- Solution: Fix the email on that row
+- Solution: Fix the email on that row (or leave it blank if not needed)
 - Format: name@domain.com (must have @ and .)
+
+### "Phone must be exactly 10 digits"
+- Solution: Ensure phone numbers have exactly 10 digits
+- Format: Any format works (555-0100, 5550100, (555) 010-0100)
+- The system will normalize it automatically
 
 ### Nothing happens when clicking Upload
 - Check: Did you select a file first?
@@ -166,7 +169,7 @@ john@example.com,John Smith,555-0100
 - 100+ clients: ~2-3 seconds
 
 ### Updating Existing Clients
-- Duplicates (by email) are automatically skipped
+- Duplicates (by phone or email) are automatically skipped
 - To update: Delete old client, then re-import
 
 ### Export Your Client List
@@ -176,10 +179,11 @@ Would you like this feature?
 ## 📞 Need Help?
 
 If you encounter issues:
-1. Check the CSV format matches the example
-2. Verify email addresses are valid
-3. Try the sample file first
-4. Check error messages in upload results
+1. Check the CSV format matches the example (name,phone,email)
+2. Verify all rows have name and phone
+3. Ensure phone numbers have 10 digits
+4. Try the sample file first
+5. Check error messages in upload results
 
 ## 🎉 You're Ready!
 

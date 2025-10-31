@@ -577,16 +577,20 @@
 
         async function loadBusinesses() {
             try {
+                console.log('Loading businesses...');
                 const response = await fetch('/consumer/workplaces?limit=100');
+                console.log('Response status:', response.status);
                 if (!response.ok) throw new Error('Failed to load businesses');
 
                 allBusinesses = await response.json();
+                console.log('Loaded businesses:', allBusinesses.length);
 
                 // Add category to each business
                 allBusinesses.forEach(business => {
                     business.category = categorizeBusiness(business);
                 });
 
+                console.log('Displaying businesses...');
                 displayBusinesses(allBusinesses);
             } catch (error) {
                 console.error('Error loading businesses:', error);
@@ -600,11 +604,15 @@
             const location = document.getElementById('businessLocation').value;
             const search = document.getElementById('businessSearch').value.toLowerCase();
 
+            console.log('Applying filters:', { category, location, search });
+            console.log('Total businesses before filter:', allBusinesses.length);
+
             let filtered = allBusinesses;
 
             // Filter by category
             if (category) {
                 filtered = filtered.filter(b => b.category === category);
+                console.log('After category filter:', filtered.length);
             }
 
             // Filter by location
@@ -613,6 +621,7 @@
                     const businessLocation = `${b.city}, ${b.state}`;
                     return businessLocation === location;
                 });
+                console.log('After location filter:', filtered.length);
             }
 
             // Filter by search
@@ -623,8 +632,10 @@
                     const addr = b.address.toLowerCase();
                     return name.includes(search) || desc.includes(search) || addr.includes(search);
                 });
+                console.log('After search filter:', filtered.length);
             }
 
+            console.log('Final filtered count:', filtered.length);
             displayBusinesses(filtered);
 
             // Show results info

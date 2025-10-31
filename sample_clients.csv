@@ -1,9 +1,9 @@
-name,email,phone
-John Smith,john.smith@example.com,555-0100
-Jane Doe,jane.doe@example.com,555-0200
-Michael Johnson,michael.j@example.com,555-0300
-Sarah Williams,,555-0400
-David Brown,david.brown@example.com,555-0500
-Emily Davis,emily.davis@example.com,
-Robert Miller,,555-0700
-Jessica Wilson,jessica.wilson@example.com,555-0800
+name,phone,email
+John Smith,555-0100,john.smith@example.com
+Jane Doe,555-0200,jane.doe@example.com
+Michael Johnson,555-0300,michael.j@example.com
+Sarah Williams,555-0400,
+David Brown,555-0500,david.brown@example.com
+Emily Davis,555-0600,emily.davis@example.com
+Robert Miller,555-0700,
+Jessica Wilson,555-0800,jessica.wilson@example.com

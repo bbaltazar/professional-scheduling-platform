@@ -196,6 +196,47 @@ class Booking(Base):
     consumer = relationship("Consumer", back_populates="bookings")
 
 
+class AppointmentSession(Base):
+    """
+    Tracks actual appointment durations for analytics and insights.
+    Records when appointments actually start and end to help professionals
+    understand real-world timing vs scheduled timing.
+    """
+    __tablename__ = "appointment_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
+    specialist_id = Column(Integer, ForeignKey("specialists.id"), nullable=False)
+    consumer_id = Column(Integer, ForeignKey("consumers.id"), nullable=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
+    
+    # Scheduled times (from booking)
+    scheduled_start = Column(DateTime, nullable=False)
+    scheduled_end = Column(DateTime, nullable=False)
+    scheduled_duration_minutes = Column(Integer, nullable=False)
+    
+    # Actual times (tracked in real-time)
+    actual_start = Column(DateTime, nullable=True)  # When professional marks "started"
+    actual_end = Column(DateTime, nullable=True)    # When professional marks "completed"
+    actual_duration_minutes = Column(Integer, nullable=True)  # Calculated
+    
+    # Session metadata
+    was_early = Column(Boolean, default=False)  # Started before scheduled_start
+    was_late = Column(Boolean, default=False)   # Started after scheduled_start
+    went_overtime = Column(Boolean, default=False)  # Ended after scheduled_end
+    
+    # Notes and tracking
+    session_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    booking = relationship("Booking", backref="sessions")
+    specialist = relationship("Specialist")
+    consumer = relationship("Consumer")
+    service = relationship("ServiceDB")
+
+
 class CalendarEvent(Base):
     __tablename__ = "calendar_events"
 

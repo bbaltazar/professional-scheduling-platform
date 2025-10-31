@@ -244,6 +244,11 @@ class BookingWithServiceResponse(BaseModel):
     end_time: time
     status: str
     service: Optional[dict] = None
+    # Appointment session tracking fields
+    session_id: Optional[int] = None
+    session_started: Optional[datetime] = None
+    session_ended: Optional[datetime] = None
+    actual_duration: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -251,6 +256,77 @@ class BookingWithServiceResponse(BaseModel):
 
 class BookingStatusUpdate(BaseModel):
     status: str
+
+
+# ==================== Appointment Session Tracking Models ====================
+
+
+class AppointmentSessionCreate(BaseModel):
+    """Create a new appointment session when appointment starts"""
+    booking_id: int
+    actual_start: Optional[datetime] = None  # If None, use current time
+    session_notes: Optional[str] = None
+
+
+class AppointmentSessionUpdate(BaseModel):
+    """Update appointment session when appointment ends"""
+    actual_end: Optional[datetime] = None  # If None, use current time
+    session_notes: Optional[str] = None
+
+
+class AppointmentSessionResponse(BaseModel):
+    id: int
+    booking_id: int
+    specialist_id: int
+    consumer_id: Optional[int] = None
+    service_id: Optional[int] = None
+    scheduled_start: datetime
+    scheduled_end: datetime
+    scheduled_duration_minutes: int
+    actual_start: Optional[datetime] = None
+    actual_end: Optional[datetime] = None
+    actual_duration_minutes: Optional[int] = None
+    was_early: bool = False
+    was_late: bool = False
+    went_overtime: bool = False
+    session_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ClientDurationInsight(BaseModel):
+    """Analytics for a specific client's appointment history"""
+    consumer_id: int
+    client_name: str
+    total_sessions: int
+    average_duration_minutes: float
+    median_duration_minutes: float
+    min_duration_minutes: int
+    max_duration_minutes: int
+    typical_overtime_minutes: float  # How much they typically go over
+    consistency_score: float  # 0-1, how consistent are the durations
+
+
+class ServiceDurationInsight(BaseModel):
+    """Analytics for a specific service's duration across all clients"""
+    service_id: int
+    service_name: str
+    total_sessions: int
+    average_duration_minutes: float
+    scheduled_duration_minutes: int
+    typical_variance_minutes: float
+
+
+class DurationRecommendation(BaseModel):
+    """Smart recommendation for booking duration"""
+    recommended_duration_minutes: int
+    confidence: str  # 'high', 'medium', 'low'
+    based_on: str  # Description of what data was used
+    client_history: Optional[ClientDurationInsight] = None
+    service_history: Optional[ServiceDurationInsight] = None
 
 
 # ==================== Calendar & Scheduling Models ====================
