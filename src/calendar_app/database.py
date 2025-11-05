@@ -437,7 +437,6 @@ class ClientProfile(Base):
 
     # Professional's notes about the client
     bio = Column(Text, nullable=True)  # Professional's description of client
-    score = Column(Integer, nullable=True)  # Rating 1-10 for internal use
     notes = Column(Text, nullable=True)  # JSON array of appointment notes with dates
     is_favorite = Column(
         Boolean, default=False, nullable=False

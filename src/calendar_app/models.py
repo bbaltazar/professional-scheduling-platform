@@ -8,7 +8,7 @@ organized by functional areas for better maintainability.
 from __future__ import annotations
 from typing import Union, List, Optional
 from datetime import date, time, datetime
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, validator, field_validator
 
 
 # ==================== Core Service Models ====================
@@ -280,6 +280,7 @@ class BookingResponse(BaseModel):
 class BookingWithServiceResponse(BaseModel):
     id: int
     specialist_id: int
+    consumer_id: Optional[int] = None  # Added for client profile linking
     service_id: int
     client_name: str
     client_email: str
@@ -649,6 +650,25 @@ class ConsumerCreate(BaseModel):
     phone: Optional[str] = None
 
 
+class ClientCreate(BaseModel):
+    """Model for creating a client (consumer) from the professional dashboard"""
+
+    name: str
+    phone: str
+    email: Optional[str] = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, v):
+        # Handle empty string or None
+        if not v or v == "":
+            return None
+        # Basic email validation
+        if "@" not in str(v) or "." not in str(v):
+            raise ValueError("Invalid email format")
+        return v
+
+
 class ConsumerResponse(BaseModel):
     id: int
     name: str
@@ -698,7 +718,6 @@ class ClientProfileCreate(BaseModel):
 
     consumer_id: int
     bio: Optional[str] = None
-    score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
     notes: Optional[List[AppointmentNote]] = []
     is_favorite: Optional[bool] = False
 
@@ -707,7 +726,6 @@ class ClientProfileUpdate(BaseModel):
     """Update an existing client profile"""
 
     bio: Optional[str] = None
-    score: Optional[int] = Field(None, ge=1, le=10, description="Client rating 1-10")
     notes: Optional[List[AppointmentNote]] = None
     is_favorite: Optional[bool] = None
 
@@ -722,7 +740,6 @@ class ClientProfileResponse(BaseModel):
     specialist_id: int
     consumer_id: int
     bio: Optional[str] = None
-    score: Optional[int] = None
     notes: Optional[List[AppointmentNote]] = []
     is_favorite: Optional[bool] = False
     created_at: datetime
@@ -742,7 +759,6 @@ class ClientSummary(BaseModel):
     total_bookings: int
     last_booking_date: Optional[datetime] = None
     next_booking_date: Optional[datetime] = None
-    score: Optional[int] = None
     has_profile: bool = False
     is_favorite: Optional[bool] = False
 

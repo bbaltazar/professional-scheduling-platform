@@ -28,6 +28,7 @@ from fastapi import (
     Query,
     UploadFile,
     File,
+    Body,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -125,6 +126,7 @@ try:
         # Consumer models
         ConsumerCreate,
         ConsumerResponse,
+        ClientCreate,
         # Referral models
         ReferralCreate,
         ReferralResponse,
@@ -207,6 +209,8 @@ except ImportError:
         VerificationResponse,
         CodeVerificationRequest,
         CodeVerificationResponse,
+        # Consumer models
+        ClientCreate,
         # Error models
         ErrorResponse,
     )
@@ -2235,14 +2239,10 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
             )
             db.add(referral)
 
-            # Auto-create client profile with next available rank
-            next_rank = get_next_client_rank(db, booking.specialist_id)
+            # Auto-create client profile
             client_profile = ClientProfile(
                 specialist_id=booking.specialist_id,
                 consumer_id=consumer.id,
-                bio=None,
-                score=next_rank,
-                notes=None,
             )
             db.add(client_profile)
 
@@ -2311,6 +2311,7 @@ def get_specialist_bookings(specialist_id: int, db: Session = Depends(get_db)):
         booking_dict = {
             "id": booking.id,
             "specialist_id": booking.specialist_id,
+            "consumer_id": booking.consumer_id,  # Add consumer_id for client profile linking
             "service_id": booking.service_id,
             "client_name": booking.client_name,
             "client_email": booking.client_email,
@@ -3834,19 +3835,6 @@ def consolidate_consumer_bookings(
     return all_bookings
 
 
-def get_next_client_rank(db: Session, specialist_id: int) -> int:
-    """
-    Get the next available rank for a new client.
-    Returns the highest existing rank + 1, or 1 if no clients exist.
-    """
-    max_rank = (
-        db.query(func.max(ClientProfile.score))
-        .filter(ClientProfile.specialist_id == specialist_id)
-        .scalar()
-    )
-    return (max_rank or 0) + 1
-
-
 @app.get("/professional/clients")
 async def get_professional_clients(specialist_id: int, db: Session = Depends(get_db)):
     """
@@ -3922,7 +3910,6 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
         # Get profile if exists
         profile = None
         has_profile = False
-        score = None
         is_favorite = False
         if consumer_id:
             profile = (
@@ -3935,7 +3922,6 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
             )
             if profile:
                 has_profile = True
-                score = profile.score
                 is_favorite = profile.is_favorite or False
 
         # Build summary
@@ -3961,7 +3947,6 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
                 if next_booking
                 else None
             ),
-            "score": score,
             "has_profile": has_profile,
             "is_favorite": is_favorite,
         }
@@ -3995,26 +3980,25 @@ async def get_professional_clients(specialist_id: int, db: Session = Depends(get
             "total_bookings": 0,
             "last_booking_date": None,
             "next_booking_date": None,
-            "score": profile.score,
             "has_profile": True,
             "is_favorite": profile.is_favorite or False,
         }
 
         client_summaries.append(client_summary)
 
-    # Sort by rank (score) if available, then by last booking date
+    # Sort by last booking date (more recent first), then by name
     def sort_key(client):
-        # Primary: Sort by rank (lower is better)
-        rank = client["score"] if client["score"] is not None else 999999
-
-        # Secondary: Sort by last booking date (more recent first)
+        # Primary: Sort by last booking date (more recent first)
         last_booking = client["last_booking_date"]
         if last_booking:
             booking_sort = -last_booking.timestamp()
         else:
-            booking_sort = 0  # No bookings go last within same rank
+            booking_sort = float("inf")  # No bookings go last
 
-        return (rank, booking_sort)
+        # Secondary: Sort by name alphabetically
+        name_sort = client["name"].lower() if client["name"] else ""
+
+        return (booking_sort, name_sort)
 
     client_summaries.sort(key=sort_key)
 
@@ -4108,7 +4092,6 @@ async def get_client_detail(
             "specialist_id": profile.specialist_id,
             "consumer_id": profile.consumer_id,
             "bio": profile.bio,
-            "score": profile.score,
             "notes": notes,
             "created_at": profile.created_at.isoformat(),
             "updated_at": profile.updated_at.isoformat(),
@@ -4141,19 +4124,13 @@ async def update_client_profile(
     specialist_id: int,
     consumer_id: int,
     bio: Optional[str] = None,
-    score: Optional[int] = None,
     notes: Optional[str] = None,  # JSON string of notes array
     is_favorite: Optional[bool] = None,
     db: Session = Depends(get_db),
 ):
     """
     Update or create a client profile with professional's notes.
-    Score is now used as ranking (1 = top client, higher numbers = lower priority).
     """
-    # Validate score (now ranking - allow any positive integer)
-    if score is not None and score < 1:
-        raise HTTPException(status_code=400, detail="Ranking must be at least 1")
-
     # Verify consumer exists
     consumer = db.query(Consumer).filter(Consumer.id == consumer_id).first()
     if not consumer:
@@ -4170,15 +4147,11 @@ async def update_client_profile(
     )
 
     if not profile:
-        # Create new profile with auto-ranking if score not provided
-        if score is None:
-            score = get_next_client_rank(db, specialist_id)
-
+        # Create new profile
         profile = ClientProfile(
             specialist_id=specialist_id,
             consumer_id=consumer_id,
             bio=bio,
-            score=score,
             notes=notes,
             is_favorite=is_favorite if is_favorite is not None else False,
             created_at=datetime.utcnow(),
@@ -4189,8 +4162,6 @@ async def update_client_profile(
         # Update existing
         if bio is not None:
             profile.bio = bio
-        if score is not None:
-            profile.score = score
         if notes is not None:
             profile.notes = notes
         if is_favorite is not None:
@@ -4496,6 +4467,92 @@ async def delete_client(
     }
 
 
+@app.post("/professional/clients")
+async def create_client(
+    specialist_id: int = Query(..., description="Specialist ID"),
+    client_data: ClientCreate = Body(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a single client for a specialist.
+    - Name is required
+    - Phone is required (10 digits)
+    - Email is optional
+    - Creates Consumer record and ClientProfile record
+    """
+    # Verify specialist exists
+    specialist = db.query(Specialist).filter(Specialist.id == specialist_id).first()
+    if not specialist:
+        raise HTTPException(status_code=404, detail="Specialist not found")
+
+    # Validate and normalize phone
+    normalized_phone = normalize_phone(client_data.phone)
+    if not normalized_phone:
+        raise HTTPException(
+            status_code=400, detail="Phone number must be exactly 10 digits"
+        )
+
+    # Validate email format if provided
+    if client_data.email:
+        email_str = str(client_data.email)
+        if "@" not in email_str or "." not in email_str:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+    else:
+        email_str = None
+
+    # Check if consumer already exists (by phone or email)
+    existing_consumer = (
+        db.query(Consumer).filter(Consumer.phone == normalized_phone).first()
+    )
+    if not existing_consumer and email_str:
+        existing_consumer = (
+            db.query(Consumer).filter(Consumer.email == email_str).first()
+        )
+
+    if existing_consumer:
+        consumer = existing_consumer
+        # Check if profile already exists for this specialist
+        existing_profile = (
+            db.query(ClientProfile)
+            .filter(
+                ClientProfile.specialist_id == specialist_id,
+                ClientProfile.consumer_id == consumer.id,
+            )
+            .first()
+        )
+        if existing_profile:
+            raise HTTPException(
+                status_code=400,
+                detail="This client is already in your client list",
+            )
+    else:
+        # Create new consumer
+        consumer = Consumer(
+            name=client_data.name, email=email_str, phone=normalized_phone
+        )
+        db.add(consumer)
+        db.flush()  # Get the consumer.id
+
+    # Create client profile
+    profile = ClientProfile(
+        specialist_id=specialist_id,
+        consumer_id=consumer.id,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(consumer)
+
+    return {
+        "message": "Client created successfully",
+        "consumer": {
+            "id": consumer.id,
+            "name": consumer.name,
+            "email": consumer.email,
+            "phone": consumer.phone,
+        },
+    }
+
+
 @app.post("/professional/clients/upload-csv")
 async def upload_clients_csv(
     specialist_id: int = Query(..., description="Specialist ID"),
@@ -4545,10 +4602,6 @@ async def upload_clients_csv(
             ):
                 has_header = True
                 rows = rows[1:]  # Skip header row
-
-        # Get starting rank for CSV upload (next available rank)
-        starting_rank = get_next_client_rank(db, specialist_id)
-        current_rank = starting_rank
 
         # Process rows
         created_count = 0
@@ -4620,17 +4673,13 @@ async def upload_clients_csv(
                 db.add(consumer)
                 db.flush()  # Get the consumer.id
 
-            # Create client profile for this specialist with auto-rank
+            # Create client profile for this specialist
             profile = ClientProfile(
                 specialist_id=specialist_id,
                 consumer_id=consumer.id,
-                bio=None,
-                score=current_rank,  # Assign rank based on CSV row order
-                notes=None,
             )
             db.add(profile)
             created_count += 1
-            current_rank += 1  # Increment rank for next client
 
         db.commit()
 
