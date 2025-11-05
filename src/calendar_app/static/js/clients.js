@@ -14,7 +14,7 @@ export const clientState = {
 // Load all clients
 export async function loadClients(currentSpecialistId) {
     console.log('[CLIENTS] loadClients called with specialist ID:', currentSpecialistId);
-    
+
     if (!currentSpecialistId) {
         console.error('[CLIENTS] No specialist ID provided!');
         return;
@@ -27,16 +27,16 @@ export async function loadClients(currentSpecialistId) {
     try {
         const url = `/professional/clients?specialist_id=${currentSpecialistId}`;
         console.log('[CLIENTS] Fetching from:', url);
-        
+
         const response = await fetch(url);
         console.log('[CLIENTS] Response status:', response.status);
-        
+
         if (!response.ok) throw new Error('Failed to load clients');
 
         const data = await response.json();
         console.log('[CLIENTS] Received data:', data);
         console.log('[CLIENTS] Number of clients:', data.length);
-        
+
         clientState.allClients = data;
         console.log('[CLIENTS] Set clientState.allClients to:', clientState.allClients);
 

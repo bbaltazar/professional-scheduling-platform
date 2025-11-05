@@ -224,3 +224,92 @@ If all modules are extracted:
 
 The refactoring is at a stable checkpoint. Test the application to ensure everything works, then continue with Phase 2 when convenient.
 
+
+---
+
+## ✅ Milestone 1 Completed: Remove Duplicate Functions
+**Date:** November 4, 2025
+
+### Changes
+- Removed duplicate `sendVerification()` function (already in auth.js)
+- Removed duplicate `verifyCode()` function (already in auth.js)  
+- Removed duplicate `showResponse()` function (already in utils.js)
+- Added auth.js module with authentication functions
+- Updated comments to document auth module location
+
+### Metrics
+- Lines removed: 130 lines
+- professional.html: 3,609 → 3,479 lines  
+- **Total reduction: 52.3%** (from original 7,297 lines)
+
+### Tests Passing
+- ✅ All 8 JavaScript module structure tests
+- ✅ auth.js added to module validation
+- ✅ No circular dependencies
+- ✅ Import/export matching confirmed
+
+### Version
+- Bumped to v=16 for cache busting
+
+### Remaining Functions to Extract (14 functions)
+1. Legacy availability: `saveAvailability()` (1 function)
+2. Client bulk operations (9 functions)  
+3. CSV upload (3 functions)
+
+**Next up: Milestone 2 - Extract Client Bulk Operations**
+
+
+---
+
+## ✅ Milestone 2 Completed: Extract Client Bulk Operations & CSV Upload
+**Date:** November 4, 2025
+
+### Changes
+**Created two new modules:**
+
+1. **client-bulk-operations.js** (384 lines)
+   - toggleEditMode() - Toggle bulk edit mode
+   - toggleSelectAll() - Select/deselect all clients
+   - updateSelectedCount() - Update selection counter
+   - bulkDeleteClients() - Bulk delete selected clients
+   - bulkFavorite() - Bulk favorite clients
+   - bulkUnfavorite() - Bulk unfavorite clients
+   - bulkMessage() - Display contact info for bulk messaging
+   - openAddClientModal() - Open add client modal
+   - closeAddClientModal() - Close add client modal
+   - submitNewClient() - Submit new client form
+
+2. **csv-upload.js** (165 lines)
+   - openCsvUploadModal() - Open CSV upload modal
+   - closeCsvUploadModal() - Close CSV upload modal
+   - handleCsvFileSelect() - Handle CSV file selection
+   - uploadCsvFile() - Upload and process CSV file
+
+**Updated files:**
+- main.js - Added imports and window exposures for both modules
+- professional.html - Removed extracted functions, added documentation comments
+- test_js_modules.py - Updated to include new modules, fixed async function detection
+
+### Metrics
+- Lines removed from professional.html: 417 lines
+- professional.html: 3,479 → 3,062 lines
+- **Total reduction: 58.0%** (from original 7,297 lines)
+- **Total modules: 12**
+- **Total modular code: ~4,650 lines**
+
+### Tests Passing
+- ✅ All 8 JavaScript module structure tests
+- ✅ 12 modules validated
+- ✅ No circular dependencies
+- ✅ Import/export matching confirmed (including async functions)
+- ✅ No duplicate function definitions
+
+### Version
+- Bumped to v=17 for cache busting
+
+### Remaining in professional.html
+- Legacy availability function: `saveAvailability()` (~40 lines)
+- Total JS remaining: ~40 lines
+
+**Next up: Milestone 3 - Clean up legacy code and final optimization**
+

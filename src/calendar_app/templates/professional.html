@@ -2888,18 +2888,18 @@
         // These will be replaced once main.js loads
         let retryCount = {};
         const MAX_RETRIES = 10;
-        
-        const placeholderFn = (name) => function(...args) {
+
+        const placeholderFn = (name) => function (...args) {
             if (!retryCount[name]) retryCount[name] = 0;
-            
+
             if (retryCount[name] >= MAX_RETRIES) {
                 console.error(`${name} failed to load after ${MAX_RETRIES} retries. Check browser console for module loading errors.`);
                 return;
             }
-            
+
             retryCount[name]++;
             console.warn(`${name} called before modules loaded - retry ${retryCount[name]}/${MAX_RETRIES}`);
-            
+
             setTimeout(() => {
                 if (typeof window[name] === 'function' && !window[name].toString().includes('placeholderFn')) {
                     // Real function is now loaded, call it
@@ -2923,7 +2923,7 @@
     </script>
 
     <!-- Load modular JavaScript -->
-    <script type="module" src="/static/js/main.js?v=15"></script>
+    <script type="module" src="/static/js/main.js?v=17"></script>
 
     <script>
         // ==================== TEMPORARY: REMAINING FUNCTIONS TO BE EXTRACTED ====================
@@ -2989,136 +2989,12 @@
             }
         }
 
-        // Verification Functions
-        let currentVerificationType = 'registration';
-
-        async function sendVerification(method, verificationType) {
-            currentVerificationType = verificationType || 'registration';
-
-            // Get email from the main input field
-            const email = document.getElementById('userEmail').value;
-
-            if (method === 'email' && !email) {
-                showResponse('verificationResponse', 'Please enter your email address', 'error');
-                return;
-            }
-
-            const requestData = {
-                verification_type: currentVerificationType,
-                email: email
-            };
-
-            // If it's registration, include additional user data
-            if (verificationType === 'registration') {
-                const name = document.getElementById('regName').value;
-                const bio = document.getElementById('regBio').value;
-                const phone = document.getElementById('regPhone').value;
-
-                if (!name) {
-                    showResponse('verificationResponse', 'Please enter your professional name', 'error');
-                    return;
-                }
-
-                // Validate and normalize phone if provided
-                if (phone) {
-                    const phoneValidation = validatePhone(phone);
-                    if (!phoneValidation.valid) {
-                        showResponse('verificationResponse', phoneValidation.error, 'error');
-                        return;
-                    }
-                    requestData.phone = phoneValidation.normalized;
-                } else {
-                    requestData.phone = null;
-                }
-
-                requestData.name = name;
-                if (bio) requestData.bio = bio;
-            }
-
-            try {
-                const response = await fetch('/verification/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    showResponse('verificationResponse', ` ${result.message}`, 'success');
-                    document.getElementById('codeSection').style.display = 'block';
-                } else {
-                    showResponse('verificationResponse', `Failed to send code: ${result.detail}`, 'error');
-                }
-            } catch (error) {
-                showResponse('verificationResponse', `Connection error: ${error.message}`, 'error');
-            }
-        }
-
-        async function verifyCode() {
-            const code = document.getElementById('verificationCode').value;
-
-            if (!code || code.length !== 6) {
-                showResponse('verificationResponse', 'Please enter a 6-digit verification code', 'error');
-                return;
-            }
-
-            const requestData = {
-                code: code,
-                verification_type: currentVerificationType
-            };
-
-            // Use the main email field
-            const email = document.getElementById('userEmail').value;
-            if (email) {
-                requestData.email = email;
-            }
-
-            // Add registration data if this is a registration
-            if (currentVerificationType === 'registration') {
-                const name = document.getElementById('regName').value;
-                const bio = document.getElementById('regBio').value;
-                const phone = document.getElementById('regPhone').value;
-
-                if (!name) {
-                    showResponse('verificationResponse', 'Please enter your name for registration', 'error');
-                    return;
-                }
-
-                requestData.name = name;
-                requestData.bio = bio;
-                requestData.specialist_phone = phone;
-            }
-
-            try {
-                const response = await fetch('/verification/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.verified) {
-                    showResponse('verificationResponse', ' Verification successful! Redirecting to dashboard...', 'success');
-
-                    // Set the current specialist ID for API calls
-                    if (result.specialist) {
-                        currentSpecialistId = result.specialist.id;
-                    }
-
-                    // Redirect to professional dashboard - use href for proper navigation with cookies
-                    setTimeout(() => {
-                        window.location.href = '/professional';
-                    }, 1000);
-
-                } else {
-                    showResponse('verificationResponse', `${result.message}`, 'error');
-                }
-            } catch (error) {
-                showResponse('verificationResponse', `Connection error: ${error.message}`, 'error');
-            }
-        }
+        // ========================
+        // AUTHENTICATION & VERIFICATION
+        // ========================
+        // NOTE: All authentication functions moved to /static/js/auth.js including:
+        // - proceedWithEmail(), showSignUp(), registerUser(), verifyCode()
+        // - sendVerificationCode(), hideLogin()
 
         // ========================
         // BOOKINGS MANAGEMENT
@@ -3131,16 +3007,10 @@
         // - Timer functions: startTimer(), stopTimer()
         // - formatDuration() for session durations
 
-        function showResponse(elementId, message, type) {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.className = `response ${type}`;
-            element.style.display = 'block';
-
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 5000);
-        }
+        // ========================
+        // UTILITY FUNCTIONS
+        // ========================
+        // NOTE: showResponse() is now in /static/js/utils.js and exposed via main.js
 
         // ========================
         // CALENDAR & SCHEDULE MANAGEMENT
@@ -3153,455 +3023,38 @@
         // - Calendar Utilities: deleteTimeBlock(), clearWeeklySchedule(), copyDaySchedule()
         // - Save & Apply: saveWeeklySchedule(), openApplyWeeksModal(), updateApplyPreview(), closeApplyWeeksModal(), applyToUpcomingWeeks()
 
-        // NOTE: Calendar data loading (loadRecurringSchedules, loadPTOBlocks) 
-        // and initialization now handled by main.js in DOMContentLoaded
-
-        // ==================== WORKPLACE MANAGEMENT ====================
+        // ========================
+        // WORKPLACE MANAGEMENT
+        // ========================
         // NOTE: All workplace management functions moved to /static/js/workplaces.js including:
         // - searchYelpBusinesses(), addWorkplaceFromYelp(), createCustomWorkplace()
         // - loadMyWorkplaces(), toggleWorkplaceStatus(), removeWorkplace()
 
-        // ==================== CLIENT MANAGEMENT FUNCTIONS ====================
-        // NOTE: Core client functions (loadClients, displayClients, sortClients, filterClients, toggleFavorite, updateClientStats)
-        // are now in /static/js/clients.js and exposed via main.js
-        // The allClients array, editModeActive, and currentClientDetail are also managed in that module
+        // ========================
+        // CLIENT BULK OPERATIONS
+        // ========================
+        // NOTE: All client bulk operations moved to /static/js/client-bulk-operations.js including:
+        // - Edit Mode: toggleEditMode(), toggleSelectAll(), updateSelectedCount()
+        // - Bulk Actions: bulkDeleteClients(), bulkFavorite(), bulkUnfavorite(), bulkMessage()
+        // - Add Client: openAddClientModal(), closeAddClientModal(), submitNewClient()
 
-        // ==================== EDIT MODE FUNCTIONS ====================
+        // ========================
+        // CSV UPLOAD
+        // ========================
+        // NOTE: All CSV upload functions moved to /static/js/csv-upload.js including:
+        // - openCsvUploadModal(), closeCsvUploadModal()
+        // - handleCsvFileSelect(), uploadCsvFile()
 
-        function toggleEditMode() {
-            editModeActive = !editModeActive;
-
-            const editBtn = document.getElementById('editModeBtn');
-            const actionsBar = document.getElementById('editModeActions');
-            const clientsTableContainer = document.querySelector('.clients-section');
-
-            if (editModeActive) {
-                editBtn.innerHTML = '<span style="margin-right: 4px;">✓</span> Done';
-                editBtn.classList.remove('btn-outline');
-                editBtn.classList.add('btn-accent');
-                actionsBar.style.display = 'flex';
-                if (clientsTableContainer) clientsTableContainer.classList.add('edit-mode');
-            } else {
-                editBtn.innerHTML = '<span style="margin-right: 4px;">✏️</span> Edit Clients';
-                editBtn.classList.remove('btn-accent');
-                editBtn.classList.add('btn-outline');
-                actionsBar.style.display = 'none';
-                if (clientsTableContainer) clientsTableContainer.classList.remove('edit-mode');
-                // Uncheck select all
-                document.getElementById('selectAllClients').checked = false;
-            }
-
-            // Re-render clients table with/without checkboxes
-            filterClients();
-        }
-
-        function toggleSelectAll() {
-            const selectAllCheckbox = document.getElementById('selectAllClients');
-            const checkboxes = document.querySelectorAll('.client-checkbox');
-
-            checkboxes.forEach(cb => {
-                cb.checked = selectAllCheckbox.checked;
-            });
-
-            updateSelectedCount();
-        }
-
-        function updateSelectedCount() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            const count = checkboxes.length;
-
-            document.getElementById('selectedCount').textContent = count + (count === 1 ? ' selected' : ' selected');
-
-            // Enable/disable all bulk action buttons
-            const disabled = count === 0;
-            document.getElementById('bulkDeleteBtn').disabled = disabled;
-            document.getElementById('bulkFavoriteBtn').disabled = disabled;
-            document.getElementById('bulkUnfavoriteBtn').disabled = disabled;
-            document.getElementById('bulkMessageBtn').disabled = disabled;
-        }
-
-        async function bulkDeleteClients() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.consumerId));
-
-            if (selectedIds.length === 0) return;
-
-            if (!confirm(`Are you sure you want to delete ${selectedIds.length} client(s)? This will remove their profiles and appointment history. This cannot be undone.`)) {
-                return;
-            }
-
-            try {
-                // Delete each client
-                for (const consumerId of selectedIds) {
-                    const response = await fetch(`/professional/clients/${consumerId}?specialist_id=${currentSpecialistId}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to delete client ${consumerId}`);
-                    }
-
-                    // Remove from allClients array
-                    allClients = allClients.filter(c => c.consumer_id !== consumerId);
-                }
-
-                alert(`Successfully deleted ${selectedIds.length} client(s)`);
-
-                // Refresh display
-                updateClientStats();
-                filterClients();
-                updateSelectedCount();
-
-            } catch (error) {
-                console.error('Bulk delete error:', error);
-                alert('Failed to delete some clients. Please try again.');
-                // Reload to ensure data consistency
-                loadClients();
-            }
-        }
-
-        async function bulkFavorite() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.consumerId));
-
-            if (selectedIds.length === 0) return;
-
-            try {
-                let successCount = 0;
-                for (const consumerId of selectedIds) {
-                    const url = `/professional/clients/${consumerId}/profile?specialist_id=${currentSpecialistId}&is_favorite=true`;
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    if (response.ok) {
-                        successCount++;
-                        // Update in allClients array
-                        const client = allClients.find(c => c.consumer_id === consumerId);
-                        if (client) client.is_favorite = true;
-                    }
-                }
-
-                alert(`Successfully favorited ${successCount} client(s)`);
-                filterClients();
-                updateSelectedCount();
-
-            } catch (error) {
-                console.error('Bulk favorite error:', error);
-                alert('Failed to favorite some clients. Please try again.');
-            }
-        }
-
-        async function bulkUnfavorite() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.consumerId));
-
-            if (selectedIds.length === 0) return;
-
-            try {
-                let successCount = 0;
-                for (const consumerId of selectedIds) {
-                    const url = `/professional/clients/${consumerId}/profile?specialist_id=${currentSpecialistId}&is_favorite=false`;
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    if (response.ok) {
-                        successCount++;
-                        // Update in allClients array
-                        const client = allClients.find(c => c.consumer_id === consumerId);
-                        if (client) client.is_favorite = false;
-                    }
-                }
-
-                alert(`Successfully unfavorited ${successCount} client(s)`);
-                filterClients();
-                updateSelectedCount();
-
-            } catch (error) {
-                console.error('Bulk unfavorite error:', error);
-                alert('Failed to unfavorite some clients. Please try again.');
-            }
-        }
-
-        async function bulkMessage() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.consumerId));
-
-            if (selectedIds.length === 0) return;
-
-            // Get selected clients data
-            const selectedClients = allClients.filter(c => selectedIds.includes(c.consumer_id));
-            const emails = selectedClients.filter(c => c.email).map(c => c.email);
-            const phones = selectedClients.filter(c => c.phone).map(c => c.phone);
-
-            let message = `Selected ${selectedIds.length} client(s):\n\n`;
-            if (emails.length > 0) {
-                message += `📧 Emails (${emails.length}):\n${emails.join(', ')}\n\n`;
-            }
-            if (phones.length > 0) {
-                message += `📱 Phones (${phones.length}):\n${phones.join(', ')}\n\n`;
-            }
-            message += 'Copy the contact information above to send messages via your preferred method (email client, SMS app, etc.).';
-
-            alert(message);
-        }
-
-        // ==================== FAVORITE TOGGLE ====================
-        // NOTE: toggleFavorite is now in /static/js/clients.js
-
-        // ==================== CLIENT DETAIL MODAL ====================
+        // ========================
+        // CLIENT DETAIL MODAL
+        // ========================
         // NOTE: All client detail modal functions moved to /static/js/client-detail.js including:
         // - viewClientDetail(), closeClientModal(), saveClientProfile()
-        // - Manual booking: updateManualBookingServiceInfo(), loadManualBookingTimeSlots(), 
+        // - Manual booking: updateManualBookingServiceInfo(), loadManualBookingTimeSlots(),
         //   selectAlternativeDate(), submitManualBooking()
         // - Appointment notes: addAppointmentNote(), toggleAppointmentNoteEditor(), saveAppointmentNote()
         // - Client deletion: confirmDeleteClient(), closeDeleteConfirmModal(), deleteClient()
         // - Changelog: toggleChangelog()
-
-        // CSV Upload functions
-        let selectedCsvFile = null;
-
-        // Add Client Modal Functions
-        function openAddClientModal() {
-            const modal = document.getElementById('addClientModal');
-            modal.style.display = 'flex';
-            // Reset form
-            document.getElementById('addClientForm').reset();
-            document.getElementById('addClientMessage').innerHTML = '';
-        }
-
-        function closeAddClientModal() {
-            const modal = document.getElementById('addClientModal');
-            modal.style.display = 'none';
-        }
-
-        async function submitNewClient(event) {
-            event.preventDefault();
-
-            const name = document.getElementById('newClientName').value.trim();
-            const phone = document.getElementById('newClientPhone').value.trim();
-            const email = document.getElementById('newClientEmail').value.trim();
-
-            const messageDiv = document.getElementById('addClientMessage');
-
-            // Validate name
-            if (!name) {
-                messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ Name is required</div>';
-                return;
-            }
-
-            // Validate phone number - must be exactly 10 digits
-            if (!phone) {
-                messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ Phone number is required</div>';
-                return;
-            }
-
-            if (!/^\d{10}$/.test(phone)) {
-                messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ Phone must be exactly 10 digits (no dashes or spaces)<br><small>You entered: "' + phone + '" (' + phone.length + ' characters)</small></div>';
-                return;
-            }
-
-            // Validate email format if provided
-            if (email) {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) {
-                    messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ Please enter a valid email address<br><small>Example: client@example.com</small></div>';
-                    return;
-                }
-            }
-
-            // Check for duplicates in existing client list
-            const duplicateByPhone = allClients.find(client => client.phone === phone);
-            if (duplicateByPhone) {
-                messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ A client with this phone number already exists<br><small><strong>' + duplicateByPhone.name + '</strong> - ' + duplicateByPhone.phone + '</small></div>';
-                return;
-            }
-
-            if (email) {
-                const duplicateByEmail = allClients.find(client => client.email && client.email.toLowerCase() === email.toLowerCase());
-                if (duplicateByEmail) {
-                    messageDiv.innerHTML = '<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ A client with this email already exists<br><small><strong>' + duplicateByEmail.name + '</strong> - ' + duplicateByEmail.email + '</small></div>';
-                    return;
-                }
-            }
-
-            try {
-                // Prepare client data
-                const clientData = {
-                    name: name,
-                    phone: phone
-                };
-
-                // Only include email if provided
-                if (email) {
-                    clientData.email = email;
-                }
-
-                const response = await fetch(`/professional/clients?specialist_id=${currentSpecialistId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(clientData)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    let errorMessage = 'Failed to create client';
-
-                    // Parse the error detail to provide more specific feedback
-                    if (errorData.detail) {
-                        if (Array.isArray(errorData.detail)) {
-                            // Pydantic validation errors
-                            const errors = errorData.detail.map(err => {
-                                const field = err.loc[err.loc.length - 1];
-                                return `${field}: ${err.msg}`;
-                            }).join('<br>');
-                            errorMessage = errors;
-                        } else {
-                            errorMessage = errorData.detail;
-                        }
-                    }
-
-                    throw new Error(errorMessage);
-                }
-
-                const result = await response.json();
-
-                messageDiv.innerHTML = '<div style="color: #4ade80; padding: 12px; background: rgba(74, 222, 128, 0.1); border-radius: 8px;">✓ Client added successfully!</div>';
-
-                // Refresh the clients list
-                setTimeout(() => {
-                    closeAddClientModal();
-                    loadClients();
-                }, 1500);
-
-            } catch (error) {
-                console.error('Error adding client:', error);
-                messageDiv.innerHTML = `<div style="color: #ff6b6b; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">⚠️ ${error.message}</div>`;
-            }
-        } function openCsvUploadModal() {
-            const modal = document.getElementById('csvUploadModal');
-            modal.style.display = 'flex';
-            // Reset state
-            selectedCsvFile = null;
-            document.getElementById('csvFileInput').value = '';
-            document.getElementById('selectedFileName').textContent = '';
-            document.getElementById('uploadMessage').innerHTML = '';
-            document.getElementById('uploadCsvBtn').disabled = true;
-            document.getElementById('uploadCsvBtn').style.opacity = '0.5';
-            document.getElementById('uploadCsvBtn').style.cursor = 'not-allowed';
-            document.getElementById('uploadProgress').style.display = 'none';
-        }
-
-        function closeCsvUploadModal() {
-            const modal = document.getElementById('csvUploadModal');
-            modal.style.display = 'none';
-            selectedCsvFile = null;
-        }
-
-        function handleCsvFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (!file.name.endsWith('.csv')) {
-                alert('Please select a CSV file');
-                event.target.value = '';
-                return;
-            }
-
-            selectedCsvFile = file;
-            document.getElementById('selectedFileName').textContent = `Selected: ${file.name}`;
-
-            // Enable upload button
-            const uploadBtn = document.getElementById('uploadCsvBtn');
-            uploadBtn.disabled = false;
-            uploadBtn.style.opacity = '1';
-            uploadBtn.style.cursor = 'pointer';
-        }
-
-        async function uploadCsvFile() {
-            if (!selectedCsvFile || !currentSpecialistId) return;
-
-            const uploadBtn = document.getElementById('uploadCsvBtn');
-            const messageDiv = document.getElementById('uploadMessage');
-            const progressDiv = document.getElementById('uploadProgress');
-            const progressBar = document.getElementById('uploadProgressBar');
-
-            // Disable button
-            uploadBtn.disabled = true;
-            uploadBtn.style.opacity = '0.5';
-            uploadBtn.textContent = 'Uploading...';
-
-            messageDiv.innerHTML = '';
-            progressDiv.style.display = 'block';
-            progressBar.style.width = '30%';
-
-            try {
-                // Create form data
-                const formData = new FormData();
-                formData.append('file', selectedCsvFile);
-
-                // Upload
-                const response = await fetch(`/professional/clients/upload-csv?specialist_id=${currentSpecialistId}`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                progressBar.style.width = '70%';
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Upload failed');
-                }
-
-                const result = await response.json();
-                progressBar.style.width = '100%';
-
-                // Show success message
-                let message = `<div style="background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(74, 222, 128, 0.3);">
-                    <p style="color: #4ade80; font-weight: 600; margin-bottom: 10px;">Upload Successful!</p>
-                    <ul style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem; margin-left: 20px;">
-                        <li>${result.created} clients added</li>
-                        <li>${result.skipped} duplicates skipped</li>
-                        <li>${result.total_rows} total rows processed</li>
-                    </ul>`;
-
-                if (result.errors && result.errors.length > 0) {
-                    message += `<p style="color: #fbbf24; margin-top: 10px; font-size: 0.9rem;">⚠ ${result.errors.length} rows had errors</p>
-                    <ul style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; margin-left: 20px; margin-top: 5px;">`;
-                    result.errors.forEach(error => {
-                        message += `<li>${error}</li>`;
-                    });
-                    message += `</ul>`;
-                }
-
-                message += `</div>`;
-                messageDiv.innerHTML = message;
-
-                // Reload clients after a short delay
-                setTimeout(async () => {
-                    await loadClients();
-                    closeCsvUploadModal();
-                }, 2000);
-
-            } catch (error) {
-                console.error('CSV upload error:', error);
-                progressBar.style.width = '0%';
-                messageDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    <p style="color: #ef4444; font-weight: 600;">Upload Failed</p>
-                    <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-top: 5px;">${error.message}</p>
-                </div>`;
-
-                // Re-enable button
-                uploadBtn.disabled = false;
-                uploadBtn.style.opacity = '1';
-                uploadBtn.textContent = 'Upload Clients';
-            }
-        }
 
         // NOTE: Client auto-loading when switching tabs is now handled in navigation.js switchTab()
     </script>

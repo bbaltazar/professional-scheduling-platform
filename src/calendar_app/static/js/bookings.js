@@ -19,7 +19,7 @@ let pendingCompletion = null;
 
 export async function loadBookings() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         document.getElementById('bookingsList').innerHTML =
             '<div class="no-bookings-message">Please log in to view your bookings.</div>';
@@ -257,7 +257,7 @@ export async function updateBookingStatus(bookingId, newStatus) {
 // Start appointment tracking
 export async function startAppointment(bookingId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     console.log('startAppointment called with bookingId:', bookingId);
     console.log('currentSpecialistId:', currentSpecialistId);
 
@@ -366,7 +366,7 @@ export function resetCompleteConfirmationPreference() {
 
 async function executeCompleteAppointment(bookingId, sessionId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     console.log('executeCompleteAppointment called:', { bookingId, sessionId, currentSpecialistId });
 
     try {

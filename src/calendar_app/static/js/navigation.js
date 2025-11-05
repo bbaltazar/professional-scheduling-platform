@@ -42,7 +42,7 @@ export function switchTab(tabName, currentSpecialistId) {
         console.log('[NAV] Switching to clients tab');
         console.log('[NAV] clientState:', window.clientState);
         console.log('[NAV] allClients length:', window.clientState ? window.clientState.allClients.length : 'clientState undefined');
-        
+
         // Only load clients if not already loaded
         if (window.clientState && window.clientState.allClients.length === 0) {
             console.log('[NAV] Clients not loaded yet, calling loadClients...');
@@ -95,7 +95,7 @@ export async function loadDashboardStats(currentSpecialistId) {
         } else {
             console.error('Dashboard: Failed to load workplaces, status:', workplacesResponse.status);
         }
-        
+
         console.log('Dashboard stats loading complete');
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
@@ -135,22 +135,22 @@ export async function loadExistingData(currentSpecialistId) {
 // Initialize on DOM load
 export function initializeApp(currentSpecialistId) {
     console.log('Initializing app with specialist ID:', currentSpecialistId);
-    
+
     // Set default dates for various forms
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
     const dateInput = document.querySelector('.availability-date');
     if (dateInput) {
         dateInput.value = todayStr;
     }
-    
+
     // Set default dates for recurring schedule form
     const startDateField = document.getElementById('recurringStartDate');
     if (startDateField) {
         startDateField.value = todayStr;
     }
-    
+
     // Set default dates for PTO form
     const ptoStartDateField = document.getElementById('ptoStartDate');
     const ptoEndDateField = document.getElementById('ptoEndDate');
@@ -160,7 +160,7 @@ export function initializeApp(currentSpecialistId) {
     if (ptoEndDateField) {
         ptoEndDateField.value = todayStr;
     }
-    
+
     // Handle recurrence type changes (show/hide days of week)
     const recurrenceType = document.getElementById('recurrenceType');
     const daysGroup = document.getElementById('daysOfWeekGroup');

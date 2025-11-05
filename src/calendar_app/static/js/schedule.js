@@ -38,7 +38,7 @@ export function togglePtoTimes() {
 
 export async function createPTOBlock() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         showResponse('ptoResponse', 'Please establish your profile first', 'error');
         return;
@@ -106,7 +106,7 @@ export async function createPTOBlock() {
 
 export async function loadPTOBlocks() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) return;
 
     try {
@@ -181,7 +181,7 @@ function displayPTOBlocks(blocks) {
 
 export async function deletePTOBlock(blockId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!confirm('Are you sure you want to delete this PTO block?')) return;
 
     try {
@@ -208,7 +208,7 @@ export async function deletePTOBlock(blockId) {
 
 export async function createRecurringSchedule() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         showResponse('recurringResponse', 'Please establish your profile first', 'error');
         return;
@@ -271,7 +271,7 @@ export async function createRecurringSchedule() {
 
 export async function loadRecurringSchedules() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) return;
 
     try {
@@ -340,7 +340,7 @@ function displayRecurringSchedules(schedules) {
 
 export async function deleteRecurringSchedule(scheduleId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!confirm('Are you sure you want to delete this recurring schedule?')) return;
 
     try {
@@ -896,7 +896,7 @@ export function copyDaySchedule() {
 
 export async function saveWeeklySchedule() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         showResponse('recurringResponse', 'Please establish your profile first', 'error');
         return;
@@ -1031,7 +1031,7 @@ export function closeApplyWeeksModal() {
 
 export async function applyToUpcomingWeeks() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         alert('Please establish your profile first');
         closeApplyWeeksModal();

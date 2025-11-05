@@ -25,6 +25,10 @@ import * as workplaces from './workplaces.js';
 console.log('[MAIN] workplaces.js loaded');
 import * as clientDetail from './client-detail.js';
 console.log('[MAIN] client-detail.js loaded');
+import * as clientBulkOps from './client-bulk-operations.js';
+console.log('[MAIN] client-bulk-operations.js loaded');
+import * as csvUpload from './csv-upload.js';
+console.log('[MAIN] csv-upload.js loaded');
 
 console.log('[MAIN] All modules imported successfully');
 
@@ -50,7 +54,7 @@ console.log('Utility functions exposed to window');
 window.loadClients = () => clients.loadClients(window.currentSpecialistId);
 window.sortClients = clients.sortClients;
 window.filterClients = clients.filterClients;
-window.toggleFavorite = (consumerId, isFavorite) => 
+window.toggleFavorite = (consumerId, isFavorite) =>
     clients.toggleFavorite(consumerId, isFavorite, window.currentSpecialistId);
 window.dismissInvalidLegend = clients.dismissInvalidLegend;
 window.displayClients = clients.displayClients;
@@ -148,6 +152,24 @@ window.toggleChangelog = clientDetail.toggleChangelog;
 window.confirmDeleteClient = clientDetail.confirmDeleteClient;
 window.closeDeleteConfirmModal = clientDetail.closeDeleteConfirmModal;
 window.deleteClient = clientDetail.deleteClient;
+
+// Client bulk operations functions
+window.toggleEditMode = clientBulkOps.toggleEditMode;
+window.toggleSelectAll = clientBulkOps.toggleSelectAll;
+window.updateSelectedCount = clientBulkOps.updateSelectedCount;
+window.bulkDeleteClients = clientBulkOps.bulkDeleteClients;
+window.bulkFavorite = clientBulkOps.bulkFavorite;
+window.bulkUnfavorite = clientBulkOps.bulkUnfavorite;
+window.bulkMessage = clientBulkOps.bulkMessage;
+window.openAddClientModal = clientBulkOps.openAddClientModal;
+window.closeAddClientModal = clientBulkOps.closeAddClientModal;
+window.submitNewClient = clientBulkOps.submitNewClient;
+
+// CSV upload functions
+window.openCsvUploadModal = csvUpload.openCsvUploadModal;
+window.closeCsvUploadModal = csvUpload.closeCsvUploadModal;
+window.handleCsvFileSelect = csvUpload.handleCsvFileSelect;
+window.uploadCsvFile = csvUpload.uploadCsvFile;
 
 // Authentication functions (auth.js already exposes these to window, but we reference them here for completeness)
 console.log('[MAIN] Authentication functions available:', {

@@ -43,7 +43,7 @@ async function main() {
         }
     }
 
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     if (allValid) {
         console.log('✅ All modules are valid!');
         process.exit(0);

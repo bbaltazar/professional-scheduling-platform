@@ -104,7 +104,7 @@ export function cancelEdit(serviceId) {
 // Save service edit function
 export async function saveServiceEdit(serviceId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     const name = document.getElementById(`edit-name-${serviceId}`).value;
     const price = parseFloat(document.getElementById(`edit-price-${serviceId}`).value);
     const duration = parseInt(document.getElementById(`edit-duration-${serviceId}`).value);
@@ -154,7 +154,7 @@ export function confirmDeleteService(serviceId, serviceName) {
 // Delete service function
 export async function deleteService(serviceId) {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     try {
         // Get current services first
         const currentServices = await getCurrentServices();
@@ -186,7 +186,7 @@ export async function deleteService(serviceId) {
 // Helper function to get current services
 async function getCurrentServices() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     const response = await fetch(`/specialist/${currentSpecialistId}/services`);
     if (response.ok) {
         return await response.json();
@@ -249,7 +249,7 @@ export function addServiceField() {
 
 export async function saveServices() {
     const currentSpecialistId = window.currentSpecialistId;
-    
+
     if (!currentSpecialistId) {
         showResponse('servicesResponse', 'Please establish your profile first', 'error');
         return;
