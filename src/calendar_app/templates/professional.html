@@ -1670,7 +1670,7 @@
                     </p>
                 </div>
 
-                <form id="loginForm" onsubmit="event.preventDefault(); proceedWithEmail();">
+                <form id="loginForm">
                     <!-- Simple Email Input -->
                     <div class="form-group" style="margin-bottom: 30px;">
                         <label for="userEmail"
@@ -1727,19 +1727,20 @@
                             style="width: 100%; margin-top: 20px;">Create Account & Send Verification</button>
                     </div>
 
-                    <!-- Verification Code Section -->
-                    <div id="codeSection" style="display: none; margin-top: 30px;">
-                        <div class="form-group">
-                            <label for="verificationCode">Enter 6-Digit Verification Code</label>
-                            <input type="text" id="verificationCode" maxlength="6" placeholder="123456"
-                                style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; width: 100%; padding: 15px;">
-                        </div>
-                        <button type="button" class="btn" onclick="verifyCode()"
-                            style="width: 100%; margin-top: 15px;">Verify & Access Dashboard</button>
-                    </div>
-
                     <div id="verificationResponse" class="response"></div>
                 </form>
+
+                <!-- Verification Code Section (outside form to prevent Enter key from submitting) -->
+                <div id="codeSection" style="display: none; margin-top: 30px;">
+                    <div class="form-group">
+                        <label for="verificationCode">Enter 6-Digit Verification Code</label>
+                        <input type="text" id="verificationCode" maxlength="6" placeholder="123456"
+                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); verifyCode(); }"
+                            style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; width: 100%; padding: 15px;">
+                    </div>
+                    <button type="button" class="btn" onclick="verifyCode()"
+                        style="width: 100%; margin-top: 15px;">Verify & Access Dashboard</button>
+                </div>
             </div>
             {% else %}
             <!-- Authenticated Dashboard with Tabs -->
@@ -2098,8 +2099,15 @@
                     </div>
 
                     <div
-                        style="margin-top: 30px; display: flex; gap: 15px; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; gap: 10px;">
+                        style="margin-top: 30px; display: flex; gap: 15px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">📍 Location</label>
+                                <select id="recurringWorkplaceId" style="padding: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; border-radius: 8px; cursor: pointer;">
+                                    <option value="">Personal</option>
+                                    <!-- Workplace options will be loaded dynamically -->
+                                </select>
+                            </div>
                             <div class="form-group" style="margin: 0; min-width: 200px;">
                                 <label style="font-size: 0.9rem;">Effective Start Date</label>
                                 <input type="date" id="recurringStartDate" style="padding: 10px; font-size: 0.95rem;">
@@ -2911,7 +2919,7 @@
             }, 200);
         };
 
-        // Temporary placeholders for onclick handlers
+        // Placeholders for onclick handlers (will be overwritten by modules when loaded)
         window.switchTab = placeholderFn('switchTab');
         window.loadClients = placeholderFn('loadClients');
         window.viewClientDetail = placeholderFn('viewClientDetail');
@@ -2923,12 +2931,31 @@
     </script>
 
     <!-- Load modular JavaScript -->
-    <script type="module" src="/static/js/main.js?v=17"></script>
+    <script type="module" src="/static/js/main.js?v=28"></script></script></script></script>
 
     <script>
-        // ==================== TEMPORARY: REMAINING FUNCTIONS TO BE EXTRACTED ====================
-        // Note: Utility and client functions are now in /static/js/ modules
-        // TODO: Extract navigation, bookings, schedule, services, workplaces to modules
+        // Fallback logout function in case module hasn't loaded yet
+        if (typeof window.logout === 'undefined') {
+            window.logout = async function() {
+                try {
+                    const response = await fetch('/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    window.location.href = '/professional';
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/professional';
+                }
+            };
+            console.log('[FALLBACK] logout function created');
+        }
+    </script>
+
+    <script>
+        // ==================== MODULE COORDINATION ====================
+        // Note: All functionality has been extracted to /static/js/ modules
+        // This file now only contains HTML structure and minimal initialization
 
         // ==================== NOTE: TAB NAVIGATION & INITIALIZATION ====================
         // Tab switching (switchTab), dashboard stats (loadDashboardStats), 

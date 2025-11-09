@@ -261,6 +261,7 @@ class CalendarEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
+    workplace_id = Column(Integer, ForeignKey("workplaces.id"), nullable=True)  # Null = "Personal"
 
     # Event basics
     title = Column(String)
@@ -310,6 +311,7 @@ class CalendarEvent(Base):
 
     # Relationships
     specialist = relationship("Specialist", back_populates="calendar_events")
+    workplace = relationship("Workplace")
     event_exceptions = relationship("EventException", back_populates="event")
 
 

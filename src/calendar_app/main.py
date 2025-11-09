@@ -38,7 +38,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 import jwt
 import csv
 import io
@@ -1552,6 +1552,7 @@ class RecurringScheduleCreate(BaseModel):
     end_time: str  # Format: "17:00"
     start_date: str  # Format: "2024-01-01"
     end_date: Optional[str] = None  # Format: "2024-12-31"
+    workplace_id: Optional[int] = None  # None = "Personal", or ID of workplace
 
 
 @app.post("/specialist/{specialist_id}/recurring-schedule")
@@ -1563,11 +1564,34 @@ def create_recurring_schedule(
 ):
     """
     Create recurring schedule using simplified interface that maps to calendar events.
+    Schedules can be linked to a workplace or left as "Personal" (workplace_id=None).
     """
     if current_specialist.id != specialist_id:
         raise HTTPException(
             status_code=403, detail="You can only manage your own schedule"
         )
+
+    # Validate workplace_id if provided
+    if schedule.workplace_id is not None:
+        # Check if the specialist is associated with this workplace
+        stmt = select(specialist_workplace_association).where(
+            specialist_workplace_association.c.specialist_id == specialist_id,
+            specialist_workplace_association.c.workplace_id == schedule.workplace_id,
+            specialist_workplace_association.c.is_active == True
+        )
+        result = db.execute(stmt).fetchone()
+        
+        if not result:
+            raise HTTPException(
+                status_code=403, 
+                detail="You can only create schedules for workplaces you are associated with"
+            )
+        
+        # Get workplace details for better labeling
+        workplace = db.query(Workplace).filter(Workplace.id == schedule.workplace_id).first()
+        workplace_label = f" at {workplace.name}" if workplace else ""
+    else:
+        workplace_label = " (Personal)"
 
     # Build recurrence rule based on simple interface
     if schedule.recurrence_type == "daily":
@@ -1614,8 +1638,9 @@ def create_recurring_schedule(
     # Create base calendar event
     db_event = CalendarEvent(
         specialist_id=specialist_id,
-        title=f"{schedule.recurrence_type.title()} Availability",
-        description=f"Recurring {schedule.recurrence_type} availability from {schedule.start_time} to {schedule.end_time}",
+        workplace_id=schedule.workplace_id,  # Link to workplace or None for "Personal"
+        title=f"{schedule.recurrence_type.title()} Availability{workplace_label}",
+        description=f"Recurring {schedule.recurrence_type} availability from {schedule.start_time} to {schedule.end_time}{workplace_label}",
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         is_all_day=False,
@@ -1649,6 +1674,8 @@ def create_recurring_schedule(
         "event_id": db_event.id,
         "recurring_event_id": recurring_event_id,
         "recurrence_type": schedule.recurrence_type,
+        "workplace_id": schedule.workplace_id,
+        "workplace_label": workplace_label,
     }
 
 
@@ -1701,6 +1728,18 @@ def get_recurring_schedules(
                 print(f"DEBUG: Raw recurrence_rule: {event.recurrence_rule}")
                 continue
 
+        # Get workplace information if associated
+        workplace_info = None
+        if event.workplace_id:
+            workplace = db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            if workplace:
+                workplace_info = {
+                    "id": workplace.id,
+                    "name": workplace.name,
+                    "address": workplace.address,
+                    "city": workplace.city,
+                }
+
         schedules.append(
             {
                 "id": event.id,
@@ -1717,11 +1756,120 @@ def get_recurring_schedules(
                     if recurrence_rule and recurrence_rule.until
                     else None
                 ),
+                "workplace_id": event.workplace_id,
+                "workplace": workplace_info,
                 "created_at": event.created_at.isoformat(),
             }
         )
 
     return schedules
+
+
+@app.get("/workplaces/{workplace_id}/schedules")
+def get_workplace_schedules(
+    workplace_id: int,
+    db: Session = Depends(get_db),
+    start_date: Optional[str] = Query(None, description="Filter schedules from this date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Filter schedules to this date (YYYY-MM-DD)"),
+):
+    """
+    Get all employee recurring schedules for a specific workplace (storefront view).
+    This allows workplaces to see all their professionals' schedules aggregated in one view.
+    """
+    # Verify workplace exists
+    workplace = db.query(Workplace).filter(Workplace.id == workplace_id).first()
+    if not workplace:
+        raise HTTPException(status_code=404, detail="Workplace not found")
+
+    # Get all active specialists associated with this workplace
+    stmt = select(specialist_workplace_association).where(
+        specialist_workplace_association.c.workplace_id == workplace_id,
+        specialist_workplace_association.c.is_active == True
+    )
+    associations = db.execute(stmt).fetchall()
+    specialist_ids = [assoc.specialist_id for assoc in associations]
+
+    # Get all recurring schedules for this workplace
+    query_filters = [
+        CalendarEvent.workplace_id == workplace_id,
+        CalendarEvent.is_recurring == True,
+        CalendarEvent.is_active == True,
+        CalendarEvent.recurring_event_id != None,
+    ]
+
+    # Apply date filters if provided
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            query_filters.append(CalendarEvent.start_datetime >= start_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            query_filters.append(CalendarEvent.start_datetime <= end_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+
+    recurring_events = (
+        db.query(CalendarEvent)
+        .filter(*query_filters)
+        .all()
+    )
+
+    schedules_by_specialist = {}
+    for event in recurring_events:
+        specialist = db.query(Specialist).filter(Specialist.id == event.specialist_id).first()
+        if not specialist:
+            continue
+
+        recurrence_rule = None
+        if event.recurrence_rule:
+            try:
+                import json
+                recurrence_data = json.loads(event.recurrence_rule)
+                recurrence_rule = RecurrenceRule(**recurrence_data)
+            except Exception as e:
+                print(f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}")
+                continue
+
+        schedule_data = {
+            "id": event.id,
+            "title": event.title,
+            "recurrence_type": (
+                recurrence_rule.freq.lower() if recurrence_rule else "unknown"
+            ),
+            "days_of_week": recurrence_rule.byweekday if recurrence_rule else None,
+            "start_time": event.start_datetime.strftime("%H:%M"),
+            "end_time": event.end_datetime.strftime("%H:%M"),
+            "start_date": event.start_datetime.strftime("%Y-%m-%d"),
+            "end_date": (
+                recurrence_rule.until.strftime("%Y-%m-%d")
+                if recurrence_rule and recurrence_rule.until
+                else None
+            ),
+            "created_at": event.created_at.isoformat(),
+        }
+
+        if specialist.id not in schedules_by_specialist:
+            schedules_by_specialist[specialist.id] = {
+                "specialist_id": specialist.id,
+                "specialist_name": specialist.name,
+                "specialist_email": specialist.email,
+                "schedules": []
+            }
+
+        schedules_by_specialist[specialist.id]["schedules"].append(schedule_data)
+
+    return {
+        "workplace_id": workplace.id,
+        "workplace_name": workplace.name,
+        "workplace_address": f"{workplace.address}, {workplace.city}",
+        "total_specialists": len(specialist_ids),
+        "specialists_with_schedules": len(schedules_by_specialist),
+        "schedules": list(schedules_by_specialist.values())
+    }
 
 
 # Smart Scheduling and Availability

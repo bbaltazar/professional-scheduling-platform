@@ -8,6 +8,41 @@ console.log('Loading schedule.js module...');
 import { showResponse } from './utils.js';
 
 // ========================
+// WORKPLACE LOADING
+// ========================
+
+export async function loadWorkplacesForSchedule() {
+    const currentSpecialistId = window.currentSpecialistId;
+    if (!currentSpecialistId) return;
+
+    try {
+        const response = await fetch(`/specialists/${currentSpecialistId}/workplaces`, {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const workplaces = await response.json();
+            const selectElement = document.getElementById('recurringWorkplaceId');
+            
+            if (selectElement) {
+                // Clear existing options except "Personal"
+                selectElement.innerHTML = '<option value="">Personal</option>';
+                
+                // Add workplace options
+                workplaces.forEach(wp => {
+                    const option = document.createElement('option');
+                    option.value = wp.workplace.id;
+                    option.textContent = `${wp.workplace.name} - ${wp.workplace.city}`;
+                    selectElement.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading workplaces for schedule:', error);
+    }
+}
+
+// ========================
 // STATE MANAGEMENT
 // ========================
 
@@ -303,6 +338,14 @@ function displayRecurringSchedules(schedules) {
         const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const selectedDays = daysOfWeek.map(day => dayNames[day]).join(', ');
 
+        // Determine workplace display
+        let workplaceDisplay = 'Personal';
+        let workplaceIcon = '🏠';
+        if (schedule.workplace) {
+            workplaceDisplay = `${schedule.workplace.name} - ${schedule.workplace.city}`;
+            workplaceIcon = '📍';
+        }
+
         return `
             <div class="schedule-item">
                 <div class="schedule-header">
@@ -312,6 +355,10 @@ function displayRecurringSchedules(schedules) {
                     </div>
                 </div>
                 <div class="schedule-info">
+                    <div class="info-item">
+                        <div class="info-label">${workplaceIcon} Location</div>
+                        <div class="info-value">${workplaceDisplay}</div>
+                    </div>
                     <div class="info-item">
                         <div class="info-label">Time</div>
                         <div class="info-value">${schedule.start_time} - ${schedule.end_time}</div>
@@ -554,15 +601,6 @@ function startSelection(e, day) {
     const rawHour = (y / rect.height) * hoursInView + viewStartHour;
     startHour = snapToHalfHour(rawHour); // Snap to 30-minute intervals
 
-    console.log('Click debug:', {
-        y,
-        rectHeight: rect.height,
-        hoursInView,
-        rawHour,
-        startHour,
-        viewStartHour,
-        viewEndHour
-    });
 
     // Create preview element at snapped position
     previewElement = document.createElement('div');
@@ -904,6 +942,7 @@ export async function saveWeeklySchedule() {
 
     const startDate = document.getElementById('recurringStartDate').value;
     const endDate = document.getElementById('recurringEndDate').value;
+    const workplaceId = document.getElementById('recurringWorkplaceId').value;
 
     if (!startDate) {
         showResponse('recurringResponse', 'Please select a start date', 'error');
@@ -934,7 +973,8 @@ export async function saveWeeklySchedule() {
                 start_time: hoursToTimeString(block.start),
                 end_time: hoursToTimeString(block.end),
                 start_date: startDate,
-                end_date: endDate || null
+                end_date: endDate || null,
+                workplace_id: workplaceId ? parseInt(workplaceId) : null
             });
         });
     }

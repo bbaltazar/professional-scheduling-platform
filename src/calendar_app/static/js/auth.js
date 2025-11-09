@@ -12,6 +12,7 @@ let currentVerificationType = 'login';
  * Proceed with email - send verification code
  */
 async function proceedWithEmail() {
+    console.log('[AUTH] proceedWithEmail called');
     const email = document.getElementById('userEmail').value;
 
     if (!email) {
@@ -23,7 +24,9 @@ async function proceedWithEmail() {
     currentVerificationType = 'login';
 
     // Send verification code
+    console.log('[AUTH] Calling sendVerificationCode with email:', email);
     await sendVerificationCode(email, 'login');
+    console.log('[AUTH] sendVerificationCode completed');
 }
 
 /**
@@ -81,6 +84,7 @@ async function registerUser() {
  * Send verification code
  */
 async function sendVerificationCode(email, verificationType, registrationData = null) {
+    console.log('[AUTH] sendVerificationCode called - email:', email, 'type:', verificationType);
     const requestData = {
         email: email,
         verification_type: verificationType
@@ -101,24 +105,51 @@ async function sendVerificationCode(email, verificationType, registrationData = 
     }
 
     try {
+        console.log('[AUTH] Fetching /verification/send...');
         const response = await fetch('/verification/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
         });
 
+        console.log('[AUTH] Response received, status:', response.status);
         const result = await response.json();
+        console.log('[AUTH] Response JSON:', result);
 
         if (response.ok) {
+            console.log('[AUTH] Response OK, showing code section');
             showResponse('verificationResponse', `✓ ${result.message}`, 'success');
             // Show verification code input section
             const codeSection = document.getElementById('codeSection');
             if (codeSection) {
                 codeSection.style.display = 'block';
+                console.log('[AUTH] Code section shown');
                 // Focus on verification code input
                 const codeInput = document.getElementById('verificationCode');
+                console.log('[AUTH] Code input element:', codeInput);
                 if (codeInput) {
+                    // Add Enter key listener if not already added
+                    if (!codeInput.hasAttribute('data-enter-listener')) {
+                        codeInput.setAttribute('data-enter-listener', 'true');
+                        console.log('[AUTH] Adding Enter listener to verification code input');
+                        codeInput.addEventListener('keydown', function(event) {
+                            console.log('[AUTH] Key pressed:', event.key);
+                            if (event.key === 'Enter') {
+                                console.log('[AUTH] Enter detected, calling verifyCode');
+                                event.preventDefault();
+                                if (typeof window.verifyCode === 'function') {
+                                    window.verifyCode();
+                                } else {
+                                    console.error('[AUTH] verifyCode is not a function!');
+                                }
+                            }
+                        });
+                        console.log('[AUTH] Enter listener added successfully');
+                    } else {
+                        console.log('[AUTH] Enter listener already exists');
+                    }
                     codeInput.focus();
+                    console.log('[AUTH] Code input focused');
                 }
             }
         } else {
@@ -204,12 +235,40 @@ function hideLogin() {
     }
 }
 
+/**
+ * Logout user
+ */
+async function logout() {
+    try {
+        const response = await fetch('/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            // Redirect to login page
+            window.location.href = '/professional';
+        } else {
+            console.error('Logout failed');
+            // Redirect anyway to clear client-side state
+            window.location.href = '/professional';
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Redirect anyway to clear client-side state
+        window.location.href = '/professional';
+    }
+}
+
 // Expose functions to window for onclick handlers
 window.proceedWithEmail = proceedWithEmail;
 window.showSignUp = showSignUp;
 window.registerUser = registerUser;
 window.verifyCode = verifyCode;
 window.hideLogin = hideLogin;
+window.logout = logout;
+
+console.log('[AUTH] logout function exposed to window:', typeof window.logout);
 
 // Export for ES6 module imports
 export {
@@ -218,5 +277,6 @@ export {
     registerUser,
     verifyCode,
     hideLogin,
-    sendVerificationCode
+    sendVerificationCode,
+    logout
 };

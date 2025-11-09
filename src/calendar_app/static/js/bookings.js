@@ -1,11 +1,7 @@
-// ========================
-// BOOKINGS MODULE
-// Handles booking list display, filtering, and appointment session tracking
-// ========================
+// ==================== BOOKING MANAGEMENT ====================
+// All booking-related functionality for professionals
 
-console.log('Loading bookings.js module...');
-
-import { formatTime, showResponse, formatPhoneForDisplay } from './utils.js';
+import { formatTime, showResponse } from './utils.js';
 
 // Store active timers
 const activeTimers = {};
@@ -43,15 +39,6 @@ export async function loadBookings() {
         }
 
         const bookings = await response.json();
-        console.log('RAW API Response:', JSON.stringify(bookings[0], null, 2)); // Debug
-
-        // Debug: Check actual_duration for completed bookings
-        bookings.forEach(b => {
-            if (b.status === 'completed') {
-                console.log(`Booking ${b.id}: status=${b.status}, actual_duration=${b.actual_duration}, session_id=${b.session_id}`);
-            }
-        });
-
         displayBookings(bookings);
 
     } catch (error) {
@@ -92,8 +79,6 @@ function showBookingsLoading() {
 // Display bookings in the UI
 function displayBookings(bookings) {
     const bookingsList = document.getElementById('bookingsList');
-
-    console.log('Displaying bookings:', bookings); // Debug log
 
     if (!bookings || bookings.length === 0) {
         bookingsList.innerHTML = `

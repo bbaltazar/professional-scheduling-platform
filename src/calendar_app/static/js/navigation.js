@@ -30,6 +30,7 @@ export function switchTab(tabName, currentSpecialistId) {
     if (tabName === 'bookings' && currentSpecialistId) {
         window.loadBookings();
     } else if (tabName === 'schedule' && currentSpecialistId) {
+        window.loadWorkplacesForSchedule(); // Load workplaces for the dropdown
         window.loadRecurringSchedules();
         window.loadPTOBlocks();
     } else if (tabName === 'services' && currentSpecialistId) {
@@ -133,7 +134,7 @@ export async function loadExistingData(currentSpecialistId) {
 }
 
 // Initialize on DOM load
-export function initializeApp(currentSpecialistId) {
+function initializeApp(currentSpecialistId) {
     console.log('Initializing app with specialist ID:', currentSpecialistId);
 
     // Set default dates for various forms
@@ -175,14 +176,18 @@ export function initializeApp(currentSpecialistId) {
         loadExistingData(currentSpecialistId);
         // Load dashboard stats since dashboard is the default tab
         loadDashboardStats(currentSpecialistId);
+        // Initialize the weekly calendar for drag-and-drop functionality
+        if (typeof window.initializeWeeklyCalendar === 'function') {
+            window.initializeWeeklyCalendar();
+        }
     }
 
-    // Add Enter key support for login form
+    // Add Enter key support for login form (email input only)
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         console.log('Login form found, adding submit listener');
         loginForm.addEventListener('submit', function (event) {
-            console.log('Form submit event triggered');
+            console.log('[NAV] Form submit - calling proceedWithEmail');
             event.preventDefault();
             window.proceedWithEmail();
         });
@@ -205,4 +210,9 @@ export function initializeApp(currentSpecialistId) {
     } else {
         console.log('Email input NOT found');
     }
+
+    // Note: Verification code Enter key listener is added dynamically in auth.js
+    // when the code section becomes visible, not here at initialization
 }
+
+export { initializeApp };

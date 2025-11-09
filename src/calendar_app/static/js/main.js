@@ -1,34 +1,19 @@
 // ==================== MAIN COORDINATOR ====================
 // This file imports all modules and exposes functions to window object for onclick handlers
 
-console.log('====================================');
-console.log('[MAIN] ⚡ main.js FILE IS EXECUTING ⚡');
-console.log('====================================');
-
-console.log('[MAIN] Loading main.js module...');
+console.log('[MAIN] Loading main.js...');
 
 import * as utils from './utils.js';
-console.log('[MAIN] utils.js loaded');
 import * as auth from './auth.js';
-console.log('[MAIN] auth.js loaded');
 import * as clients from './clients.js';
-console.log('[MAIN] clients.js loaded');
 import * as navigation from './navigation.js';
-console.log('[MAIN] navigation.js loaded');
 import * as bookings from './bookings.js';
-console.log('[MAIN] bookings.js loaded');
 import * as schedule from './schedule.js';
-console.log('[MAIN] schedule.js loaded');
 import * as services from './services.js';
-console.log('[MAIN] services.js loaded');
 import * as workplaces from './workplaces.js';
-console.log('[MAIN] workplaces.js loaded');
 import * as clientDetail from './client-detail.js';
-console.log('[MAIN] client-detail.js loaded');
 import * as clientBulkOps from './client-bulk-operations.js';
-console.log('[MAIN] client-bulk-operations.js loaded');
 import * as csvUpload from './csv-upload.js';
-console.log('[MAIN] csv-upload.js loaded');
 
 console.log('[MAIN] All modules imported successfully');
 
@@ -48,8 +33,6 @@ window.validatePhone = utils.validatePhone;
 window.normalizePhone = utils.normalizePhone;
 window.showResponse = utils.showResponse;
 
-console.log('Utility functions exposed to window');
-
 // Client management functions
 window.loadClients = () => clients.loadClients(window.currentSpecialistId);
 window.sortClients = clients.sortClients;
@@ -59,9 +42,6 @@ window.toggleFavorite = (consumerId, isFavorite) =>
 window.dismissInvalidLegend = clients.dismissInvalidLegend;
 window.displayClients = clients.displayClients;
 window.updateClientStats = clients.updateClientStats;
-
-console.log('[MAIN] Checking clients module:', clients);
-console.log('[MAIN] Checking clientState:', clients.clientState);
 
 // Expose clientState directly - this is a reference to the module's state object
 // so mutations will work correctly
@@ -78,14 +58,10 @@ if (!clients.clientState) {
     window.clientState = clients.clientState;
 }
 
-console.log('[MAIN] Client state exposed:', window.clientState);
-
 // Navigation functions
 window.switchTab = (tabName) => navigation.switchTab(tabName, window.currentSpecialistId);
 window.loadDashboardStats = () => navigation.loadDashboardStats(window.currentSpecialistId);
 window.loadExistingData = () => navigation.loadExistingData(window.currentSpecialistId);
-
-console.log('[MAIN] Navigation functions exposed, switchTab available:', typeof window.switchTab);
 
 // Booking management functions
 window.loadBookings = bookings.loadBookings;
@@ -105,6 +81,7 @@ window.loadPTOBlocks = schedule.loadPTOBlocks;
 window.deletePTOBlock = schedule.deletePTOBlock;
 window.createRecurringSchedule = schedule.createRecurringSchedule;
 window.loadRecurringSchedules = schedule.loadRecurringSchedules;
+window.loadWorkplacesForSchedule = schedule.loadWorkplacesForSchedule;
 window.deleteRecurringSchedule = schedule.deleteRecurringSchedule;
 window.initializeWeeklyCalendar = schedule.initializeWeeklyCalendar;
 window.updateCalendarView = schedule.updateCalendarView;
@@ -170,16 +147,6 @@ window.openCsvUploadModal = csvUpload.openCsvUploadModal;
 window.closeCsvUploadModal = csvUpload.closeCsvUploadModal;
 window.handleCsvFileSelect = csvUpload.handleCsvFileSelect;
 window.uploadCsvFile = csvUpload.uploadCsvFile;
-
-// Authentication functions (auth.js already exposes these to window, but we reference them here for completeness)
-console.log('[MAIN] Authentication functions available:', {
-    proceedWithEmail: typeof window.proceedWithEmail,
-    showSignUp: typeof window.showSignUp,
-    registerUser: typeof window.registerUser,
-    verifyCode: typeof window.verifyCode
-});
-
-console.log('[MAIN] All functions exposed to window - modules ready!');
 
 // Initialize app on DOM load
 document.addEventListener('DOMContentLoaded', () => {
