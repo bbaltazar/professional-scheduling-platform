@@ -66,6 +66,9 @@ function showClientModal() {
     displayModalBookings(client.bookings_future, 'modalFutureBookings');
     displayModalBookings(client.bookings_past, 'modalPastBookings');
 
+    // Display service statistics
+    displayServiceStatistics(client);
+
     // Load changelog history
     loadClientChangelog();
 
@@ -99,6 +102,79 @@ async function loadServicesForManualBooking() {
     } catch (error) {
         console.error('Failed to load services:', error);
     }
+}
+
+// Display service statistics with inline bar chart
+function displayServiceStatistics(client) {
+    const container = document.getElementById('serviceStatsContent');
+    
+    // Combine past and future bookings
+    const allBookings = [...(client.bookings_past || []), ...(client.bookings_future || [])];
+    
+    if (allBookings.length === 0) {
+        container.innerHTML = '<div style="color: var(--color-text-tertiary); text-align: center; padding: 20px;">No service history yet</div>';
+        return;
+    }
+    
+    // Aggregate services
+    const serviceStats = {};
+    allBookings.forEach(booking => {
+        const serviceName = booking.service_name || 'Unknown Service';
+        if (!serviceStats[serviceName]) {
+            serviceStats[serviceName] = {
+                count: 0,
+                revenue: 0
+            };
+        }
+        serviceStats[serviceName].count++;
+        serviceStats[serviceName].revenue += booking.service_price || 0;
+    });
+    
+    // Sort by count (most popular first)
+    const sortedServices = Object.entries(serviceStats)
+        .sort((a, b) => b[1].count - a[1].count);
+    
+    const maxCount = sortedServices[0][1].count;
+    
+    // Build HTML with inline bar chart
+    let html = '<div style="display: flex; flex-direction: column; gap: 14px;">';
+    
+    sortedServices.forEach(([serviceName, stats]) => {
+        const percentage = (stats.count / maxCount) * 100;
+        html += `
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-weight: 500; color: var(--color-text-primary);">${serviceName}</span>
+                    <span style="color: var(--color-text-secondary); font-size: 0.9rem;">
+                        ${stats.count} ${stats.count === 1 ? 'visit' : 'visits'} • $${stats.revenue.toFixed(2)}
+                    </span>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="
+                        background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
+                        height: 100%;
+                        width: ${percentage}%;
+                        transition: width 0.3s ease;
+                        border-radius: 4px;
+                    "></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Add total summary
+    const totalVisits = allBookings.length;
+    const totalRevenue = sortedServices.reduce((sum, [_, stats]) => sum + stats.revenue, 0);
+    
+    html += `
+        </div>
+        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; font-weight: 600;">
+            <span style="color: var(--color-accent);">Total Services Rendered</span>
+            <span style="color: var(--color-text-primary);">${totalVisits} ${totalVisits === 1 ? 'visit' : 'visits'} • $${totalRevenue.toFixed(2)}</span>
+        </div>
+    `;
+    
+    container.innerHTML = html;
 }
 
 // Update service info display

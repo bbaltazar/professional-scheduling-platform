@@ -1,0 +1,284 @@
+// ==================== TAB NAVIGATION & DASHBOARD (TypeScript) ====================
+
+// Extend Window interface to include our custom properties
+declare global {
+    interface Window {
+        currentSpecialistId?: number;
+        loadBookings: () => void;
+        loadWorkplacesForSchedule: () => void;
+        loadRecurringSchedules: () => void;
+        loadPTOBlocks: () => void;
+        loadExistingServices: (services?: any[]) => void;
+        displayExistingServices: (services: any[]) => void;
+        loadMyWorkplaces: () => void;
+        loadClients: () => void;
+        proceedWithEmail: () => void;
+        initializeWeeklyCalendar?: () => void;
+        clientState?: {
+            allClients: any[];
+        };
+        loadExistingAvailability?: (availability: any[]) => void;
+    }
+}
+
+/**
+ * Tab switching function - manages UI state and loads tab-specific data
+ * @param tabName - Name of tab to switch to
+ * @param currentSpecialistId - Currently logged in specialist ID
+ */
+export function switchTab(tabName: string, currentSpecialistId?: number): void {
+    // Hide all tab contents
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // Remove active class from all tab buttons
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+
+    // Show selected tab content
+    const selectedTab = document.getElementById(`tab-${tabName}`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+
+    // Add active class to clicked button
+    const clickedButton = (event as any)?.target?.closest('.tab-button') as HTMLElement | null;
+    if (clickedButton) {
+        clickedButton.classList.add('active');
+    }
+
+    // Load content for specific tabs when opened
+    if (tabName === 'bookings' && currentSpecialistId) {
+        window.loadBookings();
+    } else if (tabName === 'schedule' && currentSpecialistId) {
+        window.loadWorkplacesForSchedule(); // Load workplaces for the dropdown
+        window.loadRecurringSchedules();
+        window.loadPTOBlocks();
+    } else if (tabName === 'services' && currentSpecialistId) {
+        window.loadExistingServices();
+    } else if (tabName === 'workplaces' && currentSpecialistId) {
+        window.loadMyWorkplaces();
+    } else if (tabName === 'dashboard' && currentSpecialistId) {
+        loadDashboardStats(currentSpecialistId);
+    } else if (tabName === 'clients' && currentSpecialistId) {
+        console.log('[NAV] Switching to clients tab');
+        console.log('[NAV] clientState:', window.clientState);
+        console.log('[NAV] allClients length:', window.clientState ? window.clientState.allClients.length : 'clientState undefined');
+
+        // Only load clients if not already loaded
+        if (window.clientState && window.clientState.allClients.length === 0) {
+            console.log('[NAV] Clients not loaded yet, calling loadClients...');
+            window.loadClients();
+        } else {
+            console.log('[NAV] Clients already loaded, skipping load');
+        }
+    }
+}
+
+// Dashboard stats response types
+interface BookingResponse {
+    status: string;
+    [key: string]: any;
+}
+
+interface ServiceResponse {
+    [key: string]: any;
+}
+
+interface WorkplaceResponse {
+    [key: string]: any;
+}
+
+/**
+ * Load Dashboard Statistics
+ * Fetches bookings, services, and workplaces counts
+ * @param currentSpecialistId - Specialist ID to load stats for
+ */
+export async function loadDashboardStats(currentSpecialistId: number): Promise<void> {
+    if (!currentSpecialistId) {
+        console.warn('loadDashboardStats: No currentSpecialistId provided');
+        return;
+    }
+
+    console.log('Loading dashboard stats for specialist:', currentSpecialistId);
+
+    try {
+        // Load bookings count
+        const bookingsResponse = await fetch(`/bookings/specialist/${currentSpecialistId}`);
+        if (bookingsResponse.ok) {
+            const bookings: BookingResponse[] = await bookingsResponse.json();
+            console.log('Dashboard: Loaded bookings:', bookings.length);
+            
+            const totalBookingsEl = document.getElementById('dashTotalBookings');
+            if (totalBookingsEl) {
+                totalBookingsEl.textContent = bookings.length.toString();
+            }
+            
+            const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+            const confirmedBookingsEl = document.getElementById('dashConfirmedBookings');
+            if (confirmedBookingsEl) {
+                confirmedBookingsEl.textContent = confirmed.toString();
+            }
+            console.log('Dashboard: Confirmed bookings:', confirmed);
+        } else {
+            console.error('Dashboard: Failed to load bookings, status:', bookingsResponse.status);
+        }
+
+        // Load services count
+        const servicesResponse = await fetch(`/specialist/${currentSpecialistId}/services`);
+        if (servicesResponse.ok) {
+            const services: ServiceResponse[] = await servicesResponse.json();
+            console.log('Dashboard: Loaded services:', services.length);
+            
+            const totalServicesEl = document.getElementById('dashTotalServices');
+            if (totalServicesEl) {
+                totalServicesEl.textContent = services.length.toString();
+            }
+        } else {
+            console.error('Dashboard: Failed to load services, status:', servicesResponse.status);
+        }
+
+        // Load workplaces count
+        const workplacesResponse = await fetch(`/specialists/${currentSpecialistId}/workplaces`);
+        if (workplacesResponse.ok) {
+            const workplaces: WorkplaceResponse[] = await workplacesResponse.json();
+            console.log('Dashboard: Loaded workplaces:', workplaces.length);
+            
+            const totalWorkplacesEl = document.getElementById('dashTotalWorkplaces');
+            if (totalWorkplacesEl) {
+                totalWorkplacesEl.textContent = workplaces.length.toString();
+            }
+        } else {
+            console.error('Dashboard: Failed to load workplaces, status:', workplacesResponse.status);
+        }
+
+        console.log('Dashboard stats loading complete');
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+/**
+ * Load existing data on page load
+ * @param _currentSpecialistId - Specialist ID (unused, kept for API compatibility)
+ */
+export async function loadExistingData(_currentSpecialistId?: number): Promise<void> {
+    try {
+        const response = await fetch('/auth/me', {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Load existing services
+            if (data.services && data.services.length > 0) {
+                window.loadExistingServices(data.services);
+                window.displayExistingServices(data.services);
+            }
+
+            // Load existing availability
+            if (data.availability && data.availability.length > 0 && window.loadExistingAvailability) {
+                window.loadExistingAvailability(data.availability);
+            }
+
+            // Load bookings
+            await window.loadBookings();
+        }
+    } catch (error) {
+        console.log('Could not load existing data:', error);
+    }
+}
+
+/**
+ * Initialize the application on DOM load
+ * Sets up event listeners, default dates, and loads initial data
+ * @param currentSpecialistId - Currently logged in specialist ID
+ */
+function initializeApp(currentSpecialistId?: number): void {
+    console.log('Initializing app with specialist ID:', currentSpecialistId);
+
+    // Set default dates for various forms
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const dateInput = document.querySelector('.availability-date') as HTMLInputElement | null;
+    if (dateInput) {
+        dateInput.value = todayStr;
+    }
+
+    // Set default dates for recurring schedule form
+    const startDateField = document.getElementById('recurringStartDate') as HTMLInputElement | null;
+    if (startDateField) {
+        startDateField.value = todayStr;
+    }
+
+    // Set default dates for PTO form
+    const ptoStartDateField = document.getElementById('ptoStartDate') as HTMLInputElement | null;
+    const ptoEndDateField = document.getElementById('ptoEndDate') as HTMLInputElement | null;
+    if (ptoStartDateField) {
+        ptoStartDateField.value = todayStr;
+    }
+    if (ptoEndDateField) {
+        ptoEndDateField.value = todayStr;
+    }
+
+    // Handle recurrence type changes (show/hide days of week)
+    const recurrenceType = document.getElementById('recurrenceType') as HTMLSelectElement | null;
+    const daysGroup = document.getElementById('daysOfWeekGroup') as HTMLElement | null;
+    if (recurrenceType && daysGroup) {
+        recurrenceType.addEventListener('change', function () {
+            daysGroup.style.display = this.value === 'weekly' ? 'block' : 'none';
+        });
+    }
+
+    // Load existing services and availability if user is authenticated
+    if (currentSpecialistId) {
+        loadExistingData(currentSpecialistId);
+        // Load dashboard stats since dashboard is the default tab
+        loadDashboardStats(currentSpecialistId);
+        // Initialize the weekly calendar for drag-and-drop functionality
+        if (typeof window.initializeWeeklyCalendar === 'function') {
+            window.initializeWeeklyCalendar();
+        }
+    }
+
+    // Add Enter key support for login form (email input only)
+    const loginForm = document.getElementById('loginForm') as HTMLFormElement | null;
+    if (loginForm) {
+        console.log('Login form found, adding submit listener');
+        loginForm.addEventListener('submit', function (event: Event) {
+            console.log('[NAV] Form submit - calling proceedWithEmail');
+            event.preventDefault();
+            window.proceedWithEmail();
+        });
+    } else {
+        console.log('Login form NOT found');
+    }
+
+    // Also add keypress listener directly to email input
+    const emailInput = document.getElementById('userEmail') as HTMLInputElement | null;
+    if (emailInput) {
+        console.log('Email input found, adding keypress listener');
+        emailInput.addEventListener('keypress', function (event: KeyboardEvent) {
+            console.log('Key pressed:', event.key);
+            if (event.key === 'Enter') {
+                console.log('Enter key detected, calling proceedWithEmail');
+                event.preventDefault();
+                window.proceedWithEmail();
+            }
+        });
+    } else {
+        console.log('Email input NOT found');
+    }
+
+    // Note: Verification code Enter key listener is added dynamically in auth.js
+    // when the code section becomes visible, not at initialization
+}
+
+export { initializeApp };

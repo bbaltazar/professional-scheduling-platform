@@ -85,6 +85,7 @@ window.loadWorkplacesForSchedule = schedule.loadWorkplacesForSchedule;
 window.deleteRecurringSchedule = schedule.deleteRecurringSchedule;
 window.initializeWeeklyCalendar = schedule.initializeWeeklyCalendar;
 window.updateCalendarView = schedule.updateCalendarView;
+window.updateRecurringSchedulesCalendar = schedule.updateRecurringSchedulesCalendar;
 window.toggleDayVisibility = schedule.toggleDayVisibility;
 window.deleteTimeBlock = schedule.deleteTimeBlock;
 window.clearWeeklySchedule = schedule.clearWeeklySchedule;

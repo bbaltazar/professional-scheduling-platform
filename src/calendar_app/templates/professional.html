@@ -2124,10 +2124,40 @@
 
                     <div id="recurringResponse" class="response"></div>
 
-                    <!-- Existing Recurring Schedules -->
+                    <!-- Existing Recurring Schedules - Visual Calendar View -->
                     <div id="existingRecurringSchedules" style="margin-top: 30px;">
-                        <h3>Current Recurring Schedules</h3>
-                        <div id="recurringSchedulesList" class="schedules-list"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">Current Recurring Schedules</h3>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <label for="scheduleViewTimeStart" style="font-size: 0.85rem; color: var(--color-text-secondary);">View:</label>
+                                <select id="scheduleViewTimeStart" onchange="updateRecurringSchedulesCalendar()" 
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
+                                    <option value="0">12 AM</option>
+                                    <option value="6">6 AM</option>
+                                    <option value="7">7 AM</option>
+                                    <option value="8" selected>8 AM</option>
+                                    <option value="9">9 AM</option>
+                                    <option value="10">10 AM</option>
+                                    <option value="12">12 PM</option>
+                                </select>
+                                <span style="color: var(--color-text-secondary); font-size: 0.85rem;">to</span>
+                                <select id="scheduleViewTimeEnd" onchange="updateRecurringSchedulesCalendar()" 
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
+                                    <option value="12">12 PM</option>
+                                    <option value="14">2 PM</option>
+                                    <option value="16">4 PM</option>
+                                    <option value="17">5 PM</option>
+                                    <option value="18" selected>6 PM</option>
+                                    <option value="19">7 PM</option>
+                                    <option value="20">8 PM</option>
+                                    <option value="22">10 PM</option>
+                                    <option value="24">12 AM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="recurringSchedulesCalendar" style="position: relative; overflow-x: auto;">
+                            <!-- Calendar will be rendered here -->
+                        </div>
                     </div>
                 </div>
 
@@ -2570,6 +2600,18 @@
                         </div>
                     </section>
 
+                    <!-- Service Statistics -->
+                    <section class="card" style="margin-bottom:30px;">
+                        <h3
+                            style="margin:0 0 16px; font-size:1rem; letter-spacing:.6px; text-transform:uppercase; color:var(--color-accent);">
+                            📊 Service Statistics</h3>
+                        <div id="serviceStatsContent">
+                            <div style="color: var(--color-text-tertiary); text-align: center; padding: 20px;">
+                                Loading statistics...
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- Contact Edit History -->
                     <section class="card" id="changelogSection" style="margin-bottom:30px; display:none;">
                         <div
@@ -2931,7 +2973,7 @@
     </script>
 
     <!-- Load modular JavaScript -->
-    <script type="module" src="/static/js/main.js?v=28"></script></script></script></script>
+    <script type="module" src="/static/js/main.js?v=20251116-typescript"></script>
 
     <script>
         // Fallback logout function in case module hasn't loaded yet
