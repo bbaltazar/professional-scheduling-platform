@@ -132,7 +132,7 @@ async function sendVerificationCode(email, verificationType, registrationData = 
                     if (!codeInput.hasAttribute('data-enter-listener')) {
                         codeInput.setAttribute('data-enter-listener', 'true');
                         console.log('[AUTH] Adding Enter listener to verification code input');
-                        codeInput.addEventListener('keydown', function(event) {
+                        codeInput.addEventListener('keydown', function (event) {
                             console.log('[AUTH] Key pressed:', event.key);
                             if (event.key === 'Enter') {
                                 console.log('[AUTH] Enter detected, calling verifyCode');

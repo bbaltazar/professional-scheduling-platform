@@ -112,12 +112,12 @@ export async function loadDashboardStats(currentSpecialistId: number): Promise<v
         if (bookingsResponse.ok) {
             const bookings: BookingResponse[] = await bookingsResponse.json();
             console.log('Dashboard: Loaded bookings:', bookings.length);
-            
+
             const totalBookingsEl = document.getElementById('dashTotalBookings');
             if (totalBookingsEl) {
                 totalBookingsEl.textContent = bookings.length.toString();
             }
-            
+
             const confirmed = bookings.filter(b => b.status === 'confirmed').length;
             const confirmedBookingsEl = document.getElementById('dashConfirmedBookings');
             if (confirmedBookingsEl) {
@@ -133,7 +133,7 @@ export async function loadDashboardStats(currentSpecialistId: number): Promise<v
         if (servicesResponse.ok) {
             const services: ServiceResponse[] = await servicesResponse.json();
             console.log('Dashboard: Loaded services:', services.length);
-            
+
             const totalServicesEl = document.getElementById('dashTotalServices');
             if (totalServicesEl) {
                 totalServicesEl.textContent = services.length.toString();
@@ -147,7 +147,7 @@ export async function loadDashboardStats(currentSpecialistId: number): Promise<v
         if (workplacesResponse.ok) {
             const workplaces: WorkplaceResponse[] = await workplacesResponse.json();
             console.log('Dashboard: Loaded workplaces:', workplaces.length);
-            
+
             const totalWorkplacesEl = document.getElementById('dashTotalWorkplaces');
             if (totalWorkplacesEl) {
                 totalWorkplacesEl.textContent = workplaces.length.toString();

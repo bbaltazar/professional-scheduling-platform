@@ -2103,7 +2103,8 @@
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <div class="form-group" style="margin: 0; min-width: 200px;">
                                 <label style="font-size: 0.9rem;">📍 Location</label>
-                                <select id="recurringWorkplaceId" style="padding: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; border-radius: 8px; cursor: pointer;">
+                                <select id="recurringWorkplaceId"
+                                    style="padding: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; border-radius: 8px; cursor: pointer;">
                                     <option value="">Personal</option>
                                     <!-- Workplace options will be loaded dynamically -->
                                 </select>
@@ -2126,11 +2127,13 @@
 
                     <!-- Existing Recurring Schedules - Visual Calendar View -->
                     <div id="existingRecurringSchedules" style="margin-top: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <h3 style="margin: 0;">Current Recurring Schedules</h3>
                             <div style="display: flex; gap: 10px; align-items: center;">
-                                <label for="scheduleViewTimeStart" style="font-size: 0.85rem; color: var(--color-text-secondary);">View:</label>
-                                <select id="scheduleViewTimeStart" onchange="updateRecurringSchedulesCalendar()" 
+                                <label for="scheduleViewTimeStart"
+                                    style="font-size: 0.85rem; color: var(--color-text-secondary);">View:</label>
+                                <select id="scheduleViewTimeStart" onchange="updateRecurringSchedulesCalendar()"
                                     style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
                                     <option value="0">12 AM</option>
                                     <option value="6">6 AM</option>
@@ -2141,7 +2144,7 @@
                                     <option value="12">12 PM</option>
                                 </select>
                                 <span style="color: var(--color-text-secondary); font-size: 0.85rem;">to</span>
-                                <select id="scheduleViewTimeEnd" onchange="updateRecurringSchedulesCalendar()" 
+                                <select id="scheduleViewTimeEnd" onchange="updateRecurringSchedulesCalendar()"
                                     style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
                                     <option value="12">12 PM</option>
                                     <option value="14">2 PM</option>
@@ -2978,7 +2981,7 @@
     <script>
         // Fallback logout function in case module hasn't loaded yet
         if (typeof window.logout === 'undefined') {
-            window.logout = async function() {
+            window.logout = async function () {
                 try {
                     const response = await fetch('/auth/logout', {
                         method: 'POST',

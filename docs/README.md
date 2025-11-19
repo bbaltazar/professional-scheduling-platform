@@ -1,173 +1,88 @@
-# Professional Scheduling Platform# Calendar Booking Application
+# Calendar Booking Application
 
+A FastAPI-based appointment booking system with recurring schedule support, JWT authentication, and a responsive luxury-themed UI.
 
-
-A comprehensive scheduling and booking management system for service professionals.A FastAPI-based appointment booking system with recurring schedule support, JWT authentication, and a responsive luxury-themed UI.
-
-
-
-## 📚 Documentation## Project Structure
-
-
-
-- [Full Documentation](docs/README.md) - Complete project documentation```
-
-- [Getting Started](docs/START_SERVER.md) - How to start the servercalendar_app/
-
-- [Database Migrations](docs/MIGRATION.md) - Database migration guide├── src/
-
-│   └── calendar_app/          # Main application package
-
-## 🚀 Quick Start│       ├── main.py            # FastAPI app with all endpoints
-
-│       ├── database.py        # SQLAlchemy models and DB setup
-
-```bash│       ├── models.py          # Pydantic request/response models
-
-# Start the development server│       ├── auth.py            # JWT authentication logic
-
-./start.sh│       ├── config.py          # Environment configuration
-
-│       ├── verification_service.py  # Email/SMS verification
-
-# Or manually:│       ├── templates/         # Jinja2 HTML templates
-
-python scripts/start_server.py│       └── static/            # CSS, JS, images
-
-```├── tests/                     # All test files
-
-│   ├── test_api.py
-
-## 📁 Project Structure│   ├── test_booking_integration.py
-
-│   ├── test_consumer.py
-
-```│   ├── test_frontend_integration.py
-
-calendar_app/│   ├── test_persistence.py
-
-├── docs/              # Documentation│   └── test_services_management.py
-
-├── data/              # Data files (samples, test data)├── scripts/                   # Utility scripts
-
-├── frontend/src/      # TypeScript source code│   ├── populate_db.py         # Seed database with test data
-
-├── scripts/           # Utility scripts│   └── start_server.py        # Server startup helper
-
-│   └── migrations/    # One-off migration scripts├── calendar_app.db            # SQLite database (production)
-
-├── src/calendar_app/  # Python backend├── test.db                    # SQLite database (testing)
-
-├── tests/             # Test suite├── pyproject.toml             # Poetry dependencies
-
-└── alembic/           # Database migrations├── poetry.lock                # Locked dependencies
-
-```└── .env.example               # Environment variables template
+## Project Structure
 
 ```
-
-## 🛠️ Development
+calendar_app/
+├── src/
+│   └── calendar_app/          # Main application package
+│       ├── main.py            # FastAPI app with all endpoints
+│       ├── database.py        # SQLAlchemy models and DB setup
+│       ├── models.py          # Pydantic request/response models
+│       ├── auth.py            # JWT authentication logic
+│       ├── config.py          # Environment configuration
+│       ├── verification_service.py  # Email/SMS verification
+│       ├── templates/         # Jinja2 HTML templates
+│       └── static/            # CSS, JS, images
+├── tests/                     # All test files
+│   ├── test_api.py
+│   ├── test_booking_integration.py
+│   ├── test_consumer.py
+│   ├── test_frontend_integration.py
+│   ├── test_persistence.py
+│   └── test_services_management.py
+├── scripts/                   # Utility scripts
+│   ├── populate_db.py         # Seed database with test data
+│   └── start_server.py        # Server startup helper
+├── calendar_app.db            # SQLite database (production)
+├── test.db                    # SQLite database (testing)
+├── pyproject.toml             # Poetry dependencies
+├── poetry.lock                # Locked dependencies
+└── .env.example               # Environment variables template
+```
 
 ## Features
 
-### TypeScript Development
-
 - **Recurring Schedules**: Support for daily, weekly, monthly, and yearly recurring appointments
-
-```bash- **JWT Authentication**: Secure specialist authentication with token-based system
-
-# Build TypeScript- **Service Management**: Create, update, and delete services with pricing
-
-npm run build- **Calendar Integration**: Visual calendar interface for availability management
-
+- **JWT Authentication**: Secure specialist authentication with token-based system
+- **Service Management**: Create, update, and delete services with pricing
+- **Calendar Integration**: Visual calendar interface for availability management
 - **Booking System**: Consumer-facing booking flow with time slot selection
-
-# Watch mode (auto-compile on changes)- **Email/SMS Verification**: Two-factor authentication for specialist signup
-
-npm run watch- **Workplace Management**: ⭐ **NEW** - Professionals can manage multiple workplaces with Yelp API integration
-
+- **Email/SMS Verification**: Two-factor authentication for specialist signup
+- **Workplace Management**: ⭐ **NEW** - Professionals can manage multiple workplaces with Yelp API integration
   - Many-to-many specialist-workplace relationships
-
-# Type checking only  - Yelp business search and validation
-
-npm run type-check  - Verified workplace listings
-
-```  - Role-based associations (owner, employee, contractor)
-
+  - Yelp business search and validation
+  - Verified workplace listings
+  - Role-based associations (owner, employee, contractor)
 - **Responsive UI**: Luxury glassmorphism theme with mobile support
-
-### Python Development
 
 ## Tech Stack
 
-```bash
-
-# Install dependencies- **Backend**: FastAPI 0.104+
-
-poetry install- **ORM**: SQLAlchemy 2.0+
-
+- **Backend**: FastAPI 0.104+
+- **ORM**: SQLAlchemy 2.0+
 - **Database**: SQLite (can be swapped for PostgreSQL)
-
-# Run tests- **Migrations**: Alembic 1.13+ (database schema versioning)
-
-pytest- **Authentication**: JWT (python-jose)
-
+- **Migrations**: Alembic 1.13+ (database schema versioning)
+- **Authentication**: JWT (python-jose)
 - **Templates**: Jinja2
-
-# Populate database with sample data- **Testing**: pytest with TestClient
-
-python scripts/populate_db.py- **CSS**: Custom glassmorphism/luxury gold theme
-
-```
+- **Testing**: pytest with TestClient
+- **CSS**: Custom glassmorphism/luxury gold theme
 
 ## Getting Started
 
-## 🧪 Testing
-
 ### Prerequisites
 
-```bash
+- Python 3.11+
+- Poetry (for dependency management)
 
-# Run all tests- Python 3.11+
-
-pytest- Poetry (for dependency management)
-
-
-
-# Run specific test file### Installation
-
-pytest tests/test_api.py
+### Installation
 
 1. **Clone the repository**
-
-# Run with coverage   ```bash
-
-pytest --cov=src/calendar_app   cd /path/to/calendar_app
-
-```   ```
-
-
-
-## 📦 Technologies2. **Install dependencies**
-
    ```bash
+   cd /path/to/calendar_app
+   ```
 
-- **Backend**: Python, FastAPI, SQLAlchemy   poetry install
-
-- **Frontend**: TypeScript, vanilla JavaScript, HTML/CSS   ```
-
-- **Database**: SQLite (development), PostgreSQL (production)
-
-- **Build Tools**: npm, Poetry3. **Set up environment variables**
-
+2. **Install dependencies**
    ```bash
+   poetry install
+   ```
 
-## 📄 License   cp .env.example .env
-
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
    # Edit .env with your configuration
-
-Proprietary - All rights reserved   ```
-
+   ```
 
 4. **Initialize the database**
    ```bash

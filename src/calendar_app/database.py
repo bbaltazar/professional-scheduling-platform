@@ -261,7 +261,9 @@ class CalendarEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     specialist_id = Column(Integer, ForeignKey("specialists.id"))
-    workplace_id = Column(Integer, ForeignKey("workplaces.id"), nullable=True)  # Null = "Personal"
+    workplace_id = Column(
+        Integer, ForeignKey("workplaces.id"), nullable=True
+    )  # Null = "Personal"
 
     # Event basics
     title = Column(String)

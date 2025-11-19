@@ -1577,18 +1577,20 @@ def create_recurring_schedule(
         stmt = select(specialist_workplace_association).where(
             specialist_workplace_association.c.specialist_id == specialist_id,
             specialist_workplace_association.c.workplace_id == schedule.workplace_id,
-            specialist_workplace_association.c.is_active == True
+            specialist_workplace_association.c.is_active == True,
         )
         result = db.execute(stmt).fetchone()
-        
+
         if not result:
             raise HTTPException(
-                status_code=403, 
-                detail="You can only create schedules for workplaces you are associated with"
+                status_code=403,
+                detail="You can only create schedules for workplaces you are associated with",
             )
-        
+
         # Get workplace details for better labeling
-        workplace = db.query(Workplace).filter(Workplace.id == schedule.workplace_id).first()
+        workplace = (
+            db.query(Workplace).filter(Workplace.id == schedule.workplace_id).first()
+        )
         workplace_label = f" at {workplace.name}" if workplace else ""
     else:
         workplace_label = " (Personal)"
@@ -1731,7 +1733,9 @@ def get_recurring_schedules(
         # Get workplace information if associated
         workplace_info = None
         if event.workplace_id:
-            workplace = db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            workplace = (
+                db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            )
             if workplace:
                 workplace_info = {
                     "id": workplace.id,
@@ -1769,8 +1773,12 @@ def get_recurring_schedules(
 def get_workplace_schedules(
     workplace_id: int,
     db: Session = Depends(get_db),
-    start_date: Optional[str] = Query(None, description="Filter schedules from this date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="Filter schedules to this date (YYYY-MM-DD)"),
+    start_date: Optional[str] = Query(
+        None, description="Filter schedules from this date (YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="Filter schedules to this date (YYYY-MM-DD)"
+    ),
 ):
     """
     Get all employee recurring schedules for a specific workplace (storefront view).
@@ -1784,7 +1792,7 @@ def get_workplace_schedules(
     # Get all active specialists associated with this workplace
     stmt = select(specialist_workplace_association).where(
         specialist_workplace_association.c.workplace_id == workplace_id,
-        specialist_workplace_association.c.is_active == True
+        specialist_workplace_association.c.is_active == True,
     )
     associations = db.execute(stmt).fetchall()
     specialist_ids = [assoc.specialist_id for assoc in associations]
@@ -1803,24 +1811,26 @@ def get_workplace_schedules(
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             query_filters.append(CalendarEvent.start_datetime >= start_dt)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD"
+            )
 
     if end_date:
         try:
             end_dt = datetime.strptime(end_date, "%Y-%m-%d")
             query_filters.append(CalendarEvent.start_datetime <= end_dt)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD"
+            )
 
-    recurring_events = (
-        db.query(CalendarEvent)
-        .filter(*query_filters)
-        .all()
-    )
+    recurring_events = db.query(CalendarEvent).filter(*query_filters).all()
 
     schedules_by_specialist = {}
     for event in recurring_events:
-        specialist = db.query(Specialist).filter(Specialist.id == event.specialist_id).first()
+        specialist = (
+            db.query(Specialist).filter(Specialist.id == event.specialist_id).first()
+        )
         if not specialist:
             continue
 
@@ -1828,10 +1838,13 @@ def get_workplace_schedules(
         if event.recurrence_rule:
             try:
                 import json
+
                 recurrence_data = json.loads(event.recurrence_rule)
                 recurrence_rule = RecurrenceRule(**recurrence_data)
             except Exception as e:
-                print(f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}")
+                print(
+                    f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}"
+                )
                 continue
 
         schedule_data = {
@@ -1857,7 +1870,7 @@ def get_workplace_schedules(
                 "specialist_id": specialist.id,
                 "specialist_name": specialist.name,
                 "specialist_email": specialist.email,
-                "schedules": []
+                "schedules": [],
             }
 
         schedules_by_specialist[specialist.id]["schedules"].append(schedule_data)
@@ -1868,7 +1881,7 @@ def get_workplace_schedules(
         "workplace_address": f"{workplace.address}, {workplace.city}",
         "total_specialists": len(specialist_ids),
         "specialists_with_schedules": len(schedules_by_specialist),
-        "schedules": list(schedules_by_specialist.values())
+        "schedules": list(schedules_by_specialist.values()),
     }
 
 
