@@ -1,0 +1,1873 @@
+/* Professional Dashboard Styles */
+/* Extracted from professional.html for better maintainability */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #fafafa;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(0, 0, 0, 0.02) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(0, 0, 0, 0.015) 0px, transparent 50%);
+    color: #1a1a1a;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.back-link {
+    position: fixed;
+    top: 30px;
+    left: 30px;
+    color: #1a1a1a;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 12px 24px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    font-size: 0.875rem;
+    letter-spacing: 0.3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.back-link:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    transform: translateX(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 40px 60px;
+}
+
+/* Add space for fixed tabs when authenticated */
+.sections-grid {
+    padding-top: 80px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1a1a1a 0%, #4a5568 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.header .subtitle {
+    color: #6b7280;
+    font-size: 1.125rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+}
+
+.sections-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+}
+
+.section {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 48px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+}
+
+/* ============================================
+   TAB NAVIGATION (Fixed header with tabs)
+   Controls: Dashboard, Bookings, Services, etc. tabs at top
+   ============================================ */
+.tab-navigation {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 40px;
+    overflow-x: auto;
+    padding: 16px 48px;
+    border-bottom: 1px solid #e5e7eb;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tab-button {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: #6b7280;
+    font-size: 0.938rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.01em;
+    position: relative;
+}
+
+.tab-button::after {
+    content: '';
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #1a1a1a;
+    opacity: 0;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-button:hover {
+    background: #f9fafb;
+    color: #1a1a1a;
+}
+
+.tab-button.active {
+    background: #f3f4f6;
+    color: #1a1a1a;
+}
+
+.tab-button.active::after {
+    opacity: 1;
+}
+
+.tab-button .tab-icon {
+    font-size: 1.125rem;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   SECTION HEADINGS & ICONS
+   Controls: Section titles (h2) and emoji icons
+   ============================================ */
+.section h2 {
+    font-family: 'Playfair Display', serif;
+    color: #D4AF37;
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.section-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));
+}
+
+/* ============================================
+   FORM INPUTS & CONTROLS
+   Controls: Input fields, textareas, selects, labels
+   ============================================ */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 0.875rem;
+    letter-spacing: 0.01em;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 14px 16px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    color: #1a1a1a;
+    font-size: 0.938rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #1a1a1a;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    background: #ffffff;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* ============================================
+   BUTTONS - Primary & Secondary
+   Controls: Main action buttons (Save, Submit, etc.)
+   ============================================ */
+.btn {
+    background: linear-gradient(135deg, #1a1a1a 0%, #374151 100%);
+    color: #ffffff;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.938rem;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* ============================================
+   DASHBOARD STAT CARDS
+   Controls: Bookings, Confirmed, Services, Workplaces cards on Dashboard
+   ============================================ */
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   ADD BUTTONS (Secondary style)
+   Controls: "+ Add Service", "+ Add Workplace" buttons
+   ============================================ */
+.btn-add {
+    background: #ffffff;
+    color: #1a1a1a;
+    border: 1px solid #e5e7eb;
+    margin-left: 0;
+    padding: 12px 24px;
+    font-size: 0.938rem;
+    border-radius: 10px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-add:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   DYNAMIC FORM ITEMS (e.g., availability slots)
+   Controls: Dynamically added form fields
+   ============================================ */
+.dynamic-item {
+    background: rgba(212, 175, 55, 0.05);
+    padding: 25px;
+    margin: 15px 0;
+    border-radius: 15px;
+    border-left: 4px solid #D4AF37;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.dynamic-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(5px);
+}
+
+/* ============================================
+   SERVICES MANAGEMENT SECTION
+   Controls: Service cards display, edit/delete buttons
+   ============================================ */
+.existing-services-container {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.existing-service-card {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 15px;
+    padding: 25px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.existing-service-card:hover {
+    background: rgba(212, 175, 55, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+}
+
+.service-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.service-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #D4AF37;
+    margin: 0;
+}
+
+.service-card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-edit,
+.btn-delete {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-edit {
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+.btn-edit:hover {
+    background: rgba(212, 175, 55, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-delete {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.4);
+}
+
+.btn-delete:hover {
+    background: rgba(220, 53, 69, 0.3);
+    transform: translateY(-1px);
+}
+
+.service-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.service-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ============================================
+   WORKPLACES MANAGEMENT SECTION
+   Controls: Workplace cards, Yelp search results
+   ============================================ */
+.workplaces-container {
+    display: grid;
+    gap: 20px;
+}
+
+.workplace-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.workplace-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+}
+
+.yelp-results {
+    margin-top: 20px;
+}
+
+.yelp-business-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.yelp-business-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(212, 175, 55, 0.5);
+}
+
+/* ============================================
+   LOADING & INFO MESSAGES
+   Controls: "Loading...", info boxes throughout app
+   ============================================ */
+.loading-message {
+    text-align: center;
+    color: rgba(212, 175, 55, 0.7);
+    padding: 20px;
+    font-style: italic;
+}
+
+.info-message {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    color: rgba(33, 150, 243, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+/* ============================================
+   SERVICE EDIT MODE
+   Controls: Inline editing of existing services
+   ============================================ */
+.service-detail-icon {
+    font-size: 1.1rem;
+}
+
+.service-detail-value {
+    font-weight: 500;
+}
+
+.service-edit-form {
+    display: none;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.service-edit-form .form-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.service-edit-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-save,
+.btn-cancel {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-cancel {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.4);
+}
+
+.btn-cancel:hover {
+    background: rgba(108, 117, 125, 0.3);
+    transform: translateY(-1px);
+}
+
+.response {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    display: none;
+    font-weight: 500;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.response.success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.response.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+/* ============================================
+   FLOATING PARTICLES ANIMATION (Background decoration)
+   Controls: Subtle animated dots in background
+   ============================================ */
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    animation: float-particle 15s infinite linear;
+}
+
+@keyframes float-particle {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-10vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* ============================================
+   RESPONSIVE DESIGN (Mobile adjustments)
+   Controls: Layout changes for smaller screens
+   ============================================ */
+@media (max-width: 768px) {
+    .container {
+        padding: 100px 20px 40px;
+    }
+
+    .header h1 {
+        font-size: 2.2rem;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section {
+        padding: 30px 25px;
+    }
+}
+
+/* ============================================
+   BOOKINGS SECTION
+   Controls: Appointment cards, booking details display
+   ============================================ */
+.bookings-container {
+    display: grid;
+    gap: 20px;
+}
+
+.booking-card {
+    background: rgba(212, 175, 55, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 15px;
+    padding: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.booking-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
+}
+
+/* Client name link in booking cards */
+.booking-card a {
+    position: relative;
+    display: inline-block;
+}
+
+.booking-card a::after {
+    content: '→';
+    margin-left: 4px;
+    opacity: 0;
+    transition: opacity 0.2s, margin-left 0.2s;
+}
+
+.booking-card a:hover::after {
+    opacity: 0.7;
+    margin-left: 8px;
+}
+
+/* ============================================
+   APPOINTMENT TIMER / STOPWATCH
+   Controls: Start/Stop appointment timer buttons
+   ============================================ */
+.stopwatch-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.stopwatch-btn {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stopwatch-btn-start {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.stopwatch-btn-start:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+}
+
+.stopwatch-btn-start:active {
+    transform: scale(1.02);
+}
+
+/* Stop button (red) with pulsing animation */
+.stopwatch-btn-stop {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    animation: pulse-stop 2s ease-in-out infinite;
+}
+
+.stopwatch-btn-stop:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4);
+    animation: none;
+}
+
+.stopwatch-btn-stop:active {
+    transform: scale(1.02);
+}
+
+@keyframes pulse-stop {
+
+    0%,
+    100% {
+        box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 8px 30px rgba(239, 68, 68, 0.6);
+    }
+}
+
+/* ============================================
+   STOPWATCH DETAILS (Timer display & status)
+   Controls: Timer display, running status indicator, labels
+   ============================================ */
+.stopwatch-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.stopwatch-text {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    text-align: center;
+    max-width: 90px;
+}
+
+.stopwatch-timer {
+    font-size: 28px;
+    font-weight: 700;
+    color: #FFD700;
+    font-family: 'Monaco', 'Courier New', monospace;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.stopwatch-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Running status badge with blinking animation */
+.stopwatch-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #10b981;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.stopwatch-status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 0.7;
+    }
+}
+
+/* ============================================
+   BOOKING CARD DETAILS
+   Controls: Client info, status badges, service details in bookings
+   ============================================ */
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.booking-client-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.booking-client-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #D4AF37;
+    margin-bottom: 5px;
+}
+
+.booking-client-email {
+    color: rgba(212, 175, 55, 0.8);
+    font-size: 0.95rem;
+}
+
+/* Status badges (Confirmed, Completed, Cancelled) */
+.booking-status {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.booking-status.confirmed {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.booking-status.completed {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.booking-status.cancelled {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Time, service, location details grid */
+.booking-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.booking-detail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.booking-detail-icon {
+    font-size: 1.1rem;
+    width: 25px;
+    text-align: center;
+}
+
+.booking-detail-value {
+    color: rgba(212, 175, 55, 0.9);
+    font-weight: 500;
+}
+
+.booking-service-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+/* ============================================
+   BOOKING ACTIONS (Complete/Cancel buttons)
+   Controls: Action buttons on each booking card
+   ============================================ */
+.booking-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.btn-booking-action {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-complete {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.btn-complete:hover {
+    background: rgba(34, 197, 94, 0.3);
+}
+
+.btn-cancel {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-cancel:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* ============================================
+   BOOKING EMPTY STATES & NOTES
+   Controls: "No bookings" message, customer notes display
+   ============================================ */
+.no-bookings-message {
+    text-align: center;
+    color: rgba(212, 175, 55, 0.6);
+    font-style: italic;
+    padding: 60px 20px;
+    background: rgba(212, 175, 55, 0.03);
+    border-radius: 15px;
+    border: 1px dashed rgba(212, 175, 55, 0.3);
+}
+
+.booking-notes {
+    background: rgba(212, 175, 55, 0.05);
+    border-left: 3px solid rgba(212, 175, 55, 0.3);
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 0 8px 8px 0;
+    color: rgba(212, 175, 55, 0.8);
+    font-style: italic;
+}
+
+.loading-message {
+    text-align: center;
+    color: rgba(212, 175, 55, 0.6);
+    padding: 40px;
+    font-style: italic;
+}
+
+/* ============================================
+   CALENDAR DAY SELECTOR
+   Controls: Checkboxes for selecting available days of week
+   ============================================ */
+.days-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.day-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.day-option:hover {
+    background: rgba(212, 175, 55, 0.2);
+}
+
+.day-option input[type="checkbox"] {
+    margin-right: 6px;
+    accent-color: #D4AF37;
+}
+
+.day-option input[type="checkbox"]:checked+.day-option {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: #D4AF37;
+}
+
+/* ============================================
+   WEEKLY CALENDAR GRID
+   Controls: Main calendar interface with time slots and days
+   Note: Calendar uses black theme for better visibility
+   ============================================ */
+.calendar-wrapper {
+    background: #f5f5f5;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 25px;
+    margin: 20px 0;
+}
+
+.weekly-calendar {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 1px;
+    background: #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    user-select: none;
+}
+
+.time-column {
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.time-header {
+    height: 50px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-label {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding-right: 12px;
+    padding-top: 0;
+    font-size: 0.75rem;
+    color: #6b7280;
+    border-bottom: 1px solid #f3f4f6;
+    position: relative;
+}
+
+.day-column {
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+}
+
+.day-header {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1a1a1a;
+    border-bottom: 2px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+/* ============================================
+   CALENDAR TIME SLOTS CONTAINER
+   Controls: Hourly grid background with lines
+   ============================================ */
+.time-slots {
+    position: relative;
+    height: 680px;
+    background:
+        repeating-linear-gradient(to bottom,
+            #f9fafb 0px,
+            #f9fafb 1px,
+            transparent 1px,
+            transparent 20px,
+            #f3f4f6 20px,
+            #f3f4f6 21px,
+            transparent 21px,
+            transparent 40px);
+    min-height: 200px;
+    transition: height 0.3s ease;
+}
+
+/* ============================================
+   AVAILABILITY BLOCKS (Black slots)
+   Controls: Individual time blocks showing availability
+   Includes: Drag handles, delete button, hover effects
+   ============================================ */
+.time-slot {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border: 2px solid #404040;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+    overflow: hidden;
+}
+
+.time-slot:hover {
+    background: linear-gradient(135deg, #2d2d2d 0%, #404040 100%);
+    transform: scale(1.02);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Delete button appears on hover */
+.time-slot .delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 3;
+}
+
+.time-slot:hover .delete-btn {
+    display: flex;
+}
+
+/* ============================================
+   TIME SLOT RESIZE HANDLES
+   Controls: Top/bottom drag handles for resizing availability blocks
+   ============================================ */
+.resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: transparent;
+    cursor: ns-resize;
+    z-index: 2;
+    display: none;
+}
+
+.resize-handle-top {
+    top: -4px;
+}
+
+.resize-handle-bottom {
+    bottom: -4px;
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 2px;
+}
+
+.time-slot:hover .resize-handle {
+    display: block;
+}
+
+.time-slot.resizing {
+    opacity: 0.8;
+}
+
+/* ============================================
+   CALENDAR SELECTION PREVIEW
+   Controls: Dashed outline when creating new time slot
+   ============================================ */
+.selection-preview {
+    position: absolute;
+    background: rgba(26, 26, 26, 0.15);
+    border: 2px dashed #1a1a1a;
+    pointer-events: none;
+    border-radius: 6px;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 50px;
+    color: #1a1a1a;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-small:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+/* ============================================
+   MODAL DIALOGS
+   Controls: Popup overlays for forms and confirmations
+   ============================================ */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.modal-header h3 {
+    color: #1a1a1a;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+}
+
+.modal-close:hover {
+    color: #1a1a1a;
+}
+
+.modal-body {
+    margin-bottom: 30px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 8px;
+    accent-color: #D4AF37;
+}
+
+/* ============================================
+   FORM SELECT DROPDOWNS
+   Controls: Custom-styled select elements with arrow icon
+   ============================================ */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D4AF37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 40px;
+}
+
+/* ============================================
+   SCHEDULES & PTO (Paid Time Off) MANAGEMENT
+   Controls: Recurring schedule cards, PTO date displays
+   ============================================ */
+.schedules-list {
+    margin-top: 20px;
+}
+
+.schedule-item,
+.pto-item {
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.schedule-item:hover,
+.pto-item:hover {
+    background: rgba(212, 175, 55, 0.08);
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+.schedule-header,
+.pto-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.schedule-title,
+.pto-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+.schedule-info,
+.pto-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.info-label {
+    font-size: 12px;
+    color: rgba(212, 175, 55, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.info-value {
+    font-size: 14px;
+    color: #D4AF37;
+    font-weight: 500;
+}
+
+.schedule-actions,
+.pto-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+}
+
+.section-subtitle {
+    color: rgba(212, 175, 55, 0.8);
+    font-size: 14px;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE (Schedules & Bookings)
+   Controls: Layout adjustments for smaller screens
+   ============================================ */
+@media (max-width: 768px) {
+    .booking-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .booking-details {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .booking-actions {
+        justify-content: center;
+    }
+
+    .days-selector {
+        flex-direction: column;
+    }
+
+    .schedule-info,
+    .pto-info {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-actions,
+    .pto-actions {
+        flex-direction: column;
+    }
+}
+
+/* ============================================
+   CLIENTS TABLE
+   Controls: Sortable client list with favorite stars
+   Includes: Sticky headers, hover effects, sorting indicators
+   ============================================ */
+.clients-list {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+.clients-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.clients-table thead {
+    background: rgba(212, 175, 55, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.clients-table th {
+    padding: 16px;
+    text-align: left;
+    color: #D4AF37;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background 0.2s ease;
+    background: rgba(0, 0, 0, 0.95);
+    position: sticky;
+    top: 0;
+}
+
+.clients-table th:hover {
+    background: rgba(212, 175, 55, 0.25);
+}
+
+/* Sorting indicators */
+.clients-table th.sortable::after {
+    content: ' ↕';
+    opacity: 0.5;
+    font-size: 0.9rem;
+}
+
+.clients-table th.sort-asc::after {
+    content: ' ↑';
+    opacity: 1;
+}
+
+.clients-table th.sort-desc::after {
+    content: ' ↓';
+    opacity: 1;
+}
+
+.clients-table tbody tr {
+    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clients-table tbody tr:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.clients-table td {
+    padding: 14px 16px;
+    color: rgba(212, 175, 55, 0.9);
+}
+
+.client-name-cell {
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+.client-score-cell {
+    font-weight: 600;
+}
+
+.score-high {
+    color: #4ade80;
+}
+
+/* ============================================
+   FAVORITE STAR TOGGLE
+   Controls: Clickable star icon to mark favorite clients
+   ============================================ */
+.favorite-cell {
+    text-align: center;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.favorite-star {
+    font-size: 1.3rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.favorite-inactive {
+    color: rgba(212, 175, 55, 0.3);
+}
+
+.favorite-inactive:hover {
+    color: #D4AF37;
+    transform: scale(1.2);
+}
+
+.favorite-active {
+    color: #D4AF37;
+}
+
+.favorite-active:hover {
+    transform: scale(1.2);
+}
+
+/* ============================================
+   CLIENT EDIT MODE & SELECTION
+   Controls: Checkbox selection, bulk edit mode styling
+   ============================================ */
+.edit-mode .clients-table tbody tr {
+    cursor: default;
+}
+
+.edit-mode .clients-table tbody tr:hover {
+    background: rgba(212, 175, 55, 0.05);
+}
+
+.client-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #6495ed;
+}
+
+.clients-table tr.selected {
+    background: rgba(100, 149, 237, 0.15) !important;
+}
+
+.score-medium {
+    color: #fbbf24;
+}
+
+.score-low {
+    color: #f87171;
+}
+
+.score-unrated {
+    color: rgba(212, 175, 55, 0.5);
+}
+
+.client-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+}
+
+/* ============================================
+   PROBLEM ROWS (Invalid data highlighting)
+   Controls: Red-highlighted rows for invalid phone numbers
+   ============================================ */
+.problem-row {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-left: 3px solid rgba(239, 68, 68, 0.6) !important;
+}
+
+.problem-row:hover {
+    background: rgba(239, 68, 68, 0.12) !important;
+    cursor: pointer;
+}
+
+.problem-row td {
+    position: relative;
+}
+
+/* ============================================
+   CLIENT DETAIL MODAL
+   Controls: Popup showing full client history
+   Includes: Appointment notes, booking cards
+   ============================================ */
+.modal {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #0d0d0d 100%);
+    margin: 2% auto;
+    padding: 40px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 800px;
+    position: relative;
+}
+
+.close {
+    color: #D4AF37;
+    float: right;
+    font-size: 36px;
+    font-weight: bold;
+    line-height: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.close:hover,
+.close:focus {
+    color: #F7E7AD;
+    transform: scale(1.1);
+}
+
+/* ============================================
+   APPOINTMENT NOTES & BOOKING HISTORY
+   Controls: Past appointment notes, booking summary cards
+   ============================================ */
+.appointment-note {
+    background: rgba(212, 175, 55, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 3px solid rgba(212, 175, 55, 0.5);
+}
+
+.appointment-note-date {
+    font-size: 0.85rem;
+    color: rgba(212, 175, 55, 0.7);
+    margin-bottom: 8px;
+}
+
+.appointment-note-text {
+    color: rgba(212, 175, 55, 0.95);
+    line-height: 1.5;
+}
+
+.booking-card {
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+}
+
+.booking-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.booking-card-date {
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+.booking-card-details {
+    color: rgba(212, 175, 55, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+/* ============================================
+   UNIFIED CALENDAR - TIME BLOCKS
+   Controls: Availability and booking blocks in unified calendar
+   ============================================ */
+.time-block {
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.availability-block:hover {
+    border-color: rgba(26, 26, 26, 0.5) !important;
+}
+
+.booking-block {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.booking-block:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ============================================
+   DRAG-TO-CREATE SELECTION
+   ============================================ */
+.dragging-selection {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.35)) !important;
+    border-left: 2px solid var(--color-accent) !important;
+    border-right: 2px solid var(--color-accent) !important;
+    cursor: crosshair !important;
+}
+
+/* Month view cell dragging */
+.month-day-cell.dragging-selection {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.3)) !important;
+    border: 2px solid var(--color-accent) !important;
+    transform: scale(0.98);
+    box-shadow: inset 0 0 0 2px rgba(212, 175, 55, 0.5);
+}
+
+.time-slot {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.month-day-cell {
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.month-day-cell:hover {
+    background-color: rgba(212, 175, 55, 0.05) !important;
+}
+
+.time-slot:hover {
+    background-color: rgba(212, 175, 55, 0.08) !important;
+}
+
+.hour-block {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+
+/* Smooth animations for filter toggles */
+.time-block.hidden {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+}
+
+/* Enhanced checkbox labels for calendar filters */
+.checkbox-label input[type="checkbox"]:checked + span {
+    font-weight: 600;
+}

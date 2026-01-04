@@ -56,7 +56,7 @@
                             style="font-size: 1.1rem; color: #D4AF37; margin-bottom: 10px; display: block;">Email
                             Address</label>
                         <input type="email" id="userEmail" name="email" required placeholder="your@email.com"
-                            style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;">
+                            style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: white;">
                     </div>
 
                     <!-- Action Buttons -->
@@ -78,7 +78,7 @@
                             <div class="form-group">
                                 <label for="regBio">Professional Title (Optional)</label>
                                 <select id="regBio" name="bio"
-                                    style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;">
+                                    style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: white;">
                                     <option value="">Select your profession...</option>
                                     <option value="Hair Stylist">Hair Stylist</option>
                                     <option value="Massage Therapist">Massage Therapist</option>
@@ -129,6 +129,10 @@
                 <button class="tab-button active" onclick="switchTab('dashboard')">
                     <span class="tab-icon"></span>
                     <span>Dashboard</span>
+                </button>
+                <button class="tab-button" onclick="switchTab('calendar')">
+                    <span class="tab-icon">📅</span>
+                    <span>Calendar View</span>
                 </button>
                 <button class="tab-button" onclick="switchTab('bookings')">
                     <span class="tab-icon"></span>
@@ -267,6 +271,506 @@
             <!-- ============================================
                  UNIFIED CALENDAR TAB (Bookings + Availability)
                  ============================================ -->
+            <div id="tab-calendar" class="tab-content">
+                <div class="section">
+                    <h2><span class="section-icon">📅</span>Weekly Calendar</h2>
+                    <p style="color: rgba(0, 0, 0, 0.7); margin-bottom: 30px;">
+                        View your availability blocks and bookings in one unified calendar. Toggle layers to focus on what matters.
+                    </p>
+
+                    <!-- Calendar Controls Bar -->
+                    <div style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                        <!-- Week Navigation -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                            <button type="button" class="btn-small" onclick="navigateWeek(-1)">
+                                ◀ Previous Week
+                            </button>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span id="currentWeekDisplay" style="font-size: 1.1rem; font-weight: 600; color: #1a1a1a;">
+                                    Week of Dec 2-8, 2025
+                                </span>
+                                <button type="button" class="btn-small" onclick="goToToday()" style="font-size: 0.85rem;">
+                                    📍 Today
+                                </button>
+                            </div>
+                            <button type="button" class="btn-small" onclick="navigateWeek(1)">
+                                Next Week ▶
+                            </button>
+                        </div>
+
+                        <!-- Filter Toggles -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(26, 26, 26, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                    <input type="checkbox" id="showAvailability" checked onchange="toggleCalendarLayer('availability')" style="margin-right: 6px;">
+                                    <span>⬜ Availability Blocks</span>
+                                </label>
+                                <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                    <input type="checkbox" id="showConfirmed" checked onchange="toggleCalendarLayer('confirmed')" style="margin-right: 6px;">
+                                    <span>🟦 Confirmed Bookings</span>
+                                </label>
+                                <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(34, 197, 94, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                    <input type="checkbox" id="showCompleted" checked onchange="toggleCalendarLayer('completed')" style="margin-right: 6px;">
+                                    <span>🟩 Completed</span>
+                                </label>
+                                <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(239, 68, 68, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                    <input type="checkbox" id="showCancelled" onchange="toggleCalendarLayer('cancelled')" style="margin-right: 6px;">
+                                    <span>🟥 Cancelled</span>
+                                </label>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" class="btn-small" onclick="toggleEditMode()" id="editModeBtn">
+                                    ✏️ Edit Availability
+                                </button>
+                                <button type="button" class="btn-small" onclick="refreshUnifiedCalendar()">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unified Calendar Grid -->
+                    <div class="calendar-wrapper">
+                        <div id="unifiedCalendar" class="weekly-calendar">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats Below Calendar -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px;">
+                        <div style="background: rgba(26, 26, 26, 0.05); border-left: 4px solid #1a1a1a; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 5px;">Available Hours</div>
+                            <div id="statsAvailableHours" style="font-size: 1.4rem; font-weight: 700; color: #1a1a1a;">--</div>
+                        </div>
+                        <div style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid #3b82f6; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 5px;">Confirmed This Week</div>
+                            <div id="statsConfirmed" style="font-size: 1.4rem; font-weight: 700; color: #3b82f6;">--</div>
+                        </div>
+                        <div style="background: rgba(34, 197, 94, 0.05); border-left: 4px solid #22c55e; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 5px;">Completed This Week</div>
+                            <div id="statsCompleted" style="font-size: 1.4rem; font-weight: 700; color: #22c55e;">--</div>
+                        </div>
+                        <div style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 5px;">Utilization Rate</div>
+                            <div id="statsUtilization" style="font-size: 1.4rem; font-weight: 700; color: #f59e0b;">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Manage Recurring Availability Link -->
+                    <div style="margin-top: 30px; padding: 20px; background: rgba(212, 175, 55, 0.05); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; text-align: center;">
+                        <p style="color: #6b7280; margin-bottom: 12px;">
+                            <strong>💡 Tip:</strong> The availability blocks shown above are based on your recurring weekly schedule.
+                        </p>
+                        <button type="button" class="btn btn-add" onclick="switchTab('schedule')">
+                            ⚙️ Manage Recurring Availability
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Tab -->
+                <div class="section" id="manageAvailabilitySection" style="display: none;">
+                    <h2><span class="section-icon">⚙️</span>Manage Recurring Availability</h2>
+                    <p style="color: rgba(212, 175, 55, 0.8); margin-bottom: 20px;">
+                        Define your weekly recurring schedule. These blocks will appear as available time on your calendar.
+                    </p>
+                    
+                    <button type="button" class="btn-small" onclick="hideManageAvailabilitySection()" style="margin-bottom: 20px;">
+                        ← Back to Calendar
+                    </button>
+
+                    <!-- Weekly Recurring Schedule Editor (existing calendar) -->
+                    <div class="calendar-wrapper">
+                        <div class="calendar-controls"
+                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button type="button" class="btn-small" onclick="clearWeeklySchedule()">🗑️ Clear
+                                    Schedule</button>
+                                <button type="button" class="btn-small" onclick="copyDaySchedule()">📋 Copy Day</button>
+                            </div>
+                            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <label style="font-size: 0.9rem; color: #6b7280;">View Hours:</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <select id="timeRangeStart" onchange="updateCalendarView()"
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Date</label>
+                                    <input type="date" class="availability-date">
+                                </div>
+                                <div class="form-group">
+                                    <label>Opening Hour</label>
+                                    <input type="time" class="availability-start" value="09:00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Closing Hour</label>
+                                    <input type="time" class="availability-end" value="17:00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-add" onclick="addAvailabilityField()">+ Add Time Block</button>
+                    <button type="button" class="btn" onclick="saveAvailability()">Set Availability</button>
+                    <div id="availabilityResponse" class="response"></div>
+                </div>
+
+                <!-- Recurring Schedule Section -->
+                <div class="section">
+                    <h2><span class="section-icon">📅</span>Weekly Recurring Schedule</h2>
+                    <p class="section-subtitle">Click and drag to set your weekly availability</p>
+
+                    <!-- Calendar Grid -->
+                    <div class="calendar-wrapper">
+                        <div class="calendar-controls"
+                            style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                <button type="button" class="btn-small" onclick="clearWeeklySchedule()">🗑️ Clear
+                                    All</button>
+                                <button type="button" class="btn-small" onclick="copyDaySchedule()">📋 Copy Day</button>
+                                <button type="button" class="btn-small" onclick="openApplyWeeksModal()">📆 Apply to
+                                    Upcoming Weeks</button>
+                            </div>
+
+                            <!-- Time Range and Day Filters -->
+                            <div style="display: flex; flex-direction: column; gap: 15px; align-items: flex-end;">
+                                <!-- Time Range Filter -->
+                                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <label
+                                            style="color: rgba(255,255,255,0.7); font-size: 0.9rem; white-space: nowrap;">Time
+                                            Range:</label>
+                                        <select id="timeRangeStart" onchange="updateCalendarView()"
+                                            style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
+                                            <option value="0">12 AM</option>
+                                            <option value="1">1 AM</option>
+                                            <option value="2">2 AM</option>
+                                            <option value="3">3 AM</option>
+                                            <option value="4">4 AM</option>
+                                            <option value="5">5 AM</option>
+                                            <option value="6" selected>6 AM</option>
+                                            <option value="7">7 AM</option>
+                                            <option value="8">8 AM</option>
+                                            <option value="9">9 AM</option>
+                                            <option value="10">10 AM</option>
+                                            <option value="11">11 AM</option>
+                                            <option value="12">12 PM</option>
+                                            <option value="13">1 PM</option>
+                                            <option value="14">2 PM</option>
+                                            <option value="15">3 PM</option>
+                                            <option value="16">4 PM</option>
+                                            <option value="17">5 PM</option>
+                                            <option value="18">6 PM</option>
+                                            <option value="19">7 PM</option>
+                                            <option value="20">8 PM</option>
+                                            <option value="21">9 PM</option>
+                                            <option value="22">10 PM</option>
+                                            <option value="23">11 PM</option>
+                                        </select>
+                                        <span style="color: rgba(255,255,255,0.5);">to</span>
+                                        <select id="timeRangeEnd" onchange="updateCalendarView()"
+                                            style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
+                                            <option value="1">1 AM</option>
+                                            <option value="2">2 AM</option>
+                                            <option value="3">3 AM</option>
+                                            <option value="4">4 AM</option>
+                                            <option value="5">5 AM</option>
+                                            <option value="6">6 AM</option>
+                                            <option value="7">7 AM</option>
+                                            <option value="8">8 AM</option>
+                                            <option value="9">9 AM</option>
+                                            <option value="10">10 AM</option>
+                                            <option value="11">11 AM</option>
+                                            <option value="12">12 PM</option>
+                                            <option value="13">1 PM</option>
+                                            <option value="14">2 PM</option>
+                                            <option value="15">3 PM</option>
+                                            <option value="16">4 PM</option>
+                                            <option value="17">5 PM</option>
+                                            <option value="18">6 PM</option>
+                                            <option value="19">7 PM</option>
+                                            <option value="20">8 PM</option>
+                                            <option value="21">9 PM</option>
+                                            <option value="22">10 PM</option>
+                                            <option value="23" selected>11 PM</option>
+                                            <option value="24">12 AM (next day)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Day Visibility Filter -->
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <label
+                                        style="color: rgba(255,255,255,0.7); font-size: 0.9rem; white-space: nowrap;">Show
+                                        Days:</label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle0" checked onchange="toggleDayVisibility(0)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Mon</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle1" checked onchange="toggleDayVisibility(1)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Tue</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle2" checked onchange="toggleDayVisibility(2)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Wed</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle3" checked onchange="toggleDayVisibility(3)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Thu</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle4" checked onchange="toggleDayVisibility(4)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Fri</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle5" checked onchange="toggleDayVisibility(5)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Sat</span>
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); transition: background 0.2s;">
+                                        <input type="checkbox" id="dayToggle6" checked onchange="toggleDayVisibility(6)"
+                                            style="cursor: pointer;">
+                                        <span style="color: rgba(255,255,255,0.8); font-size: 0.85rem;">Sun</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="weeklyCalendar" class="weekly-calendar">
+                            <!-- Time labels column -->
+                            <div class="time-column" id="timeColumn">
+                                <div class="time-header"></div>
+                                <!-- Time labels will be dynamically generated -->
+                            </div>
+
+                            <!-- Day columns (Monday - Sunday) -->
+                            <div class="day-column" data-day="0">
+                                <div class="day-header">Monday</div>
+                                <div class="time-slots" data-day="0"></div>
+                            </div>
+                            <div class="day-column" data-day="1">
+                                <div class="day-header">Tuesday</div>
+                                <div class="time-slots" data-day="1"></div>
+                            </div>
+                            <div class="day-column" data-day="2">
+                                <div class="day-header">Wednesday</div>
+                                <div class="time-slots" data-day="2"></div>
+                            </div>
+                            <div class="day-column" data-day="3">
+                                <div class="day-header">Thursday</div>
+                                <div class="time-slots" data-day="3"></div>
+                            </div>
+                            <div class="day-column" data-day="4">
+                                <div class="day-header">Friday</div>
+                                <div class="time-slots" data-day="4"></div>
+                            </div>
+                            <div class="day-column" data-day="5">
+                                <div class="day-header">Saturday</div>
+                                <div class="time-slots" data-day="5"></div>
+                            </div>
+                            <div class="day-column" data-day="6">
+                                <div class="day-header">Sunday</div>
+                                <div class="time-slots" data-day="6"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="margin-top: 30px; display: flex; gap: 15px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">📍 Location</label>
+                                <select id="recurringWorkplaceId"
+                                    style="padding: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; border-radius: 8px; cursor: pointer;">
+                                    <option value="">Personal</option>
+                                    <!-- Workplace options will be loaded dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">Effective Start Date</label>
+                                <input type="date" id="recurringStartDate" style="padding: 10px; font-size: 0.95rem;">
+                            </div>
+                            <div class="form-group" style="margin: 0; min-width: 200px;">
+                                <label style="font-size: 0.9rem;">End Date (Optional)</label>
+                                <input type="date" id="recurringEndDate" style="padding: 10px; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                        <button type="button" class="btn" onclick="saveWeeklySchedule()" style="min-width: 200px;">
+                            💾 Save Weekly Schedule
+                        </button>
+                    </div>
+
+                    <div id="recurringResponse" class="response"></div>
+
+                    <!-- Existing Recurring Schedules - Visual Calendar View -->
+                    <div id="existingRecurringSchedules" style="margin-top: 30px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">Current Recurring Schedules</h3>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <label for="scheduleViewTimeStart"
+                                    style="font-size: 0.85rem; color: var(--color-text-secondary);">View:</label>
+                                <select id="scheduleViewTimeStart" onchange="updateRecurringSchedulesCalendar()"
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
+                                    <option value="0">12 AM</option>
+                                    <option value="6">6 AM</option>
+                                    <option value="7">7 AM</option>
+                                    <option value="8" selected>8 AM</option>
+                                    <option value="9">9 AM</option>
+                                    <option value="10">10 AM</option>
+                                    <option value="12">12 PM</option>
+                                </select>
+                                <span style="color: var(--color-text-secondary); font-size: 0.85rem;">to</span>
+                                <select id="scheduleViewTimeEnd" onchange="updateRecurringSchedulesCalendar()"
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
+                                    <option value="12">12 PM</option>
+                                    <option value="14">2 PM</option>
+                                    <option value="16">4 PM</option>
+                                    <option value="17">5 PM</option>
+                                    <option value="18" selected>6 PM</option>
+                                    <option value="19">7 PM</option>
+                                    <option value="20">8 PM</option>
+                                    <option value="22">10 PM</option>
+                                    <option value="24">12 AM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="recurringSchedulesCalendar" style="position: relative; overflow-x: auto;">
+                            <!-- Calendar will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PTO Management Section -->
+                <div class="section">
+                    <h2><span class="section-icon">️</span>Time Off Management</h2>
+                    <p class="section-subtitle">Block time for personal days, vacations, and holidays</p>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="ptoTitle" placeholder="e.g., Vacation, Personal Day, Holiday">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="ptoType" class="form-select">
+                                <option value="vacation">Vacation</option>
+                                <option value="personal">Personal Day</option>
+                                <option value="sick">Sick Leave</option>
+                                <option value="holiday">Holiday</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="ptoStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="ptoEndDate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="ptoFullDay" checked onchange="togglePtoTimes()"> Full Day(s)
+                        </label>
+                    </div>
+
+                    <div id="ptoTimeFields" class="form-grid" style="display: none;">
+                        <div class="form-group">
+                            <label>Start Time</label>
+                            <input type="time" id="ptoStartTime">
+                        </div>
+                        <div class="form-group">
+                            <label>End Time</label>
+                            <input type="time" id="ptoEndTime">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description (Optional)</label>
+                        <textarea id="ptoDescription" placeholder="Additional notes about this time off"></textarea>
+                    </div>
+
+                    <button type="button" class="btn" onclick="createPTOBlock()">Block Time Off</button>
+                    <div id="ptoResponse" class="response"></div>
+
+                    <!-- Existing PTO Blocks -->
+                    <div id="existingPTOBlocks" style="margin-top: 30px;">
+                        <h3>Scheduled Time Off</h3>
+                        <div id="ptoBlocksList" class="schedules-list"></div>
+                    </div>
+                </div>
+
+                <!-- Apply to Upcoming Weeks Modal -->
+                <div id="applyWeeksModal" class="modal-overlay"
+                    onclick="if(event.target === this) closeApplyWeeksModal()">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>📆 Apply to Upcoming Weeks</h3>
+                            <button type="button" class="modal-close" onclick="closeApplyWeeksModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 20px;">
+                                Apply your current weekly schedule to multiple upcoming weeks
+                            </p>
+
+                            <div class="form-group">
+                                <label style="color: #FFD700; margin-bottom: 8px; display: block;">Number of
+                                    Weeks</label>
+                                <select id="numberOfWeeks" onchange="updateApplyPreview()"
+                                    style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 1rem;">
+                                    <option value="1">1 week</option>
+                                    <option value="2">2 weeks</option>
+                                    <option value="3">3 weeks</option>
+                                    <option value="4" selected>4 weeks</option>
+                                    <option value="5">5 weeks</option>
+                                    <option value="6">6 weeks</option>
+                                    <option value="7">7 weeks</option>
+                                    <option value="8">8 weeks</option>
+                                    <option value="9">9 weeks</option>
+                                    <option value="10">10 weeks</option>
+                                    <option value="11">11 weeks</option>
+                                    <option value="12">12 weeks</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label style="color: #FFD700; margin-bottom: 8px; display: block;">Starting From</label>
+                                <input type="date" id="applyStartDate" onchange="updateApplyPreview()"
+                                    style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 1rem;">
+                            </div>
+
+                            <div id="applyPreview"
+                                style="margin-top: 20px; padding: 15px; background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+                                <strong style="color: #FFD700;">Preview:</strong> <span id="previewText">Select dates to
+                                    see preview</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary"
+                                onclick="closeApplyWeeksModal()">Cancel</button>
+                            <button type="button" class="btn" onclick="applyToUpcomingWeeks()">Apply Schedule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Bookings Tab -->
             <div id="tab-bookings" class="tab-content">
@@ -345,109 +849,6 @@
                     <h2><span class="section-icon">📅</span>Weekly Recurring Schedule</h2>
                     <p class="section-subtitle">Click and drag to set your weekly availability</p>
 
-                    <!-- ========== UNIFIED CALENDAR VIEW ========== -->
-                    <!-- View Toggle & Controls -->
-                    <div style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                            <!-- View Mode Toggle -->
-                            <div style="display: flex; gap: 10px; background: rgba(26, 26, 26, 0.1); padding: 5px; border-radius: 10px;">
-                                <button type="button" id="weekViewBtn" class="btn-small" onclick="switchCalendarView('week')" style="background: var(--color-accent); color: white;">
-                                    📅 Week View
-                                </button>
-                                <button type="button" id="monthViewBtn" class="btn-small" onclick="switchCalendarView('month')" style="background: transparent; border: 1px solid rgba(212, 175, 55, 0.3);">
-                                    📆 Month View
-                                </button>
-                            </div>
-
-                            <!-- Workplace Filter Dropdown -->
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <label style="color: #6b7280; font-weight: 500;">Filter by Workplace:</label>
-                                <select id="workplaceFilter" onchange="filterCalendarByWorkplace()" style="padding: 8px 15px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: white; color: #1a1a1a; min-width: 200px;">
-                                    <option value="all">All Workplaces</option>
-                                    <!-- Will be populated by JavaScript -->
-                                </select>
-                            </div>
-                            
-                            <!-- Calendar Legend (Color-coded workplaces) -->
-                            <div id="calendarLegend" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px;">
-                                <!-- Will be populated by JavaScript -->
-                            </div>
-                        </div>
-
-                        <!-- Week/Month Navigation -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                            <button type="button" class="btn-small" onclick="navigateCalendarView(-1)" id="prevPeriodBtn">
-                                ◀ Previous Week
-                            </button>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span id="calendarPeriodDisplay" style="font-size: 1.1rem; font-weight: 600; color: #1a1a1a;">
-                                    Week of Nov 25 - Dec 1, 2025
-                                </span>
-                                <button type="button" class="btn-small" onclick="goToToday()" style="font-size: 0.85rem;">
-                                    📍 Today
-                                </button>
-                            </div>
-                            <button type="button" class="btn-small" onclick="navigateCalendarView(1)" id="nextPeriodBtn">
-                                Next Week ▶
-                            </button>
-                        </div>
-
-                        <!-- Layer Toggles -->
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(26, 26, 26, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showAvailability" checked onchange="toggleCalendarLayer('availability')" style="margin-right: 6px;">
-                                <span>⬜ Availability Blocks</span>
-                            </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showConfirmed" checked onchange="toggleCalendarLayer('confirmed')" style="margin-right: 6px;">
-                                <span>🟦 Confirmed Bookings</span>
-                            </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(34, 197, 94, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showCompleted" checked onchange="toggleCalendarLayer('completed')" style="margin-right: 6px;">
-                                <span>🟩 Completed</span>
-                            </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(239, 68, 68, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showCancelled" onchange="toggleCalendarLayer('cancelled')" style="margin-right: 6px;">
-                                <span>🟥 Cancelled</span>
-                            </label>
-                        </div>
-
-                        <!-- Unified Calendar Grid (Week or Month View) -->
-                        <div class="calendar-wrapper">
-                            <div id="unifiedCalendar" style="min-height: 400px;">
-                                <!-- Will be populated by unified-calendar.js -->
-                            </div>
-                        </div>
-
-                        <!-- Quick Stats -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px;">
-                            <div style="background: rgba(26, 26, 26, 0.05); border-left: 4px solid #1a1a1a; padding: 12px; border-radius: 8px;">
-                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Available Hours</div>
-                                <div id="statsAvailableHours" style="font-size: 1.2rem; font-weight: 700; color: #1a1a1a;">--</div>
-                            </div>
-                            <div style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px;">
-                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Confirmed</div>
-                                <div id="statsConfirmed" style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;">--</div>
-                            </div>
-                            <div style="background: rgba(34, 197, 94, 0.05); border-left: 4px solid #22c55e; padding: 12px; border-radius: 8px;">
-                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Completed</div>
-                                <div id="statsCompleted" style="font-size: 1.2rem; font-weight: 700; color: #22c55e;">--</div>
-                            </div>
-                            <div style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 8px;">
-                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Utilization</div>
-                                <div id="statsUtilization" style="font-size: 1.2rem; font-weight: 700; color: #f59e0b;">--</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Divider -->
-                    <div style="border-top: 2px solid rgba(212, 175, 55, 0.2); margin: 30px 0; position: relative;">
-                        <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #fafafa; padding: 0 15px; color: #6b7280; font-size: 0.9rem; font-weight: 600;">
-                            Drag-and-Drop Editor
-                        </span>
-                    </div>
-
-                    <!-- ORIGINAL DRAG-AND-DROP CALENDAR BELOW -->
                     <!-- Calendar Grid -->
                     <div class="calendar-wrapper">
                         <div class="calendar-controls"
@@ -466,10 +867,10 @@
                                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <label
-                                            style="color: #6b7280; font-size: 0.9rem; white-space: nowrap;">Time
+                                            style="color: rgba(255,255,255,0.7); font-size: 0.9rem; white-space: nowrap;">Time
                                             Range:</label>
                                         <select id="timeRangeStart" onchange="updateCalendarView()"
-                                            style="padding: 6px 12px; border-radius: 8px; background: white; border: 1px solid #d1d5db; color: #1f2937; font-size: 0.9rem;">
+                                            style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
                                             <option value="0">12 AM</option>
                                             <option value="1">1 AM</option>
                                             <option value="2">2 AM</option>
@@ -495,9 +896,9 @@
                                             <option value="22">10 PM</option>
                                             <option value="23">11 PM</option>
                                         </select>
-                                        <span style="color: #6b7280;">to</span>
+                                        <span style="color: rgba(255,255,255,0.5);">to</span>
                                         <select id="timeRangeEnd" onchange="updateCalendarView()"
-                                            style="padding: 6px 12px; border-radius: 8px; background: white; border: 1px solid #d1d5db; color: #1f2937; font-size: 0.9rem;">
+                                            style="padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,215,0,0.3); color: white; font-size: 0.9rem;">
                                             <option value="1">1 AM</option>
                                             <option value="2">2 AM</option>
                                             <option value="3">3 AM</option>
@@ -528,41 +929,41 @@
 
                                 <!-- Day Visibility Toggles -->
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <span style="color: #6b7280; font-size: 0.9rem;">Show Days:</span>
+                                    <span style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">Show Days:</span>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(0)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Mon</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Mon</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(1)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Tue</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Tue</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(2)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Wed</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Wed</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(3)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Thu</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Thu</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(4)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Fri</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Fri</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(5)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Sat</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Sat</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                         <input type="checkbox" checked onchange="toggleDayVisibility(6)"
                                             style="accent-color: #D4AF37;">
-                                        <span style="font-size: 0.85rem; color: #1f2937;">Sun</span>
+                                        <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Sun</span>
                                     </label>
                                 </div>
                             </div>
@@ -588,9 +989,9 @@
                             <h3 style="margin: 0;">Current Recurring Schedules</h3>
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <label for="scheduleViewTimeStart"
-                                    style="font-size: 0.85rem; color: #6b7280;">View:</label>
+                                    style="font-size: 0.85rem; color: var(--color-text-secondary);">View:</label>
                                 <select id="scheduleViewTimeStart" onchange="updateRecurringSchedulesCalendar()"
-                                    style="padding: 6px 10px; font-size: 0.85rem; background: white; border: 1px solid #d1d5db; border-radius: 4px; color: #1f2937;">
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
                                     <option value="0">12 AM</option>
                                     <option value="6">6 AM</option>
                                     <option value="7">7 AM</option>
@@ -600,9 +1001,9 @@
                                     <option value="11">11 AM</option>
                                     <option value="12">12 PM</option>
                                 </select>
-                                <span style="color: #6b7280; font-size: 0.85rem;">to</span>
+                                <span style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">to</span>
                                 <select id="scheduleViewTimeEnd" onchange="updateRecurringSchedulesCalendar()"
-                                    style="padding: 6px 10px; font-size: 0.85rem; background: white; border: 1px solid #d1d5db; border-radius: 4px; color: #1f2937;">
+                                    style="padding: 6px 10px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: white;">
                                     <option value="12">12 PM</option>
                                     <option value="13">1 PM</option>
                                     <option value="14">2 PM</option>
@@ -696,7 +1097,7 @@
                             <div class="form-group">
                                 <label>Number of Weeks to Apply</label>
                                 <input type="number" id="weeksToApply" min="1" max="52" value="4"
-                                    style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;">
+                                    style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: rgba(212, 175, 55, 0.05); color: #D4AF37;">
                             </div>
 
                             <div id="applyWeeksPreview"
@@ -846,7 +1247,7 @@
                     <!-- Client Search/Filter -->
                     <div style="margin-bottom: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
                         <input type="text" id="clientSearch" placeholder="Search clients by name, email, or phone..."
-                            style="flex: 1; min-width: 250px; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;"
+                            style="flex: 1; min-width: 250px; padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: rgba(0, 0, 0, 0.3); color: #D4AF37;"
                             oninput="filterClients()">
                         <button class="btn btn-accent" onclick="openAddClientModal()"
                             style="padding: 12px 24px; background: linear-gradient(135deg, #D4AF37 0%, #F7E7AD 100%);">
@@ -1247,7 +1648,7 @@
                                 Name <span style="color: #ff6b6b;">*</span>
                             </label>
                             <input type="text" id="newClientName" required
-                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;"
+                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: rgba(0, 0, 0, 0.3); color: white;"
                                 placeholder="Client's full name">
                         </div>
 
@@ -1257,9 +1658,9 @@
                                 Phone <span style="color: #ff6b6b;">*</span>
                             </label>
                             <input type="tel" id="newClientPhone" required
-                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;"
+                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: rgba(0, 0, 0, 0.3); color: white;"
                                 placeholder="10-digit phone number">
-                            <div style="margin-top: 6px; font-size: 0.85rem; color: #6b7280;">
+                            <div style="margin-top: 6px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.5);">
                                 Enter 10 digits (no dashes or spaces)
                             </div>
                         </div>
@@ -1270,7 +1671,7 @@
                                 Email
                             </label>
                             <input type="email" id="newClientEmail"
-                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #1f2937;"
+                                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: rgba(0, 0, 0, 0.3); color: white;"
                                 placeholder="client@example.com (optional)">
                         </div>
 

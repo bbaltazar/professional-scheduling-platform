@@ -298,6 +298,126 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 # Advanced Calendar Management Helper Functions
 
 
+def generate_instances_for_range(
+    db: Session, 
+    base_event: CalendarEvent, 
+    recurrence_rule: RecurrenceRule,
+    range_start: datetime,
+    range_end: datetime
+):
+    """
+    Generate instances for a specific date range only (lazy loading).
+    Only creates instances that don't already exist.
+    """
+    if not DATEUTIL_AVAILABLE:
+        print(f"[generate_instances_for_range] dateutil not available, skipping")
+        return
+
+    # Map frequency strings to dateutil constants
+    freq_map = {"DAILY": DAILY, "WEEKLY": WEEKLY}
+    weekday_map = {0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU}
+
+    # Extract the time of day from base_event to apply to all occurrences
+    base_time = base_event.start_datetime.time()
+    
+    # Build rrule parameters - restricted to the requested range
+    # Use range_start but with the base event's time
+    dtstart = datetime.combine(range_start.date(), base_time)
+    if dtstart < range_start:
+        dtstart = range_start
+    if dtstart < base_event.start_datetime:
+        dtstart = base_event.start_datetime
+    
+    rrule_params = {
+        "freq": freq_map.get(recurrence_rule.freq, WEEKLY),
+        "interval": recurrence_rule.interval,
+        "dtstart": dtstart,
+    }
+
+    # End at the earlier of: recurrence end, requested range end
+    if recurrence_rule.until:
+        rrule_params["until"] = min(
+            datetime.combine(recurrence_rule.until, time.max),
+            range_end
+        )
+    else:
+        rrule_params["until"] = range_end
+
+    # Add weekday restrictions
+    if recurrence_rule.byweekday:
+        rrule_params["byweekday"] = [weekday_map[day] for day in recurrence_rule.byweekday]
+
+    # Generate occurrence dates
+    try:
+        rule = rrule(**rrule_params)
+        occurrences = list(rule)
+    except Exception as e:
+        print(f"[generate_instances_for_range] Error generating rrule: {e}")
+        return
+
+    print(f"[generate_instances_for_range] Generated {len(occurrences)} potential occurrences for event {base_event.id}")
+
+    # Create event instances (skip if already exists)
+    duration = base_event.end_datetime - base_event.start_datetime
+    created_count = 0
+
+    for occurrence_start in occurrences:
+        occurrence_end = occurrence_start + duration
+
+        # Check if this instance already exists
+        existing = (
+            db.query(CalendarEvent)
+            .filter(
+                CalendarEvent.recurring_event_id == base_event.recurring_event_id,
+                CalendarEvent.start_datetime == occurrence_start,
+                CalendarEvent.is_recurring == False,
+            )
+            .first()
+        )
+
+        if existing:
+            # Instance already exists, skip
+            continue
+
+        # Check for conflicts with other events
+        if has_calendar_conflict(db, base_event.specialist_id, occurrence_start, occurrence_end):
+            continue
+
+        # Create new instance
+        db_instance = CalendarEvent(
+            specialist_id=base_event.specialist_id,
+            workplace_id=base_event.workplace_id,
+            title=base_event.title,
+            description=base_event.description,
+            location=base_event.location,
+            start_datetime=occurrence_start,
+            end_datetime=occurrence_end,
+            is_all_day=base_event.is_all_day,
+            timezone=base_event.timezone,
+            event_type=base_event.event_type,
+            category=base_event.category,
+            priority=base_event.priority,
+            color=base_event.color,
+            is_bookable=base_event.is_bookable,
+            max_bookings=base_event.max_bookings,
+            buffer_before=base_event.buffer_before,
+            buffer_after=base_event.buffer_after,
+            is_recurring=False,  # Individual instances are not recurring
+            status=base_event.status,
+            visibility=base_event.visibility,
+            recurring_event_id=base_event.recurring_event_id,
+            original_start=occurrence_start,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(db_instance)
+        created_count += 1
+
+    if created_count > 0:
+        db.commit()
+        print(f"[generate_instances_for_range] Created {created_count} new instances for event {base_event.id}")
+
+
 def generate_recurring_event_instances(
     db: Session, base_event: CalendarEvent, recurrence_rule: RecurrenceRule
 ):
@@ -349,10 +469,12 @@ def generate_recurring_event_instances(
     rule = rrule(**rrule_params)
     occurrences = list(rule)
 
-    # Create event instances (skip the first one as it's the base event)
+    # Create event instances
+    # Note: We create instances for ALL occurrences, including the first one
+    # The base event is just a template with is_recurring=True
     duration = base_event.end_datetime - base_event.start_datetime
 
-    for occurrence_start in occurrences[1:]:  # Skip first occurrence
+    for occurrence_start in occurrences:  # Create instances for ALL occurrences
         occurrence_end = occurrence_start + duration
 
         # Check for conflicts with existing events
@@ -1614,12 +1736,22 @@ def create_recurring_schedule(
 
     # Parse dates and times
     try:
+        print(f"[create_recurring_schedule] Received request:")
+        print(f"  start_date: {schedule.start_date}")
+        print(f"  start_time: {schedule.start_time}")
+        print(f"  end_time: {schedule.end_time}")
+        print(f"  days_of_week: {schedule.days_of_week}")
+        
         start_date = datetime.strptime(schedule.start_date, "%Y-%m-%d").date()
         start_time_obj = datetime.strptime(schedule.start_time, "%H:%M").time()
         end_time_obj = datetime.strptime(schedule.end_time, "%H:%M").time()
 
         start_datetime = datetime.combine(start_date, start_time_obj)
         end_datetime = datetime.combine(start_date, end_time_obj)
+        
+        print(f"[create_recurring_schedule] Parsed datetimes:")
+        print(f"  start_datetime: {start_datetime}")
+        print(f"  end_datetime: {end_datetime}")
 
         end_date = None
         if schedule.end_date:
@@ -1668,8 +1800,8 @@ def create_recurring_schedule(
     db.commit()
     db.refresh(db_event)
 
-    # Generate recurring instances
-    generate_recurring_event_instances(db, db_event, recurrence_rule)
+    # Don't generate instances upfront - they'll be created on-demand when viewing date ranges
+    # This prevents creating thousands of database rows for long-running schedules
 
     return {
         "message": "Recurring schedule created successfully",
@@ -1767,6 +1899,508 @@ def get_recurring_schedules(
         )
 
     return schedules
+
+
+@app.get("/specialist/{specialist_id}/calendar-instances")
+def get_calendar_instances(
+    specialist_id: int,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Get all calendar event instances for a date range.
+    
+    Uses lazy loading: If instances don't exist for the requested date range,
+    they are generated on-demand from the base recurring templates.
+    This prevents creating thousands of unused database rows.
+    """
+    if current_specialist.id != specialist_id:
+        raise HTTPException(
+            status_code=403, detail="You can only view your own calendar"
+        )
+
+    # Parse date range (default to current week if not provided)
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+    else:
+        start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+    else:
+        # Default to 1 week from start
+        end_dt = start_dt + timedelta(days=7)
+
+    print(f"[get_calendar_instances] Requested range: {start_dt.date()} to {end_dt.date()}")
+
+    # Step 1: Get all base recurring events (templates) for this specialist
+    base_events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.is_active == True,
+            CalendarEvent.event_type == 'availability',
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.recurring_event_id != None,
+        )
+        .all()
+    )
+
+    print(f"[get_calendar_instances] Found {len(base_events)} base recurring templates")
+
+    # Step 2: For each base event, generate instances for the requested date range if they don't exist
+    for base_event in base_events:
+        if not base_event.recurrence_rule:
+            continue
+        
+        try:
+            import json
+            recurrence_data = json.loads(base_event.recurrence_rule)
+            recurrence_rule = RecurrenceRule(**recurrence_data)
+            
+            # Generate instances for this date range
+            # Use a modified version that only generates for the requested range
+            generate_instances_for_range(db, base_event, recurrence_rule, start_dt, end_dt)
+            
+        except Exception as e:
+            print(f"[get_calendar_instances] Error generating instances for event {base_event.id}: {e}")
+            continue
+
+    # Step 3: Now query the instances that exist in this date range
+    events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.specialist_id == specialist_id,
+            CalendarEvent.is_active == True,
+            CalendarEvent.event_type == 'availability',
+            CalendarEvent.start_datetime >= start_dt,
+            CalendarEvent.start_datetime <= end_dt,
+            CalendarEvent.is_recurring == False,  # Only instances, not base templates
+            CalendarEvent.recurring_event_id != None,  # Only recurring instances
+        )
+        .order_by(CalendarEvent.start_datetime)
+        .all()
+    )
+
+    print(f"[get_calendar_instances] Returning {len(events)} instances")
+    
+    instances = []
+    for event in events:
+        print(f"[get_calendar_instances] Event {event.id}:")
+        print(f"  start_datetime from DB: {event.start_datetime}")
+        print(f"  start_datetime type: {type(event.start_datetime)}")
+        print(f"  start_datetime tzinfo: {event.start_datetime.tzinfo}")
+        
+        # Calculate day of week (0=Monday, 6=Sunday)
+        day_of_week = event.start_datetime.weekday()
+        
+        # Get workplace information if associated
+        workplace_info = None
+        if event.workplace_id:
+            workplace = db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            if workplace:
+                workplace_info = {
+                    "id": workplace.id,
+                    "name": workplace.name,
+                    "address": workplace.address,
+                    "city": workplace.city,
+                }
+        
+        # Get the base recurring event to determine recurrence type
+        base_event = (
+            db.query(CalendarEvent)
+            .filter(
+                CalendarEvent.recurring_event_id == event.recurring_event_id,
+                CalendarEvent.is_recurring == True,
+            )
+            .first()
+        )
+        
+        recurrence_type = 'unknown'
+        if base_event and base_event.recurrence_rule:
+            try:
+                import json
+                recurrence_data = json.loads(base_event.recurrence_rule)
+                recurrence_rule = RecurrenceRule(**recurrence_data)
+                recurrence_type = recurrence_rule.freq.lower() if recurrence_rule.freq else 'unknown'
+            except Exception:
+                pass
+        
+        instances.append({
+            "instance_id": event.id,  # Unique ID for this specific instance
+            "recurring_event_id": event.recurring_event_id,  # Series ID
+            "base_event_id": base_event.id if base_event else None,  # ID of the template
+            "day_of_week": day_of_week,
+            "start_time": event.start_datetime.strftime("%H:%M"),
+            "end_time": event.end_datetime.strftime("%H:%M"),
+            "date": event.start_datetime.strftime("%Y-%m-%d"),
+            "title": event.title,
+            "workplace_id": event.workplace_id,
+            "workplace": workplace_info,
+            "recurrence_type": recurrence_type,
+            "is_bookable": event.is_bookable,
+            "color": event.color,
+        })
+    
+    return instances
+
+
+@app.put("/recurring-schedules/{event_id}")
+def update_recurring_schedule(
+    event_id: int,
+    day_of_week: int = Body(...),
+    start_time: str = Body(...),
+    end_time: str = Body(...),
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Update a specific day's time in a recurring schedule.
+    This updates all instances of that day in the recurring series.
+    """
+    # Get the base recurring event
+    event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == event_id,
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.is_active == True,
+        )
+        .first()
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Recurring schedule not found")
+
+    if event.specialist_id != current_specialist.id:
+        raise HTTPException(
+            status_code=403, detail="You can only update your own schedules"
+        )
+
+    # Parse times
+    try:
+        start_time_obj = datetime.strptime(start_time, "%H:%M").time()
+        end_time_obj = datetime.strptime(end_time, "%H:%M").time()
+
+        if start_time_obj >= end_time_obj:
+            raise HTTPException(
+                status_code=400, detail="End time must be after start time"
+            )
+
+        # Update the base event's start/end datetime with new times
+        start_datetime = datetime.combine(event.start_datetime.date(), start_time_obj)
+        end_datetime = datetime.combine(event.end_datetime.date(), end_time_obj)
+
+        event.start_datetime = start_datetime
+        event.end_datetime = end_datetime
+        event.updated_at = datetime.utcnow()
+
+        # Parse recurrence rule to update the specific day
+        if event.recurrence_rule:
+            import json
+
+            recurrence_data = json.loads(event.recurrence_rule)
+            recurrence_rule = RecurrenceRule(**recurrence_data)
+
+            # If updating a specific day in a weekly schedule, ensure it's in the byweekday list
+            if recurrence_rule.freq == "WEEKLY" and recurrence_rule.byweekday:
+                if day_of_week not in recurrence_rule.byweekday:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Day {day_of_week} is not part of this recurring schedule",
+                    )
+
+        db.commit()
+
+        # Update all instances of this recurring event for this specific day
+        # Delete old instances for this day and regenerate
+        if event.recurring_event_id:
+            # Get start and end dates for instance generation
+            recurrence_data = json.loads(event.recurrence_rule)
+            recurrence_rule = RecurrenceRule(**recurrence_data)
+
+            # Delete existing instances for this day of week
+            db.query(CalendarEvent).filter(
+                CalendarEvent.recurring_event_id == event.recurring_event_id,
+                CalendarEvent.id != event.id,
+                CalendarEvent.is_active == True,
+            ).delete()
+
+            # Regenerate instances with new times
+            generate_recurring_event_instances(db, event, recurrence_rule)
+
+        return {
+            "message": "Recurring schedule updated successfully",
+            "event_id": event.id,
+            "start_time": start_time,
+            "end_time": end_time,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid time format: {str(e)}"
+        )
+
+
+@app.delete("/recurring-schedules/{event_id}/day")
+def delete_recurring_schedule_day(
+    event_id: int,
+    request_body: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Remove a specific day from a recurring schedule.
+    If it's the last day, deletes the entire schedule.
+    """
+    # Extract day_of_week from request body
+    day_of_week = request_body.get('day_of_week')
+    if day_of_week is None:
+        raise HTTPException(
+            status_code=400, detail="day_of_week is required in request body"
+        )
+    
+    # Get the base recurring event
+    event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == event_id,
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.is_active == True,
+        )
+        .first()
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Recurring schedule not found")
+
+    if event.specialist_id != current_specialist.id:
+        raise HTTPException(
+            status_code=403, detail="You can only delete your own schedules"
+        )
+
+    # Parse recurrence rule
+    if not event.recurrence_rule:
+        raise HTTPException(
+            status_code=400, detail="No recurrence rule found for this schedule"
+        )
+
+    try:
+        import json
+
+        recurrence_data = json.loads(event.recurrence_rule)
+        recurrence_rule = RecurrenceRule(**recurrence_data)
+
+        if recurrence_rule.freq != "WEEKLY" or not recurrence_rule.byweekday:
+            # If it's not a weekly schedule or has no specific days, delete entire schedule
+            event.is_active = False
+            event.updated_at = datetime.utcnow()
+
+            # Also deactivate all instances
+            if event.recurring_event_id:
+                db.query(CalendarEvent).filter(
+                    CalendarEvent.recurring_event_id == event.recurring_event_id,
+                    CalendarEvent.is_active == True,
+                ).update({"is_active": False, "updated_at": datetime.utcnow()})
+
+            db.commit()
+            return {"message": "Entire recurring schedule deleted"}
+
+        # Remove the specific day from byweekday list
+        if day_of_week not in recurrence_rule.byweekday:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Day {day_of_week} is not part of this recurring schedule",
+            )
+
+        # Remove the day
+        recurrence_rule.byweekday.remove(day_of_week)
+
+        # If no days left, delete the entire schedule
+        if not recurrence_rule.byweekday or len(recurrence_rule.byweekday) == 0:
+            event.is_active = False
+            event.updated_at = datetime.utcnow()
+
+            # Also deactivate all instances
+            if event.recurring_event_id:
+                db.query(CalendarEvent).filter(
+                    CalendarEvent.recurring_event_id == event.recurring_event_id,
+                    CalendarEvent.is_active == True,
+                ).update({"is_active": False, "updated_at": datetime.utcnow()})
+
+            db.commit()
+            return {"message": "Last day removed - entire recurring schedule deleted"}
+
+        # Update the recurrence rule with the day removed
+        event.recurrence_rule = recurrence_rule.json()
+        event.updated_at = datetime.utcnow()
+
+        # Delete existing instances and regenerate without the removed day
+        if event.recurring_event_id:
+            db.query(CalendarEvent).filter(
+                CalendarEvent.recurring_event_id == event.recurring_event_id,
+                CalendarEvent.id != event.id,
+                CalendarEvent.is_active == True,
+            ).delete()
+
+            # Regenerate instances with updated days
+            generate_recurring_event_instances(db, event, recurrence_rule)
+
+        db.commit()
+        return {
+            "message": f"Day {day_of_week} removed from recurring schedule",
+            "remaining_days": recurrence_rule.byweekday,
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting schedule day: {str(e)}"
+        )
+
+
+@app.delete("/recurring-schedules/{event_id}")
+def delete_recurring_schedule_series(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Delete an entire recurring schedule series (all days and all instances).
+    """
+    # Get the base recurring event
+    event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == event_id,
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.is_active == True,
+        )
+        .first()
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Recurring schedule not found")
+
+    if event.specialist_id != current_specialist.id:
+        raise HTTPException(
+            status_code=403, detail="You can only delete your own schedules"
+        )
+
+    # Soft delete the base event
+    event.is_active = False
+    event.updated_at = datetime.utcnow()
+
+    # Also deactivate all instances
+    if event.recurring_event_id:
+        db.query(CalendarEvent).filter(
+            CalendarEvent.recurring_event_id == event.recurring_event_id,
+            CalendarEvent.is_active == True,
+        ).update({"is_active": False, "updated_at": datetime.utcnow()})
+
+    db.commit()
+
+    return {
+        "message": "Recurring schedule series deleted successfully",
+        "event_id": event.id,
+        "recurring_event_id": event.recurring_event_id,
+    }
+
+
+@app.delete("/calendar-event/{instance_id}")
+def delete_calendar_instance(
+    instance_id: int,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Delete a specific calendar event instance by its database ID.
+    This is for deleting individual occurrences without affecting the series.
+    """
+    # Get the event instance
+    event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.id == instance_id,
+            CalendarEvent.is_active == True,
+        )
+        .first()
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+
+    if event.specialist_id != current_specialist.id:
+        raise HTTPException(
+            status_code=403, detail="You can only delete your own calendar events"
+        )
+
+    # Soft delete this specific instance
+    event.is_active = False
+    event.updated_at = datetime.utcnow()
+    
+    db.commit()
+
+    return {
+        "message": "Calendar event instance deleted successfully",
+        "instance_id": instance_id,
+        "recurring_event_id": event.recurring_event_id,
+    }
+
+
+@app.delete("/calendar-event/series/{recurring_event_id}")
+def delete_calendar_series(
+    recurring_event_id: str,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Delete all calendar events in a recurring series by recurring_event_id.
+    This deletes the base template and all instances.
+    """
+    # Find any event with this recurring_event_id to verify ownership
+    sample_event = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.recurring_event_id == recurring_event_id,
+            CalendarEvent.is_active == True,
+        )
+        .first()
+    )
+
+    if not sample_event:
+        raise HTTPException(status_code=404, detail="Recurring series not found")
+
+    if sample_event.specialist_id != current_specialist.id:
+        raise HTTPException(
+            status_code=403, detail="You can only delete your own calendar series"
+        )
+
+    # Soft delete all events in the series (both base and instances)
+    updated_count = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.recurring_event_id == recurring_event_id,
+            CalendarEvent.is_active == True,
+        )
+        .update({"is_active": False, "updated_at": datetime.utcnow()})
+    )
+
+    db.commit()
+
+    return {
+        "message": f"Deleted {updated_count} events in the recurring series",
+        "recurring_event_id": recurring_event_id,
+        "deleted_count": updated_count,
+    }
 
 
 @app.get("/workplaces/{workplace_id}/schedules")
