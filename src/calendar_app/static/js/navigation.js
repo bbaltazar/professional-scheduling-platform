@@ -32,12 +32,12 @@ export function switchTab(tabName, currentSpecialistId) {
     else if (tabName === 'schedule' && currentSpecialistId) {
         window.loadWorkplacesForSchedule(); // Load workplaces for the dropdown
         window.loadRecurringSchedules();
-        
+
         // Load PTO blocks if function exists
         if (typeof window.loadPTOBlocks === 'function') {
             window.loadPTOBlocks();
         }
-        
+
         // Initialize unified calendar view in schedule tab
         if (typeof window.initializeUnifiedCalendar === 'function') {
             window.initializeUnifiedCalendar();

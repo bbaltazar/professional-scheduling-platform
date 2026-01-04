@@ -10,7 +10,7 @@
         rel="stylesheet">
     <!-- Professional dashboard stylesheet -->
     <link rel="stylesheet" href="/static/css/professional.css">
-    
+
     <!-- Unified Calendar Module -->
     <script src="/static/js/unified-calendar.js" defer></script>
 </head>
@@ -347,14 +347,21 @@
 
                     <!-- ========== UNIFIED CALENDAR VIEW ========== -->
                     <!-- View Toggle & Controls -->
-                    <div style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                    <div
+                        style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                             <!-- View Mode Toggle -->
-                            <div style="display: flex; gap: 10px; background: rgba(26, 26, 26, 0.1); padding: 5px; border-radius: 10px;">
-                                <button type="button" id="weekViewBtn" class="btn-small" onclick="switchCalendarView('week')" style="background: var(--color-accent); color: white;">
+                            <div
+                                style="display: flex; gap: 10px; background: rgba(26, 26, 26, 0.1); padding: 5px; border-radius: 10px;">
+                                <button type="button" id="weekViewBtn" class="btn-small"
+                                    onclick="switchCalendarView('week')"
+                                    style="background: var(--color-accent); color: white;">
                                     📅 Week View
                                 </button>
-                                <button type="button" id="monthViewBtn" class="btn-small" onclick="switchCalendarView('month')" style="background: transparent; border: 1px solid rgba(212, 175, 55, 0.3);">
+                                <button type="button" id="monthViewBtn" class="btn-small"
+                                    onclick="switchCalendarView('month')"
+                                    style="background: transparent; border: 1px solid rgba(212, 175, 55, 0.3);">
                                     📆 Month View
                                 </button>
                             </div>
@@ -362,52 +369,67 @@
                             <!-- Workplace Filter Dropdown -->
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <label style="color: #6b7280; font-weight: 500;">Filter by Workplace:</label>
-                                <select id="workplaceFilter" onchange="filterCalendarByWorkplace()" style="padding: 8px 15px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: white; color: #1a1a1a; min-width: 200px;">
+                                <select id="workplaceFilter" onchange="filterCalendarByWorkplace()"
+                                    style="padding: 8px 15px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); background: white; color: #1a1a1a; min-width: 200px;">
                                     <option value="all">All Workplaces</option>
                                     <!-- Will be populated by JavaScript -->
                                 </select>
                             </div>
-                            
+
                             <!-- Calendar Legend (Color-coded workplaces) -->
-                            <div id="calendarLegend" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px;">
+                            <div id="calendarLegend"
+                                style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px;">
                                 <!-- Will be populated by JavaScript -->
                             </div>
                         </div>
 
                         <!-- Week/Month Navigation -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                            <button type="button" class="btn-small" onclick="navigateCalendarView(-1)" id="prevPeriodBtn">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                            <button type="button" class="btn-small" onclick="navigateCalendarView(-1)"
+                                id="prevPeriodBtn">
                                 ◀ Previous Week
                             </button>
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <span id="calendarPeriodDisplay" style="font-size: 1.1rem; font-weight: 600; color: #1a1a1a;">
+                                <span id="calendarPeriodDisplay"
+                                    style="font-size: 1.1rem; font-weight: 600; color: #1a1a1a;">
                                     Week of Nov 25 - Dec 1, 2025
                                 </span>
-                                <button type="button" class="btn-small" onclick="goToToday()" style="font-size: 0.85rem;">
+                                <button type="button" class="btn-small" onclick="goToToday()"
+                                    style="font-size: 0.85rem;">
                                     📍 Today
                                 </button>
                             </div>
-                            <button type="button" class="btn-small" onclick="navigateCalendarView(1)" id="nextPeriodBtn">
+                            <button type="button" class="btn-small" onclick="navigateCalendarView(1)"
+                                id="nextPeriodBtn">
                                 Next Week ▶
                             </button>
                         </div>
 
                         <!-- Layer Toggles -->
                         <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(26, 26, 26, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showAvailability" checked onchange="toggleCalendarLayer('availability')" style="margin-right: 6px;">
+                            <label class="checkbox-label"
+                                style="cursor: pointer; padding: 8px 14px; background: rgba(26, 26, 26, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                <input type="checkbox" id="showAvailability" checked
+                                    onchange="toggleCalendarLayer('availability')" style="margin-right: 6px;">
                                 <span>⬜ Availability Blocks</span>
                             </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showConfirmed" checked onchange="toggleCalendarLayer('confirmed')" style="margin-right: 6px;">
+                            <label class="checkbox-label"
+                                style="cursor: pointer; padding: 8px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                <input type="checkbox" id="showConfirmed" checked
+                                    onchange="toggleCalendarLayer('confirmed')" style="margin-right: 6px;">
                                 <span>🟦 Confirmed Bookings</span>
                             </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(34, 197, 94, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showCompleted" checked onchange="toggleCalendarLayer('completed')" style="margin-right: 6px;">
+                            <label class="checkbox-label"
+                                style="cursor: pointer; padding: 8px 14px; background: rgba(34, 197, 94, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                <input type="checkbox" id="showCompleted" checked
+                                    onchange="toggleCalendarLayer('completed')" style="margin-right: 6px;">
                                 <span>🟩 Completed</span>
                             </label>
-                            <label class="checkbox-label" style="cursor: pointer; padding: 8px 14px; background: rgba(239, 68, 68, 0.08); border-radius: 8px; transition: all 0.2s;">
-                                <input type="checkbox" id="showCancelled" onchange="toggleCalendarLayer('cancelled')" style="margin-right: 6px;">
+                            <label class="checkbox-label"
+                                style="cursor: pointer; padding: 8px 14px; background: rgba(239, 68, 68, 0.08); border-radius: 8px; transition: all 0.2s;">
+                                <input type="checkbox" id="showCancelled" onchange="toggleCalendarLayer('cancelled')"
+                                    style="margin-right: 6px;">
                                 <span>🟥 Cancelled</span>
                             </label>
                         </div>
@@ -420,29 +442,40 @@
                         </div>
 
                         <!-- Quick Stats -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px;">
-                            <div style="background: rgba(26, 26, 26, 0.05); border-left: 4px solid #1a1a1a; padding: 12px; border-radius: 8px;">
-                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Available Hours</div>
-                                <div id="statsAvailableHours" style="font-size: 1.2rem; font-weight: 700; color: #1a1a1a;">--</div>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px;">
+                            <div
+                                style="background: rgba(26, 26, 26, 0.05); border-left: 4px solid #1a1a1a; padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Available Hours
+                                </div>
+                                <div id="statsAvailableHours"
+                                    style="font-size: 1.2rem; font-weight: 700; color: #1a1a1a;">--</div>
                             </div>
-                            <div style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px;">
+                            <div
+                                style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px;">
                                 <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Confirmed</div>
-                                <div id="statsConfirmed" style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;">--</div>
+                                <div id="statsConfirmed" style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;">--
+                                </div>
                             </div>
-                            <div style="background: rgba(34, 197, 94, 0.05); border-left: 4px solid #22c55e; padding: 12px; border-radius: 8px;">
+                            <div
+                                style="background: rgba(34, 197, 94, 0.05); border-left: 4px solid #22c55e; padding: 12px; border-radius: 8px;">
                                 <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Completed</div>
-                                <div id="statsCompleted" style="font-size: 1.2rem; font-weight: 700; color: #22c55e;">--</div>
+                                <div id="statsCompleted" style="font-size: 1.2rem; font-weight: 700; color: #22c55e;">--
+                                </div>
                             </div>
-                            <div style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 8px;">
+                            <div
+                                style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 8px;">
                                 <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 4px;">Utilization</div>
-                                <div id="statsUtilization" style="font-size: 1.2rem; font-weight: 700; color: #f59e0b;">--</div>
+                                <div id="statsUtilization" style="font-size: 1.2rem; font-weight: 700; color: #f59e0b;">
+                                    --</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Divider -->
                     <div style="border-top: 2px solid rgba(212, 175, 55, 0.2); margin: 30px 0; position: relative;">
-                        <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #fafafa; padding: 0 15px; color: #6b7280; font-size: 0.9rem; font-weight: 600;">
+                        <span
+                            style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #fafafa; padding: 0 15px; color: #6b7280; font-size: 0.9rem; font-weight: 600;">
                             Drag-and-Drop Editor
                         </span>
                     </div>
@@ -465,8 +498,7 @@
                                 <!-- Time Range Filter -->
                                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <label
-                                            style="color: #6b7280; font-size: 0.9rem; white-space: nowrap;">Time
+                                        <label style="color: #6b7280; font-size: 0.9rem; white-space: nowrap;">Time
                                             Range:</label>
                                         <select id="timeRangeStart" onchange="updateCalendarView()"
                                             style="padding: 6px 12px; border-radius: 8px; background: white; border: 1px solid #d1d5db; color: #1f2937; font-size: 0.9rem;">

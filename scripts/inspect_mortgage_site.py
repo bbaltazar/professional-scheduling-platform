@@ -25,10 +25,10 @@ from selenium.webdriver.common.by import By
 def setup_driver():
     """Setup Chrome driver - visible mode for inspection"""
     chrome_options = Options()
-    chrome_options.add_argument('--window-size=1920,1080')
+    chrome_options.add_argument("--window-size=1920,1080")
     # Keep browser open for inspection
     chrome_options.add_experimental_option("detach", True)
-    
+
     driver = webdriver.Chrome(options=chrome_options)
     driver.implicitly_wait(5)
     return driver
@@ -49,17 +49,17 @@ def print_inspection_guide(step_number, step_name, element_description, example)
     print(f"   1. Right-click on the element → 'Inspect' (or press F12)")
     print(f"   2. In DevTools, find the HTML tag for this element")
     print(f"   3. Look for one of these attributes:")
-    print(f"      • id=\"...\"")
-    print(f"      • name=\"...\"")
-    print(f"      • class=\"...\"")
-    print(f"      • type=\"...\"")
+    print(f'      • id="..."')
+    print(f'      • name="..."')
+    print(f'      • class="..."')
+    print(f'      • type="..."')
     print(f"      • Or the exact button/link text")
     print(f"\n💡 EXAMPLE:")
     print(f"   {example}")
     print(f"\n✏️  WHAT TO COPY:")
     print(f"   Copy ONE of these (in order of preference):")
-    print(f"   1. id=\"some-id\"         → Paste: some-id")
-    print(f"   2. name=\"some-name\"     → Paste: some-name")
+    print(f'   1. id="some-id"         → Paste: some-id')
+    print(f'   2. name="some-name"     → Paste: some-name')
     print(f"   3. Button text            → Paste: exact text you see")
     print(f"   4. CSS selector           → Paste: .class-name or #id-name")
     print_separator()
@@ -67,12 +67,12 @@ def print_inspection_guide(step_number, step_name, element_description, example)
 
 def inspect_login_page(driver, selectors):
     """Step 1-2: Navigate and inspect login page"""
-    
+
     # Navigate to login
     print("\n🌐 Navigating to login page...")
-    driver.get('https://portal.hoaorganizers.com/login')
+    driver.get("https://portal.hoaorganizers.com/login")
     time.sleep(2)
-    
+
     # Step 1: Inspect "Log in with password" button
     print_inspection_guide(
         step_number=1,
@@ -90,27 +90,29 @@ def inspect_login_page(driver, selectors):
         
         → Copy: Log in with password
         → Selector type: text
-        """
+        """,
     )
-    
-    input("\n⏸️  Press ENTER after you've inspected the 'Log in with password' button...")
-    
+
+    input(
+        "\n⏸️  Press ENTER after you've inspected the 'Log in with password' button..."
+    )
+
     selector_value = input("\n📝 Paste the id/name/text here: ").strip()
     selector_type = input("📝 Selector type (id/name/text/css): ").strip().lower()
-    
-    selectors['login_with_password_button'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Button to switch to password login'
+
+    selectors["login_with_password_button"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Button to switch to password login",
     }
-    
+
     print("\n✅ Saved! Now manually click the button to proceed...")
     input("⏸️  Press ENTER after you've clicked it...")
 
 
 def inspect_credentials(driver, selectors):
     """Step 2-3: Inspect email and password fields"""
-    
+
     # Email field
     print_inspection_guide(
         step_number=2,
@@ -128,20 +130,20 @@ def inspect_credentials(driver, selectors):
         
         → Copy: email-address
         → Selector type: name
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the email field...")
-    
+
     selector_value = input("\n📝 Paste the id/name/css here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['email_input'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Email/username input field'
+
+    selectors["email_input"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Email/username input field",
     }
-    
+
     # Password field
     print_inspection_guide(
         step_number=3,
@@ -159,20 +161,20 @@ def inspect_credentials(driver, selectors):
         
         → Copy: user-password
         → Selector type: name
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the password field...")
-    
+
     selector_value = input("\n📝 Paste the id/name/css here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['password_input'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Password input field'
+
+    selectors["password_input"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Password input field",
     }
-    
+
     # Login button
     print_inspection_guide(
         step_number=4,
@@ -190,27 +192,27 @@ def inspect_credentials(driver, selectors):
         
         → Copy: Log In
         → Selector type: text
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the login button...")
-    
+
     selector_value = input("\n📝 Paste the id/name/text here: ").strip()
     selector_type = input("📝 Selector type (id/name/text/css): ").strip().lower()
-    
-    selectors['login_submit_button'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Submit button for login form'
+
+    selectors["login_submit_button"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Submit button for login form",
     }
-    
+
     print("\n✅ Now manually enter your credentials and click login...")
     input("⏸️  Press ENTER after you've logged in and reached the dashboard...")
 
 
 def inspect_payment_page(driver, selectors):
     """Step 4: Inspect 'Make online payment' link/button"""
-    
+
     print_inspection_guide(
         step_number=5,
         step_name="'Make Online Payment' Link/Button",
@@ -227,27 +229,27 @@ def inspect_payment_page(driver, selectors):
         
         → Copy: make-payment
         → Selector type: id
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the payment button/link...")
-    
+
     selector_value = input("\n📝 Paste the id/class/text here: ").strip()
     selector_type = input("📝 Selector type (id/css/text): ").strip().lower()
-    
-    selectors['make_payment_button'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Button/link to make online payment'
+
+    selectors["make_payment_button"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Button/link to make online payment",
     }
-    
+
     print("\n✅ Now manually click 'Make online payment'...")
     input("⏸️  Press ENTER after you've clicked it and the payment form loads...")
 
 
 def inspect_payment_form(driver, selectors):
     """Step 5-10: Inspect payment form fields"""
-    
+
     # Phone number
     print_inspection_guide(
         step_number=6,
@@ -265,20 +267,20 @@ def inspect_payment_form(driver, selectors):
         
         → Copy: contact-phone
         → Selector type: name
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the phone field...")
-    
+
     selector_value = input("\n📝 Paste the id/name here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['phone_input'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Phone number input field'
+
+    selectors["phone_input"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Phone number input field",
     }
-    
+
     # eCheck radio/button
     print_inspection_guide(
         step_number=7,
@@ -297,23 +299,23 @@ def inspect_payment_form(driver, selectors):
         
         → Copy: Pay by eCheck
         → Selector type: text
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the eCheck option...")
-    
+
     selector_value = input("\n📝 Paste the id/value/text here: ").strip()
     selector_type = input("📝 Selector type (id/name/text/css): ").strip().lower()
-    
-    selectors['echeck_option'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'eCheck payment method selector'
+
+    selectors["echeck_option"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "eCheck payment method selector",
     }
-    
+
     print("\n✅ Now manually select 'Pay by eCheck'...")
     input("⏸️  Press ENTER after the eCheck form appears...")
-    
+
     # Routing number
     print_inspection_guide(
         step_number=8,
@@ -331,20 +333,20 @@ def inspect_payment_form(driver, selectors):
         
         → Copy: bank-routing
         → Selector type: name
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the routing number field...")
-    
+
     selector_value = input("\n📝 Paste the id/name here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['routing_number_input'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Routing number input field'
+
+    selectors["routing_number_input"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Routing number input field",
     }
-    
+
     # Account number (first)
     print_inspection_guide(
         step_number=9,
@@ -359,20 +361,20 @@ def inspect_payment_form(driver, selectors):
         
         NOTE: There might be TWO account fields (entry + confirmation).
         We're looking for the FIRST one.
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the account number field...")
-    
+
     selector_value = input("\n📝 Paste the id/name here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['account_number_input'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Account number input field (first/main)'
+
+    selectors["account_number_input"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Account number input field (first/main)",
     }
-    
+
     # Account number confirmation
     print_inspection_guide(
         step_number=10,
@@ -392,23 +394,23 @@ def inspect_payment_form(driver, selectors):
         → Selector type: name
         
         If there's NO confirmation field, just type: NONE
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the confirmation field...")
-    
+
     selector_value = input("\n📝 Paste the id/name (or NONE): ").strip()
-    
-    if selector_value.upper() != 'NONE':
+
+    if selector_value.upper() != "NONE":
         selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-        selectors['account_number_confirm_input'] = {
-            'value': selector_value,
-            'type': selector_type,
-            'description': 'Account number confirmation input field'
+        selectors["account_number_confirm_input"] = {
+            "value": selector_value,
+            "type": selector_type,
+            "description": "Account number confirmation input field",
         }
     else:
-        selectors['account_number_confirm_input'] = None
-    
+        selectors["account_number_confirm_input"] = None
+
     # Agreement checkbox
     print_inspection_guide(
         step_number=11,
@@ -430,20 +432,20 @@ def inspect_payment_form(driver, selectors):
         
         → Copy: agreement-label
         → Selector type: css (with dot: .agreement-label)
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the checkbox...")
-    
+
     selector_value = input("\n📝 Paste the id/name/class here: ").strip()
     selector_type = input("📝 Selector type (id/name/css): ").strip().lower()
-    
-    selectors['agreement_checkbox'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Agreement checkbox or label'
+
+    selectors["agreement_checkbox"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Agreement checkbox or label",
     }
-    
+
     # Next button
     print_inspection_guide(
         step_number=12,
@@ -461,27 +463,29 @@ def inspect_payment_form(driver, selectors):
         
         → Copy: Next
         → Selector type: text
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the Next button...")
-    
+
     selector_value = input("\n📝 Paste the id/text here: ").strip()
     selector_type = input("📝 Selector type (id/text/css): ").strip().lower()
-    
-    selectors['next_button'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Next/Continue button'
+
+    selectors["next_button"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Next/Continue button",
     }
-    
+
     print("\n✅ Now manually fill in the form and click Next...")
-    input("⏸️  Press ENTER after you've clicked Next and reached the confirmation page...")
+    input(
+        "⏸️  Press ENTER after you've clicked Next and reached the confirmation page..."
+    )
 
 
 def inspect_confirmation_page(driver, selectors):
     """Step 11: Inspect submit payment button"""
-    
+
     print_inspection_guide(
         step_number=13,
         step_name="'Submit Payment' Button",
@@ -498,31 +502,31 @@ def inspect_confirmation_page(driver, selectors):
         
         → Copy: Submit Payment
         → Selector type: text
-        """
+        """,
     )
-    
+
     input("\n⏸️  Press ENTER after you've inspected the Submit Payment button...")
-    
+
     selector_value = input("\n📝 Paste the id/text here: ").strip()
     selector_type = input("📝 Selector type (id/text/css): ").strip().lower()
-    
-    selectors['submit_payment_button'] = {
-        'value': selector_value,
-        'type': selector_type,
-        'description': 'Final submit payment button'
+
+    selectors["submit_payment_button"] = {
+        "value": selector_value,
+        "type": selector_type,
+        "description": "Final submit payment button",
     }
-    
+
     print("\n⚠️  DO NOT click Submit Payment yet - we're just inspecting!")
     print("The selectors have been saved.")
 
 
 def save_selectors(selectors):
     """Save all selectors to JSON file"""
-    output_file = 'scripts/mortgage_selectors.json'
-    
-    with open(output_file, 'w') as f:
+    output_file = "scripts/mortgage_selectors.json"
+
+    with open(output_file, "w") as f:
         json.dump(selectors, f, indent=2)
-    
+
     print_separator()
     print(f"✅ All selectors saved to: {output_file}")
     print_separator()
@@ -547,24 +551,24 @@ def main():
     print("   • Right-click → Inspect Element")
     print("   • Find id, name, or class attributes")
     print("   • Copy selector values")
-    
+
     input("\n✅ Press ENTER to start...")
-    
+
     selectors = {}
     driver = setup_driver()
-    
+
     try:
         inspect_login_page(driver, selectors)
         inspect_credentials(driver, selectors)
         inspect_payment_page(driver, selectors)
         inspect_payment_form(driver, selectors)
         inspect_confirmation_page(driver, selectors)
-        
+
         save_selectors(selectors)
-        
+
         print("\n✅ Inspection complete!")
         print("You can now close the browser window.")
-        
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Inspection cancelled by user")
         if selectors:
@@ -575,9 +579,9 @@ def main():
         if selectors:
             print("Saving partial selectors...")
             save_selectors(selectors)
-    
+
     print("\n👋 Done!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

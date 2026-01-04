@@ -299,11 +299,11 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 
 def generate_instances_for_range(
-    db: Session, 
-    base_event: CalendarEvent, 
+    db: Session,
+    base_event: CalendarEvent,
     recurrence_rule: RecurrenceRule,
     range_start: datetime,
-    range_end: datetime
+    range_end: datetime,
 ):
     """
     Generate instances for a specific date range only (lazy loading).
@@ -319,7 +319,7 @@ def generate_instances_for_range(
 
     # Extract the time of day from base_event to apply to all occurrences
     base_time = base_event.start_datetime.time()
-    
+
     # Build rrule parameters - restricted to the requested range
     # Use range_start but with the base event's time
     dtstart = datetime.combine(range_start.date(), base_time)
@@ -327,7 +327,7 @@ def generate_instances_for_range(
         dtstart = range_start
     if dtstart < base_event.start_datetime:
         dtstart = base_event.start_datetime
-    
+
     rrule_params = {
         "freq": freq_map.get(recurrence_rule.freq, WEEKLY),
         "interval": recurrence_rule.interval,
@@ -337,25 +337,24 @@ def generate_instances_for_range(
     # End at the earlier of: recurrence end, requested range end
     if recurrence_rule.until:
         rrule_params["until"] = min(
-            datetime.combine(recurrence_rule.until, time.max),
-            range_end
+            datetime.combine(recurrence_rule.until, time.max), range_end
         )
     else:
         rrule_params["until"] = range_end
 
     # Add weekday restrictions
     if recurrence_rule.byweekday:
-        rrule_params["byweekday"] = [weekday_map[day] for day in recurrence_rule.byweekday]
+        rrule_params["byweekday"] = [
+            weekday_map[day] for day in recurrence_rule.byweekday
+        ]
 
     # Generate occurrence dates
     try:
         rule = rrule(**rrule_params)
         occurrences = list(rule)
     except Exception as e:
-        print(f"[generate_instances_for_range] Error generating rrule: {e}")
+        # Log error but don't fail silently
         return
-
-    print(f"[generate_instances_for_range] Generated {len(occurrences)} potential occurrences for event {base_event.id}")
 
     # Create event instances (skip if already exists)
     duration = base_event.end_datetime - base_event.start_datetime
@@ -380,7 +379,9 @@ def generate_instances_for_range(
             continue
 
         # Check for conflicts with other events
-        if has_calendar_conflict(db, base_event.specialist_id, occurrence_start, occurrence_end):
+        if has_calendar_conflict(
+            db, base_event.specialist_id, occurrence_start, occurrence_end
+        ):
             continue
 
         # Create new instance
@@ -415,7 +416,6 @@ def generate_instances_for_range(
 
     if created_count > 0:
         db.commit()
-        print(f"[generate_instances_for_range] Created {created_count} new instances for event {base_event.id}")
 
 
 def generate_recurring_event_instances(
@@ -1736,22 +1736,12 @@ def create_recurring_schedule(
 
     # Parse dates and times
     try:
-        print(f"[create_recurring_schedule] Received request:")
-        print(f"  start_date: {schedule.start_date}")
-        print(f"  start_time: {schedule.start_time}")
-        print(f"  end_time: {schedule.end_time}")
-        print(f"  days_of_week: {schedule.days_of_week}")
-        
         start_date = datetime.strptime(schedule.start_date, "%Y-%m-%d").date()
         start_time_obj = datetime.strptime(schedule.start_time, "%H:%M").time()
         end_time_obj = datetime.strptime(schedule.end_time, "%H:%M").time()
 
         start_datetime = datetime.combine(start_date, start_time_obj)
         end_datetime = datetime.combine(start_date, end_time_obj)
-        
-        print(f"[create_recurring_schedule] Parsed datetimes:")
-        print(f"  start_datetime: {start_datetime}")
-        print(f"  end_datetime: {end_datetime}")
 
         end_date = None
         if schedule.end_date:
@@ -1839,10 +1829,6 @@ def get_recurring_schedules(
         .all()
     )
 
-    print(
-        f"DEBUG: Found {len(recurring_events)} recurring events for specialist {specialist_id}"
-    )
-
     schedules = []
     for event in recurring_events:
         recurrence_rule = None
@@ -1852,14 +1838,10 @@ def get_recurring_schedules(
 
                 recurrence_data = json.loads(event.recurrence_rule)
                 recurrence_rule = RecurrenceRule(**recurrence_data)
-                print(
-                    f"DEBUG: Parsed recurrence rule for event {event.id}: {recurrence_rule}"
-                )
             except Exception as e:
                 print(
                     f"ERROR: Failed to parse recurrence rule for event {event.id}: {e}"
                 )
-                print(f"DEBUG: Raw recurrence_rule: {event.recurrence_rule}")
                 continue
 
         # Get workplace information if associated
@@ -1911,7 +1893,7 @@ def get_calendar_instances(
 ):
     """
     Get all calendar event instances for a date range.
-    
+
     Uses lazy loading: If instances don't exist for the requested date range,
     they are generated on-demand from the base recurring templates.
     This prevents creating thousands of unused database rows.
@@ -1926,20 +1908,24 @@ def get_calendar_instances(
         try:
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD"
+            )
     else:
         start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     if end_date:
         try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59
+            )
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD"
+            )
     else:
         # Default to 1 week from start
         end_dt = start_dt + timedelta(days=7)
-
-    print(f"[get_calendar_instances] Requested range: {start_dt.date()} to {end_dt.date()}")
 
     # Step 1: Get all base recurring events (templates) for this specialist
     base_events = (
@@ -1947,31 +1933,31 @@ def get_calendar_instances(
         .filter(
             CalendarEvent.specialist_id == specialist_id,
             CalendarEvent.is_active == True,
-            CalendarEvent.event_type == 'availability',
+            CalendarEvent.event_type == "availability",
             CalendarEvent.is_recurring == True,
             CalendarEvent.recurring_event_id != None,
         )
         .all()
     )
 
-    print(f"[get_calendar_instances] Found {len(base_events)} base recurring templates")
-
     # Step 2: For each base event, generate instances for the requested date range if they don't exist
     for base_event in base_events:
         if not base_event.recurrence_rule:
             continue
-        
+
         try:
             import json
+
             recurrence_data = json.loads(base_event.recurrence_rule)
             recurrence_rule = RecurrenceRule(**recurrence_data)
-            
+
             # Generate instances for this date range
             # Use a modified version that only generates for the requested range
-            generate_instances_for_range(db, base_event, recurrence_rule, start_dt, end_dt)
-            
+            generate_instances_for_range(
+                db, base_event, recurrence_rule, start_dt, end_dt
+            )
+
         except Exception as e:
-            print(f"[get_calendar_instances] Error generating instances for event {base_event.id}: {e}")
             continue
 
     # Step 3: Now query the instances that exist in this date range
@@ -1980,7 +1966,7 @@ def get_calendar_instances(
         .filter(
             CalendarEvent.specialist_id == specialist_id,
             CalendarEvent.is_active == True,
-            CalendarEvent.event_type == 'availability',
+            CalendarEvent.event_type == "availability",
             CalendarEvent.start_datetime >= start_dt,
             CalendarEvent.start_datetime <= end_dt,
             CalendarEvent.is_recurring == False,  # Only instances, not base templates
@@ -1990,22 +1976,17 @@ def get_calendar_instances(
         .all()
     )
 
-    print(f"[get_calendar_instances] Returning {len(events)} instances")
-    
     instances = []
     for event in events:
-        print(f"[get_calendar_instances] Event {event.id}:")
-        print(f"  start_datetime from DB: {event.start_datetime}")
-        print(f"  start_datetime type: {type(event.start_datetime)}")
-        print(f"  start_datetime tzinfo: {event.start_datetime.tzinfo}")
-        
         # Calculate day of week (0=Monday, 6=Sunday)
         day_of_week = event.start_datetime.weekday()
-        
+
         # Get workplace information if associated
         workplace_info = None
         if event.workplace_id:
-            workplace = db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            workplace = (
+                db.query(Workplace).filter(Workplace.id == event.workplace_id).first()
+            )
             if workplace:
                 workplace_info = {
                     "id": workplace.id,
@@ -2013,7 +1994,7 @@ def get_calendar_instances(
                     "address": workplace.address,
                     "city": workplace.city,
                 }
-        
+
         # Get the base recurring event to determine recurrence type
         base_event = (
             db.query(CalendarEvent)
@@ -2023,33 +2004,40 @@ def get_calendar_instances(
             )
             .first()
         )
-        
-        recurrence_type = 'unknown'
+
+        recurrence_type = "unknown"
         if base_event and base_event.recurrence_rule:
             try:
                 import json
+
                 recurrence_data = json.loads(base_event.recurrence_rule)
                 recurrence_rule = RecurrenceRule(**recurrence_data)
-                recurrence_type = recurrence_rule.freq.lower() if recurrence_rule.freq else 'unknown'
+                recurrence_type = (
+                    recurrence_rule.freq.lower() if recurrence_rule.freq else "unknown"
+                )
             except Exception:
                 pass
-        
-        instances.append({
-            "instance_id": event.id,  # Unique ID for this specific instance
-            "recurring_event_id": event.recurring_event_id,  # Series ID
-            "base_event_id": base_event.id if base_event else None,  # ID of the template
-            "day_of_week": day_of_week,
-            "start_time": event.start_datetime.strftime("%H:%M"),
-            "end_time": event.end_datetime.strftime("%H:%M"),
-            "date": event.start_datetime.strftime("%Y-%m-%d"),
-            "title": event.title,
-            "workplace_id": event.workplace_id,
-            "workplace": workplace_info,
-            "recurrence_type": recurrence_type,
-            "is_bookable": event.is_bookable,
-            "color": event.color,
-        })
-    
+
+        instances.append(
+            {
+                "instance_id": event.id,  # Unique ID for this specific instance
+                "recurring_event_id": event.recurring_event_id,  # Series ID
+                "base_event_id": (
+                    base_event.id if base_event else None
+                ),  # ID of the template
+                "day_of_week": day_of_week,
+                "start_time": event.start_datetime.strftime("%H:%M"),
+                "end_time": event.end_datetime.strftime("%H:%M"),
+                "date": event.start_datetime.strftime("%Y-%m-%d"),
+                "title": event.title,
+                "workplace_id": event.workplace_id,
+                "workplace": workplace_info,
+                "recurrence_type": recurrence_type,
+                "is_bookable": event.is_bookable,
+                "color": event.color,
+            }
+        )
+
     return instances
 
 
@@ -2145,9 +2133,7 @@ def update_recurring_schedule(
         }
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid time format: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid time format: {str(e)}")
 
 
 @app.delete("/recurring-schedules/{event_id}/day")
@@ -2162,12 +2148,12 @@ def delete_recurring_schedule_day(
     If it's the last day, deletes the entire schedule.
     """
     # Extract day_of_week from request body
-    day_of_week = request_body.get('day_of_week')
+    day_of_week = request_body.get("day_of_week")
     if day_of_week is None:
         raise HTTPException(
             status_code=400, detail="day_of_week is required in request body"
         )
-    
+
     # Get the base recurring event
     event = (
         db.query(CalendarEvent)
@@ -2346,7 +2332,7 @@ def delete_calendar_instance(
     # Soft delete this specific instance
     event.is_active = False
     event.updated_at = datetime.utcnow()
-    
+
     db.commit()
 
     return {
@@ -2894,8 +2880,6 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
     Create a new booking for a consumer with comprehensive validation.
     """
     try:
-        print(f"DEBUG: Received booking request: {booking}")
-
         # Validate phone number format if provided
         if booking.client_phone:
             normalized_phone = normalize_phone(booking.client_phone)
@@ -2911,7 +2895,6 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
             db.query(Specialist).filter(Specialist.id == booking.specialist_id).first()
         )
         if not specialist:
-            print(f"DEBUG: Specialist {booking.specialist_id} not found")
             raise HTTPException(status_code=404, detail="Specialist not found")
 
         # Validate service exists and belongs to specialist
@@ -3060,12 +3043,9 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_booking)
 
-        print(f"DEBUG: Successfully created booking with ID: {db_booking.id}")
         return db_booking
 
     except Exception as e:
-        print(f"DEBUG: Error creating booking: {str(e)}")
-        print(f"DEBUG: Error type: {type(e)}")
         db.rollback()
         if isinstance(e, HTTPException):
             raise e

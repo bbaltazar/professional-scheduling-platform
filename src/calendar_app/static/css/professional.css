@@ -1868,6 +1868,6 @@ body {
 }
 
 /* Enhanced checkbox labels for calendar filters */
-.checkbox-label input[type="checkbox"]:checked + span {
+.checkbox-label input[type="checkbox"]:checked+span {
     font-weight: 600;
 }
