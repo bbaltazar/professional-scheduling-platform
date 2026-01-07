@@ -397,6 +397,7 @@ class RecurrenceRule(BaseModel):
     wkst: int = 0  # Week start (0=Monday)
     until: Optional[date] = None  # End date for recurrence
     count: Optional[int] = None  # Maximum occurrences
+    lookahead_weeks: int = 12  # Number of weeks to pre-create instances (1-12)
 
     # Advanced patterns
     byweekno: Optional[List[int]] = None  # Week numbers

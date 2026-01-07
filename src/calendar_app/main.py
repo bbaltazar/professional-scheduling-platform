@@ -380,7 +380,7 @@ def generate_instances_for_range(
 
         # Check for conflicts with other events
         if has_calendar_conflict(
-            db, base_event.specialist_id, occurrence_start, occurrence_end
+            db, base_event.specialist_id, occurrence_start, occurrence_end, exclude_event_id=base_event.id
         ):
             continue
 
@@ -416,6 +416,75 @@ def generate_instances_for_range(
 
     if created_count > 0:
         db.commit()
+
+
+def extend_recurring_instances(db: Session):
+    """
+    Daily maintenance: Extend all recurring schedules by one day.
+    
+    For each recurring schedule, this ensures instances exist for the full 
+    lookahead_weeks window by generating instances for tomorrow that fall
+    within the window.
+    
+    Should be called once per day (e.g., via cron job or startup event).
+    """
+    # Get all active recurring base events
+    base_events = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.is_active == True,
+            CalendarEvent.event_type == "availability",
+            CalendarEvent.is_recurring == True,
+            CalendarEvent.recurring_event_id != None,
+        )
+        .all()
+    )
+    
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    extended_count = 0
+    
+    for base_event in base_events:
+        if not base_event.recurrence_rule:
+            continue
+            
+        try:
+            import json
+            recurrence_data = json.loads(base_event.recurrence_rule)
+            recurrence_rule = RecurrenceRule(**recurrence_data)
+            
+            # Calculate the end of the lookahead window
+            lookahead_end = today + timedelta(weeks=recurrence_rule.lookahead_weeks)
+            
+            # Find the furthest instance we have
+            furthest_instance = (
+                db.query(CalendarEvent)
+                .filter(
+                    CalendarEvent.recurring_event_id == base_event.recurring_event_id,
+                    CalendarEvent.is_recurring == False,
+                    CalendarEvent.is_active == True,
+                )
+                .order_by(CalendarEvent.start_datetime.desc())
+                .first()
+            )
+            
+            if furthest_instance:
+                # Generate from day after furthest to lookahead_end
+                start_from = furthest_instance.start_datetime + timedelta(days=1)
+            else:
+                # No instances yet, generate from today
+                start_from = today
+            
+            if start_from < lookahead_end:
+                generate_instances_for_range(
+                    db, base_event, recurrence_rule, start_from, lookahead_end
+                )
+                extended_count += 1
+                
+        except Exception as e:
+            print(f"[extend_recurring_instances] Error extending event {base_event.id}: {e}")
+            continue
+    
+    return extended_count
 
 
 def generate_recurring_event_instances(
@@ -1675,6 +1744,7 @@ class RecurringScheduleCreate(BaseModel):
     start_date: str  # Format: "2024-01-01"
     end_date: Optional[str] = None  # Format: "2024-12-31"
     workplace_id: Optional[int] = None  # None = "Personal", or ID of workplace
+    lookahead_weeks: int = 12  # Number of weeks to pre-create (1-12)
 
 
 @app.post("/specialist/{specialist_id}/recurring-schedule")
@@ -1753,7 +1823,7 @@ def create_recurring_schedule(
 
     # Create recurrence rule
     recurrence_rule = RecurrenceRule(
-        freq=freq, interval=1, byweekday=byweekday, until=end_date
+        freq=freq, interval=1, byweekday=byweekday, until=end_date, lookahead_weeks=schedule.lookahead_weeks
     )
 
     # Generate recurring event ID
@@ -1790,8 +1860,14 @@ def create_recurring_schedule(
     db.commit()
     db.refresh(db_event)
 
-    # Don't generate instances upfront - they'll be created on-demand when viewing date ranges
-    # This prevents creating thousands of database rows for long-running schedules
+    # Pre-create instances for the lookahead period (default 12 weeks)
+    lookahead_weeks = recurrence_rule.lookahead_weeks
+    lookahead_end = datetime.utcnow() + timedelta(weeks=lookahead_weeks)
+    
+    # Generate instances immediately (not lazy)
+    generate_instances_for_range(
+        db, db_event, recurrence_rule, datetime.utcnow(), lookahead_end
+    )
 
     return {
         "message": "Recurring schedule created successfully",
@@ -1800,6 +1876,23 @@ def create_recurring_schedule(
         "recurrence_type": schedule.recurrence_type,
         "workplace_id": schedule.workplace_id,
         "workplace_label": workplace_label,
+        "lookahead_weeks": lookahead_weeks,
+    }
+
+
+@app.post("/admin/extend-recurring-instances")
+def trigger_extend_recurring_instances(
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Manual trigger for extending recurring instances (daily maintenance).
+    In production, this should be called by a cron job or scheduled task.
+    """
+    extended_count = extend_recurring_instances(db)
+    return {
+        "message": "Recurring instances extended successfully",
+        "schedules_extended": extended_count,
     }
 
 

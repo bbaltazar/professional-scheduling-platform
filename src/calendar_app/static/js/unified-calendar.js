@@ -1333,12 +1333,22 @@ function showAvailabilityModal(selectionData) {
                         </select>
                     </div>
                     
+                    <div id="lookaheadSection" style="margin-bottom: 24px;">
+                        <label style="display: block; margin-bottom: 8px; color: #374151; font-weight: 500;">Pre-create availability for:</label>
+                        <select id="lookaheadWeeks" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem;">
+                            <option value="4">4 weeks ahead</option>
+                            <option value="8">8 weeks ahead</option>
+                            <option value="12" selected>12 weeks ahead (recommended)</option>
+                        </select>
+                        <div style="margin-top: 6px; font-size: 0.75rem; color: #6b7280;">Instances automatically extend as days pass</div>
+                    </div>
+                    
                     <div id="customDaysSection" style="display: none; margin-bottom: 24px;">
                         <label style="display: block; margin-bottom: 8px; color: #374151; font-weight: 500;">Select Days:</label>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             ${days.map((day, idx) => `
                                 <label style="display: flex; align-items: center; gap: 4px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; ${idx === selectionData.dayOfWeek ? 'background: #fef3c7; border-color: #D4AF37;' : ''}">
-                                    <input type="checkbox" name="customDay" value="${idx}" ${idx === selectionData.dayOfWeek ? 'checked' : ''} style="accent-color: #D4AF37;">
+                                    <input type="checkbox" name="customDay" value="${idx}" style="accent-color: #D4AF37;">
                                     <span style="font-size: 0.875rem;">${day.slice(0, 3)}</span>
                                 </label>
                             `).join('')}
@@ -1356,8 +1366,29 @@ function showAvailabilityModal(selectionData) {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
 
         // Add event listener for recurrence type change
-        document.getElementById('recurrenceType').addEventListener('change', function () {
-            document.getElementById('customDaysSection').style.display = this.value === 'custom' ? 'block' : 'none';
+        const recurrenceSelect = document.getElementById('recurrenceType');
+        const customSection = document.getElementById('customDaysSection');
+        const lookaheadSection = document.getElementById('lookaheadSection');
+        
+        recurrenceSelect.addEventListener('change', function () {
+            const isRecurring = this.value !== 'once';
+            customSection.style.display = this.value === 'custom' ? 'block' : 'none';
+            lookaheadSection.style.display = isRecurring ? 'block' : 'none';
+            
+            // When switching to custom, ensure the originally selected day is checked
+            if (this.value === 'custom') {
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    const originalDayCheckbox = customSection.querySelector(`input[name="customDay"][value="${selectionData.dayOfWeek}"]`);
+                    console.log('[DEBUG] Looking for checkbox with value:', selectionData.dayOfWeek);
+                    console.log('[DEBUG] Found checkbox:', originalDayCheckbox);
+                    if (originalDayCheckbox) {
+                        console.log('[DEBUG] Current checked state:', originalDayCheckbox.checked);
+                        originalDayCheckbox.checked = true;
+                        console.log('[DEBUG] After setting:', originalDayCheckbox.checked);
+                    }
+                }, 10);
+            }
         });
 
     } else if (selectionData.type === 'multi-day') {
@@ -1647,6 +1678,7 @@ async function createAvailabilityFromModal(selectionData) {
     }
 
     const recurrenceType = document.getElementById('recurrenceType').value;
+    const lookaheadWeeks = parseInt(document.getElementById('lookaheadWeeks')?.value || 12);
     let daysToCreate = [];
 
     if (recurrenceType === 'weekly') {
@@ -1689,45 +1721,43 @@ async function createAvailabilityFromModal(selectionData) {
     let successCount = 0;
     let failCount = 0;
 
-    // Create availability for each selected day
-    for (const day of daysToCreate) {
-        try {
-            // Format times as HH:MM
-            const startTimeStr = `${String(selectionData.startHour).padStart(2, '0')}:${String(selectionData.startMinutes || 0).padStart(2, '0')}`;
-            const endTimeStr = `${String(selectionData.endHour).padStart(2, '0')}:${String(selectionData.endMinutes || 0).padStart(2, '0')}`;
-            // Use the current week start as the base start_date for recurrence
-            // This ensures instances are generated for the week being viewed
-            // Use local timezone formatting to avoid UTC offset issues
-            const startDateForRecurrence = formatDateLocal(new Date(currentWeekStart));
+    // Send ONE request with ALL days to ensure they share the same recurring_event_id
+    try {
+        // Format times as HH:MM
+        const startTimeStr = `${String(selectionData.startHour).padStart(2, '0')}:${String(selectionData.startMinutes || 0).padStart(2, '0')}`;
+        const endTimeStr = `${String(selectionData.endHour).padStart(2, '0')}:${String(selectionData.endMinutes || 0).padStart(2, '0')}`;
+        
+        // Use the current week start as the base start_date for recurrence
+        const startDateForRecurrence = formatDateLocal(new Date(currentWeekStart));
 
-            const requestBody = {
-                workplace_id: parseInt(workplaceId),
-                recurrence_type: 'weekly',
-                days_of_week: [day],
-                start_time: startTimeStr,
-                end_time: endTimeStr,
-                start_date: startDateForRecurrence, // Use current week start, not today
-                end_date: null // No end date for indefinite recurrence
-            };
+        const requestBody = {
+            workplace_id: parseInt(workplaceId),
+            recurrence_type: 'weekly',
+            days_of_week: daysToCreate, // Send ALL days in one request
+            start_time: startTimeStr,
+            end_time: endTimeStr,
+            start_date: startDateForRecurrence,
+            end_date: null,
+            lookahead_weeks: lookaheadWeeks
+        };
 
-            const response = await fetch(`/specialist/${window.currentSpecialistId}/recurring-schedule`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
+        const response = await fetch(`/specialist/${window.currentSpecialistId}/recurring-schedule`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
 
-            if (response.ok) {
-                const result = await response.json();
-                successCount++;
-            } else {
-                failCount++;
-                const error = await response.json();
-                console.error(`[createAvailabilityFromModal] Failed for day ${day} (${response.status}):`, error);
-            }
-        } catch (error) {
-            failCount++;
-            console.error(`[createAvailabilityFromModal] Error creating availability for day ${day}:`, error);
+        if (response.ok) {
+            const result = await response.json();
+            successCount = 1;
+        } else {
+            failCount = 1;
+            const error = await response.json();
+            console.error(`[createAvailabilityFromModal] Failed (${response.status}):`, error);
         }
+    } catch (error) {
+        failCount = 1;
+        console.error(`[createAvailabilityFromModal] Error creating availability:`, error);
     }
 
     // Remove loading message
@@ -1759,7 +1789,7 @@ async function createAvailabilityFromModal(selectionData) {
     document.body.appendChild(resultMsg);
     setTimeout(() => resultMsg.remove(), 3000);
 
-    // Refresh the calendar to show new availability
+    // Refresh the calendar to show new availability (instances are pre-created synchronously)
     await refreshUnifiedCalendar();
 
     // Also refresh the recurring schedules list if it exists AND the container is present
@@ -1937,12 +1967,6 @@ function showScheduleEditModal(schedule) {
 
     // For daily schedules, show different messaging
     const scheduleTypeLabel = isDaily ? 'Daily Schedule (All Days)' : `Weekly Schedule`;
-    const deleteDayButton = isDaily ? '' : `
-        <button onclick="deleteScheduleInstance(${instanceId}, '${dayName}')" 
-            style="flex: 1; min-width: 140px; padding: 12px; background: #ef4444; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; color: white; font-weight: 600;">
-            🗑️ Delete This Instance
-        </button>
-    `;
 
     // Create modal content
     modal.innerHTML = `
@@ -1984,10 +2008,13 @@ function showScheduleEditModal(schedule) {
                             style="flex: 1; min-width: 120px; padding: 12px; background: #f3f4f6; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; color: #374151; font-weight: 500;">
                             Cancel
                         </button>
-                        ${deleteDayButton}
+                        <button onclick="deleteSingleInstance(${instanceId}, '${dayName}')" 
+                            style="flex: 1; min-width: 140px; padding: 12px; background: #f59e0b; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; color: white; font-weight: 600;">
+                            🗑️ Delete This ${dayName}
+                        </button>
                         <button onclick="deleteScheduleSeries('${recurringEventId}')" 
                             style="flex: 1; min-width: 140px; padding: 12px; background: #dc2626; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; color: white; font-weight: 600;">
-                            🗑️ Delete ${isDaily ? 'All Days' : 'Entire Series'}
+                            🗑️ Delete All Days
                         </button>
                         <button onclick="updateScheduleInstance(${instanceId})" 
                             style="flex: 1; min-width: 140px; padding: 12px; background: linear-gradient(135deg, #D4AF37 0%, #F7E7AD 100%); border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; color: #1f2937; font-weight: 600;">
@@ -2092,24 +2119,72 @@ async function deleteScheduleInstance(instanceId, dayName) {
 }
 
 /**
- * Delete entire recurring schedule series by recurring_event_id
+ * Delete a single calendar instance (just this one occurrence)
  */
-async function deleteScheduleSeries(recurringEventId) {
+async function deleteSingleInstance(instanceId, dayName) {
     const confirmed = confirm(
-        `Delete the ENTIRE recurring schedule series?\n\n` +
-        `⚠️ This will remove ALL instances of this schedule from ALL days. ` +
-        `This action cannot be undone.`
+        `Delete this ${dayName} occurrence only?\n\n` +
+        `This will only remove this single instance. Other days will remain unchanged.`
     );
 
     if (!confirmed) return;
 
-    showToast('⏳ Deleting schedule series...', 'info');
+    showToast('⏳ Deleting instance...', 'info');
+
+    try {
+        const response = await fetch(`/calendar-event/${instanceId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            let errorMessage = 'Failed to delete instance';
+            try {
+                const error = await response.json();
+                errorMessage = error.detail || errorMessage;
+                console.error('[deleteSingleInstance] Server error:', error);
+            } catch (e) {
+                const errorText = await response.text();
+                console.error('[deleteSingleInstance] Server response:', errorText);
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+
+        showToast('✅ Instance deleted successfully!', 'success');
+        closeAvailabilityModal();
+        await refreshUnifiedCalendar();
+
+    } catch (error) {
+        console.error('[deleteSingleInstance] Error:', error);
+        showToast(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Delete entire recurring schedule series by recurring_event_id
+ */
+async function deleteScheduleSeries(recurringEventId) {
+    const confirmed = confirm(
+        `Delete ALL instances from this recurring schedule?\n\n` +
+        `⚠️ This will remove ALL availability blocks from ALL days in this series ` +
+        `(Monday, Wednesday, etc.). This action cannot be undone.\n\n` +
+        `Are you sure you want to delete the entire schedule?`
+    );
+
+    if (!confirmed) return;
+
+    showToast('⏳ Deleting all instances...', 'info');
 
     try {
         const response = await fetch(`/calendar-event/series/${recurringEventId}`, {
             method: 'DELETE'
         });
-
+        
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Failed to delete schedule series');
