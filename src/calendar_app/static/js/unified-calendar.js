@@ -2401,11 +2401,123 @@ function tryAutoInit() {
     }
 }
 
+// ==================== Time and Day Filters ====================
+
+/**
+ * Apply time range filter to calendar view
+ */
+function applyTimeFilters() {
+    const timeRangeSelect = document.getElementById('timeRangeFilter');
+    const customTimeRange = document.getElementById('customTimeRange');
+    const selectedValue = timeRangeSelect.value;
+    
+    let startHour, endHour;
+    
+    if (selectedValue === 'custom') {
+        customTimeRange.style.display = 'flex';
+        startHour = parseInt(document.getElementById('startHourFilter').value);
+        endHour = parseInt(document.getElementById('endHourFilter').value);
+    } else {
+        customTimeRange.style.display = 'none';
+        const [start, end] = selectedValue.split('-').map(Number);
+        startHour = start;
+        endHour = end;
+    }
+    
+    // Hide/show hour blocks based on filter
+    const hourBlocks = document.querySelectorAll('.hour-block');
+    const timeLabels = document.querySelectorAll('.time-label');
+    
+    hourBlocks.forEach((block, index) => {
+        const hour = index;
+        if (hour < startHour || hour >= endHour) {
+            block.style.height = '0';
+            block.style.minHeight = '0';
+            block.style.padding = '0';
+            block.style.margin = '0';
+            block.style.borderBottom = 'none';
+            block.style.overflow = 'hidden';
+            block.style.visibility = 'hidden';
+            block.style.pointerEvents = 'none';
+        } else {
+            block.style.height = '60px';
+            block.style.minHeight = '';
+            block.style.padding = '';
+            block.style.margin = '';
+            block.style.borderBottom = '';
+            block.style.overflow = '';
+            block.style.visibility = 'visible';
+            block.style.pointerEvents = 'auto';
+        }
+    });
+    
+    timeLabels.forEach((label, index) => {
+        const hour = index;
+        if (hour < startHour || hour >= endHour) {
+            label.style.height = '0';
+            label.style.minHeight = '0';
+            label.style.padding = '0';
+            label.style.margin = '0';
+            label.style.borderBottom = 'none';
+            label.style.overflow = 'hidden';
+            label.style.visibility = 'hidden';
+        } else {
+            label.style.height = '60px';
+            label.style.minHeight = '';
+            label.style.padding = '';
+            label.style.margin = '';
+            label.style.borderBottom = '';
+            label.style.overflow = '';
+            label.style.visibility = 'visible';
+        }
+    });
+    
+    // Adjust calendar container height
+    const visibleHours = endHour - startHour;
+    const calendar = document.getElementById('unifiedCalendar');
+    if (calendar) {
+        const firstChild = calendar.querySelector('div');
+        if (firstChild) {
+            firstChild.style.minHeight = `${60 + (visibleHours * 60)}px`; // 60px header + hours
+        }
+    }
+}
+
+/**
+ * Apply day of week filter to calendar view
+ */
+function applyDayFilters() {
+    const checkedDays = Array.from(document.querySelectorAll('.dayFilter:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    const dayColumns = document.querySelectorAll('.day-column');
+    
+    dayColumns.forEach((column, index) => {
+        if (checkedDays.includes(index)) {
+            column.style.display = 'flex';
+        } else {
+            column.style.display = 'none';
+        }
+    });
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         tryAutoInit();
         enableDragToCreate();
+        
+        // Add listener for time range custom toggle
+        const timeRangeSelect = document.getElementById('timeRangeFilter');
+        if (timeRangeSelect) {
+            timeRangeSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    document.getElementById('customTimeRange').style.display = 'flex';
+                } else {
+                    applyTimeFilters();
+                }
+            });
+        }
     });
 } else {
     tryAutoInit();
