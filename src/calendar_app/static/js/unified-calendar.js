@@ -352,10 +352,18 @@ function renderWeekCalendarGrid() {
         currentWeekStart = getWeekStart(today);
     }
 
-    // Time column labels
+    // Time column labels - use active time filter if set, otherwise default to 6am-9pm
     const timeLabels = [];
-    const startHour = 0;
-    const endHour = 23;
+    let startHour, endHour;
+    
+    if (window.activeTimeRange) {
+        startHour = window.activeTimeRange.start;
+        endHour = window.activeTimeRange.end;
+    } else {
+        // Default to 6am-9pm
+        startHour = 6;
+        endHour = 21;
+    }
 
     for (let hour = startHour; hour <= endHour; hour++) {
         const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
@@ -380,8 +388,11 @@ function renderWeekCalendarGrid() {
         });
     }
 
+    // Calculate height based on visible hours (60px per hour + 60px header)
+    const calendarHeight = (timeLabels.length * 60) + 60;
+
     let html = `
-        <div style="display: flex; gap: 0; width: 100%; min-height: 1440px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fafafa; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; gap: 0; width: 100%; min-height: ${calendarHeight}px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fafafa; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <!-- Time Column -->
             <div class="time-column" style="flex-shrink: 0; width: 80px; background: linear-gradient(to right, #f9fafb, #ffffff);">
                 <div class="time-header" style="height: 60px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;"></div>
@@ -2412,10 +2423,36 @@ function tryAutoInit() {
     }
 }
 
-// ==================== Day Filter ====================
+// ==================== Filters ====================
 
-// Store the current day filter state
+// Store the current filter states
 let activeDayFilter = null;
+
+/**
+ * Apply time filter by rebuilding the calendar with selected time range
+ */
+function applyTimeFilter() {
+    const timeRangeSelect = document.getElementById('timeRangeFilter');
+    if (!timeRangeSelect) return;
+    
+    const selectedValue = timeRangeSelect.value;
+    const [startHour, endHour] = selectedValue.split('-').map(Number);
+    
+    // Store the time range globally
+    window.activeTimeRange = { start: startHour, end: endHour - 1 };
+    
+    // Rebuild the calendar
+    refreshUnifiedCalendar().then(() => {
+        // Reapply day filter if active
+        if (activeDayFilter && activeDayFilter.length < 7) {
+            const dayColumns = document.querySelectorAll('.day-column');
+            dayColumns.forEach((column) => {
+                const dayValue = parseInt(column.dataset.day);
+                column.style.display = activeDayFilter.includes(dayValue) ? 'flex' : 'none';
+            });
+        }
+    });
+}
 
 /**
  * Apply day filter to hide/show day columns
@@ -2451,10 +2488,14 @@ function reapplyDayFilter() {
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        // Set default time range to 6am-9pm
+        window.activeTimeRange = { start: 6, end: 21 };
         tryAutoInit();
         enableDragToCreate();
     });
 } else {
+    // Set default time range to 6am-9pm
+    window.activeTimeRange = { start: 6, end: 21 };
     tryAutoInit();
     enableDragToCreate();
 }

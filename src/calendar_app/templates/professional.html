@@ -376,8 +376,25 @@
                                 </select>
                             </div>
 
-                            <!-- Day Filter -->
+                            <!-- Filters -->
                             <div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(247, 231, 173, 0.08) 100%); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                                <!-- Time Range Filter -->
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(212, 175, 55, 0.15);">
+                                    <label style="color: #6b7280; font-weight: 500; font-size: 0.9rem;">Time Range:</label>
+                                    <select id="timeRangeFilter"
+                                        style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(212, 175, 55, 0.3); background: white; color: #1a1a1a; font-size: 0.9rem;">
+                                        <option value="0-24">All Day (12am-12am)</option>
+                                        <option value="6-21" selected>Default (6am-9pm)</option>
+                                        <option value="8-17">Business (8am-5pm)</option>
+                                        <option value="9-17">9-to-5 (9am-5pm)</option>
+                                    </select>
+                                    <button type="button" onclick="applyTimeFilter()" 
+                                        style="padding: 6px 16px; border-radius: 6px; border: none; background: linear-gradient(135deg, #D4AF37 0%, #F7E7AD 100%); color: #1a1a1a; cursor: pointer; font-weight: 600; font-size: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        Apply
+                                    </button>
+                                </div>
+                                
+                                <!-- Day Filter -->
                                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                     <label style="color: #6b7280; font-weight: 500; font-size: 0.9rem;">Show Days:</label>
                                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
