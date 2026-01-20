@@ -1036,17 +1036,35 @@ async def home(request: Request):
 
 
 @app.get("/professional", response_class=HTMLResponse)
-async def professional_dashboard(request: Request, db: Session = Depends(get_db)):
+async def professional_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    days: Optional[str] = Query(None, description="Comma-separated day indices (0-6)"),
+    start_time: Optional[int] = Query(None, ge=0, le=23, description="Start hour (0-23)"),
+    end_time: Optional[int] = Query(None, ge=1, le=24, description="End hour (1-24)"),
+):
     """Professional dashboard - shows verification form if not authenticated, dashboard if authenticated"""
     specialist = get_current_specialist(request, db)
 
-    # Pass authentication state to template
+    # Parse filter parameters
+    visible_days = None
+    if days:
+        try:
+            visible_days = [int(d.strip()) for d in days.split(",") if d.strip().isdigit()]
+            visible_days = [d for d in visible_days if 0 <= d <= 6]
+        except:
+            visible_days = None
+    
+    # Pass authentication state and filter parameters to template
     return templates.TemplateResponse(
         "professional.html",
         {
             "request": request,
             "authenticated": specialist is not None,
             "specialist": specialist,
+            "filter_days": visible_days,
+            "filter_start_time": start_time,
+            "filter_end_time": end_time,
         },
     )
 

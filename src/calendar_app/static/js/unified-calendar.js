@@ -154,7 +154,12 @@ function navigateWeek(direction) {
     currentWeekStart = newDate;
 
     updateWeekDisplay();
-    refreshUnifiedCalendar();
+    refreshUnifiedCalendar().then(() => {
+        // Reapply day filter after calendar is refreshed
+        if (typeof reapplyDayFilter === 'function') {
+            reapplyDayFilter();
+        }
+    });
 }
 
 /**
@@ -398,7 +403,6 @@ function renderWeekCalendarGrid() {
                         </div>
                         <div class="time-slots-container" data-day="${day.dayIndex}" style="position: relative; flex: 1; background: white;">
                             ${timeLabels.map(t => {
-            // Create 4 quarter-hour slots per hour (invisible divisions for drag functionality)
             return `
                                 <div class="hour-block" style="height: 60px; position: relative; border-bottom: 1px solid #f3f4f6;">
                                     ${[0, 15, 30, 45].map(minutes => `
@@ -416,14 +420,6 @@ function renderWeekCalendarGrid() {
     `;
 
     calendar.innerHTML = html;
-
-    // Force display after render
-    const dayColumns = calendar.querySelectorAll('.day-column');
-    dayColumns.forEach((col, idx) => {
-        col.style.display = 'flex';
-        col.style.flex = '1';
-        col.style.flexDirection = 'column';
-    });
 }
 
 /**
@@ -1107,14 +1103,27 @@ function enableDragToCreate() {
 }
 
 function handleDragStart(e) {
-    const cell = e.target.closest('.time-slot') || e.target.closest('.month-day-cell');
-    if (!cell) return;
+    // Try to find the cell from the event target first
+    let cell = e.target.closest('.time-slot');
+    
+    // Fallback to month view
+    if (!cell) {
+        cell = e.target.closest('.month-day-cell');
+    }
+    
+    if (!cell) {
+        return;
+    }
 
     // For week view
     if (currentViewMode === 'week') {
-        if (!cell.dataset.day || !cell.dataset.hour) return;
+        if (!cell.dataset.day || !cell.dataset.hour) {
+            return;
+        }
         // Only allow dragging in empty slots
-        if (cell.querySelector('.booking-block')) return;
+        if (cell.querySelector('.booking-block')) {
+            return;
+        }
 
         isDragging = true;
         dragStartCell = {
@@ -1752,12 +1761,14 @@ async function createAvailabilityFromModal(selectionData) {
             successCount = 1;
         } else {
             failCount = 1;
-            const error = await response.json();
-            console.error(`[createAvailabilityFromModal] Failed (${response.status}):`, error);
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            console.error(`[createAvailabilityFromModal] Failed (${response.status}):`, errorData);
+            alert(`Failed to create availability: ${errorData.detail || 'Unknown error'}`);
         }
     } catch (error) {
         failCount = 1;
         console.error(`[createAvailabilityFromModal] Error creating availability:`, error);
+        alert(`Error creating availability: ${error.message}`);
     }
 
     // Remove loading message
@@ -2401,104 +2412,40 @@ function tryAutoInit() {
     }
 }
 
-// ==================== Time and Day Filters ====================
+// ==================== Day Filter ====================
+
+// Store the current day filter state
+let activeDayFilter = null;
 
 /**
- * Apply time range filter to calendar view
+ * Apply day filter to hide/show day columns
  */
-function applyTimeFilters() {
-    const timeRangeSelect = document.getElementById('timeRangeFilter');
-    const customTimeRange = document.getElementById('customTimeRange');
-    const selectedValue = timeRangeSelect.value;
-    
-    let startHour, endHour;
-    
-    if (selectedValue === 'custom') {
-        customTimeRange.style.display = 'flex';
-        startHour = parseInt(document.getElementById('startHourFilter').value);
-        endHour = parseInt(document.getElementById('endHourFilter').value);
-    } else {
-        customTimeRange.style.display = 'none';
-        const [start, end] = selectedValue.split('-').map(Number);
-        startHour = start;
-        endHour = end;
-    }
-    
-    // Hide/show hour blocks based on filter
-    const hourBlocks = document.querySelectorAll('.hour-block');
-    const timeLabels = document.querySelectorAll('.time-label');
-    
-    hourBlocks.forEach((block, index) => {
-        const hour = index;
-        if (hour < startHour || hour >= endHour) {
-            block.style.height = '0';
-            block.style.minHeight = '0';
-            block.style.padding = '0';
-            block.style.margin = '0';
-            block.style.borderBottom = 'none';
-            block.style.overflow = 'hidden';
-            block.style.visibility = 'hidden';
-            block.style.pointerEvents = 'none';
-        } else {
-            block.style.height = '60px';
-            block.style.minHeight = '';
-            block.style.padding = '';
-            block.style.margin = '';
-            block.style.borderBottom = '';
-            block.style.overflow = '';
-            block.style.visibility = 'visible';
-            block.style.pointerEvents = 'auto';
-        }
-    });
-    
-    timeLabels.forEach((label, index) => {
-        const hour = index;
-        if (hour < startHour || hour >= endHour) {
-            label.style.height = '0';
-            label.style.minHeight = '0';
-            label.style.padding = '0';
-            label.style.margin = '0';
-            label.style.borderBottom = 'none';
-            label.style.overflow = 'hidden';
-            label.style.visibility = 'hidden';
-        } else {
-            label.style.height = '60px';
-            label.style.minHeight = '';
-            label.style.padding = '';
-            label.style.margin = '';
-            label.style.borderBottom = '';
-            label.style.overflow = '';
-            label.style.visibility = 'visible';
-        }
-    });
-    
-    // Adjust calendar container height
-    const visibleHours = endHour - startHour;
-    const calendar = document.getElementById('unifiedCalendar');
-    if (calendar) {
-        const firstChild = calendar.querySelector('div');
-        if (firstChild) {
-            firstChild.style.minHeight = `${60 + (visibleHours * 60)}px`; // 60px header + hours
-        }
-    }
-}
-
-/**
- * Apply day of week filter to calendar view
- */
-function applyDayFilters() {
+function applyDayFilter() {
     const checkedDays = Array.from(document.querySelectorAll('.dayFilter:checked'))
         .map(cb => parseInt(cb.value));
     
+    // Store the filter state
+    activeDayFilter = checkedDays;
+    
     const dayColumns = document.querySelectorAll('.day-column');
     
-    dayColumns.forEach((column, index) => {
-        if (checkedDays.includes(index)) {
-            column.style.display = 'flex';
-        } else {
-            column.style.display = 'none';
-        }
+    dayColumns.forEach((column) => {
+        const dayValue = parseInt(column.dataset.day);
+        column.style.display = checkedDays.includes(dayValue) ? 'flex' : 'none';
     });
+}
+
+/**
+ * Reapply the active day filter (called after calendar refresh)
+ */
+function reapplyDayFilter() {
+    if (activeDayFilter && activeDayFilter.length < 7) {
+        const dayColumns = document.querySelectorAll('.day-column');
+        dayColumns.forEach((column) => {
+            const dayValue = parseInt(column.dataset.day);
+            column.style.display = activeDayFilter.includes(dayValue) ? 'flex' : 'none';
+        });
+    }
 }
 
 // Initialize when DOM is ready
@@ -2506,18 +2453,6 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         tryAutoInit();
         enableDragToCreate();
-        
-        // Add listener for time range custom toggle
-        const timeRangeSelect = document.getElementById('timeRangeFilter');
-        if (timeRangeSelect) {
-            timeRangeSelect.addEventListener('change', function() {
-                if (this.value === 'custom') {
-                    document.getElementById('customTimeRange').style.display = 'flex';
-                } else {
-                    applyTimeFilters();
-                }
-            });
-        }
     });
 } else {
     tryAutoInit();
