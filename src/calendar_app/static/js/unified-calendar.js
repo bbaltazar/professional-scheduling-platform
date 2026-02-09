@@ -61,9 +61,12 @@ function initializeUnifiedCalendar() {
  */
 function getWeekStart(date) {
     const d = new Date(date);
-    const day = d.getDay();
+    const day = d.getDay(); // 0=Sunday, 1=Monday, etc.
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-    return new Date(d.setDate(diff));
+    const weekStart = new Date(d.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0);
+    console.log('[getWeekStart] Input date:', date.toDateString(), 'getDay():', day, 'Calculated week start:', weekStart.toDateString());
+    return weekStart;
 }
 
 /**
@@ -259,6 +262,7 @@ async function loadRecurringAvailability() {
 
         if (response.ok) {
             const instances = await response.json();
+            console.log('[loadRecurringAvailability] Received instances:', instances);
 
             // Assign colors to workplaces
             const uniqueWorkplaces = [...new Set(instances.map(i => i.workplace_id))];
@@ -281,6 +285,8 @@ async function loadRecurringAvailability() {
                 recurrence_type: instance.recurrence_type,
                 date: instance.date,  // Actual date of this instance
             }));
+            
+            console.log('[loadRecurringAvailability] Mapped availability:', unifiedCalendarData.availability);
         } else {
             console.error('[loadRecurringAvailability] ❌ Response not ok:', response.status, response.statusText);
             const errorText = await response.text();
@@ -301,9 +307,12 @@ async function loadWeekBookings() {
         const response = await fetch(`/bookings/specialist/${window.currentSpecialistId}`);
         if (response.ok) {
             const allBookings = await response.json();
+            console.log('[loadWeekBookings] All bookings:', allBookings);
 
             // Filter to current week and map field names
             const weekEnd = getWeekEnd(currentWeekStart);
+            console.log('[loadWeekBookings] Week range:', currentWeekStart, 'to', weekEnd);
+            
             unifiedCalendarData.bookings = allBookings
                 .map(booking => ({
                     ...booking,
@@ -312,8 +321,12 @@ async function loadWeekBookings() {
                 }))
                 .filter(booking => {
                     const bookingDate = new Date(booking.booking_date);
-                    return bookingDate >= currentWeekStart && bookingDate <= weekEnd;
+                    const inRange = bookingDate >= currentWeekStart && bookingDate <= weekEnd;
+                    console.log('[loadWeekBookings] Booking:', booking.booking_date, 'inRange:', inRange);
+                    return inRange;
                 });
+            
+            console.log('[loadWeekBookings] Filtered bookings for week:', unifiedCalendarData.bookings);
         } else {
             console.warn('[loadWeekBookings] Failed to load bookings:', response.status);
             unifiedCalendarData.bookings = [];
@@ -678,6 +691,8 @@ function renderAvailabilityBlocks() {
 
         // Calculate which column (0-6) this date falls into for the current week
         const daysDiff = Math.floor((instanceDate - weekStart) / (1000 * 60 * 60 * 24));
+        
+        console.log(`[renderAvailabilityBlocks] Avail date=${avail.date}, instanceDate=${instanceDate.toDateString()}, weekStart=${weekStart.toDateString()}, daysDiff=${daysDiff}, day_of_week=${avail.day}`);
 
         // Only render if this instance is in the current week (0-6)
         if (daysDiff < 0 || daysDiff > 6) {
@@ -720,15 +735,19 @@ function createAvailabilityBlock(avail) {
     // Calculate position
     const startMinutes = timeToMinutes(avail.start_time);
     const endMinutes = timeToMinutes(avail.end_time);
-    const baseMinutes = 0; // 12 AM - calendar starts here
-    const maxMinutes = 24 * 60; // 12 AM next day - calendar ends here
+    
+    // Get the calendar's start hour from the active time filter
+    const calendarStartHour = window.activeTimeRange ? window.activeTimeRange.start : 6;
+    const calendarEndHour = window.activeTimeRange ? window.activeTimeRange.end : 21;
+    const baseMinutes = calendarStartHour * 60;
+    const maxMinutes = (calendarEndHour + 1) * 60;
 
     // Check if block is outside visible range
     if (endMinutes <= baseMinutes || startMinutes >= maxMinutes) {
-        console.warn(`[createAvailabilityBlock] ⚠️ Block time ${avail.start_time}-${avail.end_time} is outside visible calendar range (12 AM - 12 AM next day). Block will not be visible!`);
+        console.warn(`[createAvailabilityBlock] ⚠️ Block time ${avail.start_time}-${avail.end_time} is outside visible calendar range (${calendarStartHour}:00 - ${calendarEndHour + 1}:00). Block will not be visible!`);
     }
 
-    // Each hour block is 60px tall (see renderWeekCalendarGrid line 402)
+    // Each hour block is 60px tall
     const pixelsPerHour = 60;
     const top = ((startMinutes - baseMinutes) / 60) * pixelsPerHour;
     const height = ((endMinutes - startMinutes) / 60) * pixelsPerHour;
@@ -813,9 +832,12 @@ function createBookingBlock(booking) {
     // Calculate position
     const startMinutes = timeToMinutes(booking.start_time);
     const endMinutes = timeToMinutes(booking.end_time);
-    const baseMinutes = 0;
+    
+    // Get the calendar's start hour from the active time filter
+    const calendarStartHour = window.activeTimeRange ? window.activeTimeRange.start : 6;
+    const baseMinutes = calendarStartHour * 60;
 
-    // Each hour block is 60px tall (see renderWeekCalendarGrid line 402)
+    // Each hour block is 60px tall
     const pixelsPerHour = 60;
     const top = ((startMinutes - baseMinutes) / 60) * pixelsPerHour;
     const height = ((endMinutes - startMinutes) / 60) * pixelsPerHour;

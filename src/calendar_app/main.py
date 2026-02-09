@@ -991,15 +991,20 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
         db.query(ServiceDB).filter(ServiceDB.specialist_id == specialist.id).all()
     )
 
-    # Get recent availability slots for this specialist
+    # Get recent availability from calendar events (recurring schedules)
     from datetime import date, timedelta
 
     today = date.today()
+    next_month = today + timedelta(days=30)
+    
     recent_availability = (
-        db.query(AvailabilitySlot)
+        db.query(CalendarEvent)
         .filter(
-            AvailabilitySlot.specialist_id == specialist.id,
-            AvailabilitySlot.date >= today,
+            CalendarEvent.specialist_id == specialist.id,
+            CalendarEvent.event_type == "availability",
+            CalendarEvent.is_active == True,
+            CalendarEvent.start_datetime >= datetime.combine(today, time.min),
+            CalendarEvent.start_datetime <= datetime.combine(next_month, time.max),
         )
         .all()
     )
@@ -1018,13 +1023,13 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
         "services": services,
         "availability": [
             {
-                "id": slot.id,
-                "date": slot.date.isoformat(),
-                "start_time": slot.start_time.strftime("%H:%M:%S"),
-                "end_time": slot.end_time.strftime("%H:%M:%S"),
-                "is_available": slot.is_available,
+                "id": event.id,
+                "date": event.start_datetime.date().isoformat(),
+                "start_time": event.start_datetime.strftime("%H:%M:%S"),
+                "end_time": event.end_datetime.strftime("%H:%M:%S"),
+                "is_available": True,
             }
-            for slot in recent_availability
+            for event in recent_availability
         ],
     }
 
@@ -1511,31 +1516,6 @@ def add_availability_slots(
         db.refresh(slot)
 
     return db_slots
-
-
-@app.get(
-    "/specialist/{specialist_id}/availability",
-    response_model=List[AvailabilitySlotResponse],
-)
-def get_specialist_availability(
-    specialist_id: int,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    db: Session = Depends(get_db),
-):
-    """
-    Get availability slots for a specialist.
-    """
-    query = db.query(AvailabilitySlot).filter(
-        AvailabilitySlot.specialist_id == specialist_id
-    )
-
-    if start_date:
-        query = query.filter(AvailabilitySlot.date >= start_date)
-    if end_date:
-        query = query.filter(AvailabilitySlot.date <= end_date)
-
-    return query.all()
 
 
 # Advanced Calendar Event Management - Google Calendar Level Features
@@ -2800,15 +2780,19 @@ def get_specialists_catalog(db: Session = Depends(get_db)):
     catalog = []
 
     for specialist in specialists:
-        available_dates = [
-            slot.date
-            for slot in db.query(AvailabilitySlot)
-            .filter(AvailabilitySlot.specialist_id == specialist.id)
-            .filter(AvailabilitySlot.is_available == True)
-            .filter(AvailabilitySlot.date >= datetime.now().date())
-            .distinct(AvailabilitySlot.date)
+        # Get unique dates with availability from CalendarEvent (recurring schedules)
+        available_events = (
+            db.query(CalendarEvent)
+            .filter(CalendarEvent.specialist_id == specialist.id)
+            .filter(CalendarEvent.event_type == "availability")
+            .filter(CalendarEvent.is_active == True)
+            .filter(CalendarEvent.start_datetime >= datetime.now())
             .all()
-        ]
+        )
+        
+        # Extract unique dates
+        available_dates = list(set(event.start_datetime.date() for event in available_events))
+        available_dates.sort()
 
         catalog.append(
             SpecialistCatalogResponse(
@@ -2854,17 +2838,18 @@ def get_available_time_slots(
         else:
             service_duration = min_service.duration
 
-    # Get availability slots for the date
-    availability_slots = (
-        db.query(AvailabilitySlot)
-        .filter(
-            AvailabilitySlot.specialist_id == specialist_id,
-            AvailabilitySlot.date == booking_date,
-            AvailabilitySlot.is_available == True,
-        )
-        .all()
-    )
-
+    # Get availability slots for the date - DEPRECATED: Only using CalendarEvent now
+    # availability_slots = (
+    #     db.query(AvailabilitySlot)
+    #     .filter(
+    #         AvailabilitySlot.specialist_id == specialist_id,
+    #         AvailabilitySlot.date == booking_date,
+    #         AvailabilitySlot.is_available == True,
+    #     )
+    #     .all()
+    # )
+    availability_slots = []  # Ignore legacy availability slots
+    
     # Also get calendar events that represent availability (from recurring schedules)
     calendar_availability = (
         db.query(CalendarEvent)
@@ -2872,6 +2857,7 @@ def get_available_time_slots(
             CalendarEvent.specialist_id == specialist_id,
             CalendarEvent.event_type == "availability",
             CalendarEvent.status == "confirmed",
+            CalendarEvent.is_active == True,  # Only return active events
             func.date(CalendarEvent.start_datetime) == booking_date,
         )
         .all()
@@ -3023,17 +3009,7 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
             )
 
         # Validate that there's an availability slot covering this time
-        availability_slots = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.specialist_id == booking.specialist_id,
-                AvailabilitySlot.date == booking.booking_date,
-                AvailabilitySlot.is_available == True,
-            )
-            .all()
-        )
-
-        # Also check calendar events that represent availability (from recurring schedules)
+        # Check calendar events that represent availability (from recurring schedules)
         calendar_availability = (
             db.query(CalendarEvent)
             .filter(
@@ -3052,26 +3028,15 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
 
         valid_slot = None
 
-        # Check traditional availability slots
-        for slot in availability_slots:
-            slot_start = datetime.combine(slot.date, slot.start_time)
-            slot_end = datetime.combine(slot.date, slot.end_time)
-
-            # Check if booking fits within this availability slot
-            if booking_start >= slot_start and booking_end <= slot_end:
-                valid_slot = slot
+        # Check calendar availability events
+        for cal_event in calendar_availability:
+            # Check if booking fits within this calendar availability
+            if (
+                booking_start >= cal_event.start_datetime
+                and booking_end <= cal_event.end_datetime
+            ):
+                valid_slot = cal_event  # Use calendar event as valid slot indicator
                 break
-
-        # If not found in traditional slots, check calendar availability events
-        if not valid_slot:
-            for cal_event in calendar_availability:
-                # Check if booking fits within this calendar availability
-                if (
-                    booking_start >= cal_event.start_datetime
-                    and booking_end <= cal_event.end_datetime
-                ):
-                    valid_slot = cal_event  # Use calendar event as valid slot indicator
-                    break
 
         if not valid_slot:
             raise HTTPException(
