@@ -846,10 +846,11 @@ function createBookingBlock(booking) {
     block.style.height = `${height}px`;
 
     // Content
+    const serviceName = booking.service?.name || booking.service_name || 'Service';
     block.innerHTML = `
         <div style="padding: 8px; font-size: 0.75rem;">
             <div style="font-weight: 700; margin-bottom: 2px;">${booking.client_name}</div>
-            <div style="opacity: 0.9; font-size: 0.7rem;">${booking.service_name}</div>
+            <div style="opacity: 0.9; font-size: 0.7rem;">${serviceName}</div>
             <div style="opacity: 0.8; font-size: 0.65rem; margin-top: 2px;">${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}</div>
         </div>
     `;
@@ -879,7 +880,8 @@ function createBookingBlock(booking) {
  */
 function showBookingDetails(booking) {
     // TODO: Implement booking details modal
-    alert(`Booking Details:\n\nClient: ${booking.client_name}\nService: ${booking.service_name}\nTime: ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}\nStatus: ${booking.status}`);
+    const serviceName = booking.service?.name || booking.service_name || 'Service';
+    alert(`Booking Details:\n\nClient: ${booking.client_name}\nService: ${serviceName}\nTime: ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}\nStatus: ${booking.status}`);
 }
 
 /**
