@@ -320,7 +320,7 @@ async function loadWeekBookings() {
                     // Keep original fields too
                 }))
                 .filter(booking => {
-                    const bookingDate = new Date(booking.booking_date);
+                    const bookingDate = parseDateLocal(booking.booking_date);
                     const inRange = bookingDate >= currentWeekStart && bookingDate <= weekEnd;
                     console.log('[loadWeekBookings] Booking:', booking.booking_date, 'inRange:', inRange);
                     return inRange;
@@ -589,7 +589,7 @@ function renderMonthCalendarData() {
             // Find cells for this day of week in current month
             const dayCells = document.querySelectorAll('.month-day-cell');
             dayCells.forEach(cell => {
-                const cellDate = new Date(cell.dataset.date);
+                const cellDate = parseDateLocal(cell.dataset.date);
                 cellDate.setHours(0, 0, 0, 0);
                 const cellDayOfWeek = (cellDate.getDay() + 6) % 7; // Convert to Monday=0
 
@@ -621,7 +621,7 @@ function renderMonthCalendarData() {
 
     // Render bookings as event dots in month view
     unifiedCalendarData.bookings.forEach(booking => {
-        const bookingDate = new Date(booking.booking_date);
+        const bookingDate = parseDateLocal(booking.booking_date);
         // Normalize to date only (remove time component)
         bookingDate.setHours(0, 0, 0, 0);
 
@@ -629,7 +629,7 @@ function renderMonthCalendarData() {
         const dayCells = document.querySelectorAll('.month-day-cell');
         dayCells.forEach(cell => {
             const cellDateStr = cell.dataset.date;
-            const cellDate = new Date(cellDateStr);
+            const cellDate = parseDateLocal(cellDateStr);
             cellDate.setHours(0, 0, 0, 0);
 
             if (cellDate.getTime() === bookingDate.getTime()) {
@@ -789,7 +789,7 @@ function renderBookingBlocks() {
         // Check if this status should be visible
         if (!calendarFilters[booking.status]) return;
 
-        const bookingDate = new Date(booking.booking_date);
+        const bookingDate = parseDateLocal(booking.booking_date);
         const dayOfWeek = (bookingDate.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
 
         const dayColumn = document.querySelector(`.time-slots-container[data-day="${dayOfWeek}"]`);

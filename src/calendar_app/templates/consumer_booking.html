@@ -459,6 +459,12 @@
             return phone;
         }
 
+        // Parse YYYY-MM-DD string as local date (not UTC)
+        function parseDateLocal(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            return new Date(year, month - 1, day);  // month is 0-indexed
+        }
+
         // Load available dates on page load
         document.addEventListener('DOMContentLoaded', function () {
             loadAvailableDates();
@@ -568,7 +574,7 @@
             selectedTimeSlot = { start: startTime, end: endTime };
 
             // Update summary
-            const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
+            const formattedDate = parseDateLocal(selectedDate).toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
