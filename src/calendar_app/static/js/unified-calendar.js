@@ -285,7 +285,7 @@ async function loadRecurringAvailability() {
                 recurrence_type: instance.recurrence_type,
                 date: instance.date,  // Actual date of this instance
             }));
-            
+
             console.log('[loadRecurringAvailability] Mapped availability:', unifiedCalendarData.availability);
         } else {
             console.error('[loadRecurringAvailability] ❌ Response not ok:', response.status, response.statusText);
@@ -312,7 +312,7 @@ async function loadWeekBookings() {
             // Filter to current week and map field names
             const weekEnd = getWeekEnd(currentWeekStart);
             console.log('[loadWeekBookings] Week range:', currentWeekStart, 'to', weekEnd);
-            
+
             unifiedCalendarData.bookings = allBookings
                 .map(booking => ({
                     ...booking,
@@ -325,7 +325,7 @@ async function loadWeekBookings() {
                     console.log('[loadWeekBookings] Booking:', booking.booking_date, 'inRange:', inRange);
                     return inRange;
                 });
-            
+
             console.log('[loadWeekBookings] Filtered bookings for week:', unifiedCalendarData.bookings);
         } else {
             console.warn('[loadWeekBookings] Failed to load bookings:', response.status);
@@ -368,7 +368,7 @@ function renderWeekCalendarGrid() {
     // Time column labels - use active time filter if set, otherwise default to 6am-9pm
     const timeLabels = [];
     let startHour, endHour;
-    
+
     if (window.activeTimeRange) {
         startHour = window.activeTimeRange.start;
         endHour = window.activeTimeRange.end;
@@ -691,7 +691,7 @@ function renderAvailabilityBlocks() {
 
         // Calculate which column (0-6) this date falls into for the current week
         const daysDiff = Math.floor((instanceDate - weekStart) / (1000 * 60 * 60 * 24));
-        
+
         console.log(`[renderAvailabilityBlocks] Avail date=${avail.date}, instanceDate=${instanceDate.toDateString()}, weekStart=${weekStart.toDateString()}, daysDiff=${daysDiff}, day_of_week=${avail.day}`);
 
         // Only render if this instance is in the current week (0-6)
@@ -735,7 +735,7 @@ function createAvailabilityBlock(avail) {
     // Calculate position
     const startMinutes = timeToMinutes(avail.start_time);
     const endMinutes = timeToMinutes(avail.end_time);
-    
+
     // Get the calendar's start hour from the active time filter
     const calendarStartHour = window.activeTimeRange ? window.activeTimeRange.start : 6;
     const calendarEndHour = window.activeTimeRange ? window.activeTimeRange.end : 21;
@@ -832,7 +832,7 @@ function createBookingBlock(booking) {
     // Calculate position
     const startMinutes = timeToMinutes(booking.start_time);
     const endMinutes = timeToMinutes(booking.end_time);
-    
+
     // Get the calendar's start hour from the active time filter
     const calendarStartHour = window.activeTimeRange ? window.activeTimeRange.start : 6;
     const baseMinutes = calendarStartHour * 60;
@@ -1140,12 +1140,12 @@ function enableDragToCreate() {
 function handleDragStart(e) {
     // Try to find the cell from the event target first
     let cell = e.target.closest('.time-slot');
-    
+
     // Fallback to month view
     if (!cell) {
         cell = e.target.closest('.month-day-cell');
     }
-    
+
     if (!cell) {
         return;
     }
@@ -1413,12 +1413,12 @@ function showAvailabilityModal(selectionData) {
         const recurrenceSelect = document.getElementById('recurrenceType');
         const customSection = document.getElementById('customDaysSection');
         const lookaheadSection = document.getElementById('lookaheadSection');
-        
+
         recurrenceSelect.addEventListener('change', function () {
             const isRecurring = this.value !== 'once';
             customSection.style.display = this.value === 'custom' ? 'block' : 'none';
             lookaheadSection.style.display = isRecurring ? 'block' : 'none';
-            
+
             // When switching to custom, ensure the originally selected day is checked
             if (this.value === 'custom') {
                 // Small delay to ensure DOM is ready
@@ -1770,7 +1770,7 @@ async function createAvailabilityFromModal(selectionData) {
         // Format times as HH:MM
         const startTimeStr = `${String(selectionData.startHour).padStart(2, '0')}:${String(selectionData.startMinutes || 0).padStart(2, '0')}`;
         const endTimeStr = `${String(selectionData.endHour).padStart(2, '0')}:${String(selectionData.endMinutes || 0).padStart(2, '0')}`;
-        
+
         // Use the current week start as the base start_date for recurrence
         const startDateForRecurrence = formatDateLocal(new Date(currentWeekStart));
 
@@ -2230,7 +2230,7 @@ async function deleteScheduleSeries(recurringEventId) {
         const response = await fetch(`/calendar-event/series/${recurringEventId}`, {
             method: 'DELETE'
         });
-        
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Failed to delete schedule series');
@@ -2458,13 +2458,13 @@ let activeDayFilter = null;
 function applyTimeFilter() {
     const timeRangeSelect = document.getElementById('timeRangeFilter');
     if (!timeRangeSelect) return;
-    
+
     const selectedValue = timeRangeSelect.value;
     const [startHour, endHour] = selectedValue.split('-').map(Number);
-    
+
     // Store the time range globally
     window.activeTimeRange = { start: startHour, end: endHour - 1 };
-    
+
     // Rebuild the calendar
     refreshUnifiedCalendar().then(() => {
         // Reapply day filter if active
@@ -2484,12 +2484,12 @@ function applyTimeFilter() {
 function applyDayFilter() {
     const checkedDays = Array.from(document.querySelectorAll('.dayFilter:checked'))
         .map(cb => parseInt(cb.value));
-    
+
     // Store the filter state
     activeDayFilter = checkedDays;
-    
+
     const dayColumns = document.querySelectorAll('.day-column');
-    
+
     dayColumns.forEach((column) => {
         const dayValue = parseInt(column.dataset.day);
         column.style.display = checkedDays.includes(dayValue) ? 'flex' : 'none';

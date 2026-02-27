@@ -202,7 +202,7 @@ body {
    ============================================ */
 .section h2 {
     font-family: 'Playfair Display', serif;
-    color: #D4AF37;
+    color: #1f1f1f;
     margin-bottom: 30px;
     font-size: 1.8rem;
     font-weight: 600;
@@ -524,6 +524,7 @@ body {
 
 .service-detail-value {
     font-weight: 500;
+    color: #D4AF37;
 }
 
 .service-edit-form {

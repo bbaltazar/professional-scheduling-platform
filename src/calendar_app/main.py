@@ -380,7 +380,11 @@ def generate_instances_for_range(
 
         # Check for conflicts with other events
         if has_calendar_conflict(
-            db, base_event.specialist_id, occurrence_start, occurrence_end, exclude_event_id=base_event.id
+            db,
+            base_event.specialist_id,
+            occurrence_start,
+            occurrence_end,
+            exclude_event_id=base_event.id,
         ):
             continue
 
@@ -421,11 +425,11 @@ def generate_instances_for_range(
 def extend_recurring_instances(db: Session):
     """
     Daily maintenance: Extend all recurring schedules by one day.
-    
-    For each recurring schedule, this ensures instances exist for the full 
+
+    For each recurring schedule, this ensures instances exist for the full
     lookahead_weeks window by generating instances for tomorrow that fall
     within the window.
-    
+
     Should be called once per day (e.g., via cron job or startup event).
     """
     # Get all active recurring base events
@@ -439,22 +443,23 @@ def extend_recurring_instances(db: Session):
         )
         .all()
     )
-    
+
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     extended_count = 0
-    
+
     for base_event in base_events:
         if not base_event.recurrence_rule:
             continue
-            
+
         try:
             import json
+
             recurrence_data = json.loads(base_event.recurrence_rule)
             recurrence_rule = RecurrenceRule(**recurrence_data)
-            
+
             # Calculate the end of the lookahead window
             lookahead_end = today + timedelta(weeks=recurrence_rule.lookahead_weeks)
-            
+
             # Find the furthest instance we have
             furthest_instance = (
                 db.query(CalendarEvent)
@@ -466,24 +471,26 @@ def extend_recurring_instances(db: Session):
                 .order_by(CalendarEvent.start_datetime.desc())
                 .first()
             )
-            
+
             if furthest_instance:
                 # Generate from day after furthest to lookahead_end
                 start_from = furthest_instance.start_datetime + timedelta(days=1)
             else:
                 # No instances yet, generate from today
                 start_from = today
-            
+
             if start_from < lookahead_end:
                 generate_instances_for_range(
                     db, base_event, recurrence_rule, start_from, lookahead_end
                 )
                 extended_count += 1
-                
+
         except Exception as e:
-            print(f"[extend_recurring_instances] Error extending event {base_event.id}: {e}")
+            print(
+                f"[extend_recurring_instances] Error extending event {base_event.id}: {e}"
+            )
             continue
-    
+
     return extended_count
 
 
@@ -996,7 +1003,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
 
     today = date.today()
     next_month = today + timedelta(days=30)
-    
+
     recent_availability = (
         db.query(CalendarEvent)
         .filter(
@@ -1045,7 +1052,9 @@ async def professional_dashboard(
     request: Request,
     db: Session = Depends(get_db),
     days: Optional[str] = Query(None, description="Comma-separated day indices (0-6)"),
-    start_time: Optional[int] = Query(None, ge=0, le=23, description="Start hour (0-23)"),
+    start_time: Optional[int] = Query(
+        None, ge=0, le=23, description="Start hour (0-23)"
+    ),
     end_time: Optional[int] = Query(None, ge=1, le=24, description="End hour (1-24)"),
 ):
     """Professional dashboard - shows verification form if not authenticated, dashboard if authenticated"""
@@ -1055,11 +1064,13 @@ async def professional_dashboard(
     visible_days = None
     if days:
         try:
-            visible_days = [int(d.strip()) for d in days.split(",") if d.strip().isdigit()]
+            visible_days = [
+                int(d.strip()) for d in days.split(",") if d.strip().isdigit()
+            ]
             visible_days = [d for d in visible_days if 0 <= d <= 6]
         except:
             visible_days = None
-    
+
     # Pass authentication state and filter parameters to template
     return templates.TemplateResponse(
         "professional.html",
@@ -1821,7 +1832,11 @@ def create_recurring_schedule(
 
     # Create recurrence rule
     recurrence_rule = RecurrenceRule(
-        freq=freq, interval=1, byweekday=byweekday, until=end_date, lookahead_weeks=schedule.lookahead_weeks
+        freq=freq,
+        interval=1,
+        byweekday=byweekday,
+        until=end_date,
+        lookahead_weeks=schedule.lookahead_weeks,
     )
 
     # Generate recurring event ID
@@ -1861,7 +1876,7 @@ def create_recurring_schedule(
     # Pre-create instances for the lookahead period (default 12 weeks)
     lookahead_weeks = recurrence_rule.lookahead_weeks
     lookahead_end = datetime.utcnow() + timedelta(weeks=lookahead_weeks)
-    
+
     # Generate instances immediately (not lazy)
     generate_instances_for_range(
         db, db_event, recurrence_rule, datetime.utcnow(), lookahead_end
@@ -2789,9 +2804,11 @@ def get_specialists_catalog(db: Session = Depends(get_db)):
             .filter(CalendarEvent.start_datetime >= datetime.now())
             .all()
         )
-        
+
         # Extract unique dates
-        available_dates = list(set(event.start_datetime.date() for event in available_events))
+        available_dates = list(
+            set(event.start_datetime.date() for event in available_events)
+        )
         available_dates.sort()
 
         catalog.append(
@@ -2849,7 +2866,7 @@ def get_available_time_slots(
     #     .all()
     # )
     availability_slots = []  # Ignore legacy availability slots
-    
+
     # Also get calendar events that represent availability (from recurring schedules)
     calendar_availability = (
         db.query(CalendarEvent)
