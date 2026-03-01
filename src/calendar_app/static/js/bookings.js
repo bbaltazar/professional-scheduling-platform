@@ -180,6 +180,7 @@ function createBookingCard(booking) {
             </div>
             
             <div class="flex" style="gap:10px; margin-top:18px;">
+              <button class="btn btn-outline" style="flex:1;" onclick="openDraftMessageModal(${booking.id})">✉️ Draft Message</button>
               <button class="btn btn-danger" style="flex:1;" onclick="updateBookingStatus(${booking.id}, 'cancelled')">Cancel Booking</button>
             </div>
           ` : booking.status === 'completed' ? `
@@ -212,19 +213,54 @@ export function filterBookings() {
 
 // Update booking status (complete/cancel)
 export async function updateBookingStatus(bookingId, newStatus) {
-    if (!confirm(`Are you sure you want to mark this booking as ${newStatus}?`)) {
-        return;
+    let cancellationReason = null;
+    
+    // If cancelling, ask for reason
+    if (newStatus === 'cancelled') {
+        cancellationReason = prompt('Please provide a reason for cancellation (optional):');
+        if (cancellationReason === null) {
+            // User clicked cancel
+            return;
+        }
+    } else {
+        if (!confirm(`Are you sure you want to mark this booking as ${newStatus}?`)) {
+            return;
+        }
     }
 
     try {
+        const token = localStorage.getItem('authToken');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const body = { status: newStatus };
+        if (cancellationReason && cancellationReason.trim()) {
+            body.notes = cancellationReason.trim();
+        }
+        
         const response = await fetch(`/booking/${bookingId}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
+            headers: headers,
+            body: JSON.stringify(body)
         });
 
         if (response.ok) {
+            const result = await response.json();
             showResponse('bookingsResponse', `Booking ${newStatus} successfully!`, 'success');
+            
+            // Show additional message for cancellations
+            if (newStatus === 'cancelled') {
+                showResponse('bookingsResponse', 
+                    'Customer conversation initiated. Check your terminal/console for details.', 
+                    'success'
+                );
+            }
+            
             await loadBookings(); // Refresh the bookings list
         } else {
             const error = await response.json();

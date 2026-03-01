@@ -34,6 +34,9 @@ class Settings:
     YELP_API_KEY: Optional[str] = os.getenv("YELP_API_KEY")
     YELP_API_URL: str = "https://api.yelp.com/v3"
 
+    # AI Assistant settings
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+
     def __init__(self):
         """Initialize settings and validate required environment variables."""
         if not self.JWT_SECRET_KEY:

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Chat Sandbox</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .setup-form {
+            padding: 30px;
+            display: none;
+        }
+
+        .setup-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-container.active {
+            display: flex;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.specialist {
+            text-align: left;
+        }
+
+        .message.customer {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .specialist .message-bubble {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .customer .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+        }
+
+        .input-container input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .reset-btn {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Customer Chat Sandbox</h1>
+            <p>Test conversational cancellation flow</p>
+        </div>
+
+        <div class="setup-form active" id="setupForm">
+            <div class="form-group">
+                <label for="bookingId">Booking ID</label>
+                <input type="number" id="bookingId" placeholder="Enter booking ID (e.g., 1)" value="1">
+            </div>
+            <div class="form-group">
+                <label for="specialistName">Professional Name</label>
+                <input type="text" id="specialistName" placeholder="Enter professional's name" value="Dr. Smith">
+            </div>
+            <div class="form-group">
+                <label for="cancellationReason">Cancellation Reason (Optional)</label>
+                <textarea id="cancellationReason" placeholder="e.g., I had a family emergency come up"></textarea>
+            </div>
+            <button class="btn" onclick="startConversation()">Start Conversation</button>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="messages" id="messages"></div>
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" id="messageInput" placeholder="Type your response..." 
+                           onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button class="send-btn" onclick="sendMessage()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+                </div>
+                <button class="btn reset-btn" onclick="resetChat()">Start New Conversation</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationContext = null;
+
+        async function startConversation() {
+            const bookingId = document.getElementById('bookingId').value;
+            const specialistName = document.getElementById('specialistName').value;
+            const cancellationReason = document.getElementById('cancellationReason').value;
+
+            if (!bookingId || !specialistName) {
+                alert('Please fill in Booking ID and Professional Name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/sandbox/chat/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        booking_id: parseInt(bookingId),
+                        specialist_name: specialistName,
+                        cancellation_reason: cancellationReason || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                conversationContext = data.context;
+                
+                // Show chat interface
+                document.getElementById('setupForm').classList.remove('active');
+                document.getElementById('chatContainer').classList.add('active');
+
+                // Display initial message
+                addMessage(data.message, 'specialist', specialistName, data.has_ai);
+
+            } catch (error) {
+                alert('Error starting conversation: ' + error.message);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const customerMessage = input.value.trim();
+
+            if (!customerMessage) return;
+
+            // Display customer message
+            addMessage(customerMessage, 'customer', 'You');
+            input.value = '';
+
+            // Show loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = '💬 Typing...';
+            loadingDiv.id = 'loading';
+            document.getElementById('messages').appendChild(loadingDiv);
+
+            try {
+                const response = await fetch('/sandbox/chat/continue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        customer_message: customerMessage,
+                        context: conversationContext
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove loading
+                document.getElementById('loading')?.remove();
+
+                // Display specialist response
+                addMessage(data.message, 'specialist', conversationContext.specialist_name);
+
+            } catch (error) {
+                document.getElementById('loading')?.remove();
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function addMessage(text, type, sender, hasAI = false) {
+            const messagesDiv = document.getElementById('messages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = sender;
+            if (type === 'specialist' && hasAI) {
+                const badge = document.createElement('span');
+                badge.className = 'ai-badge';
+                badge.textContent = 'AI';
+                label.appendChild(badge);
+            }
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+            
+            messageDiv.appendChild(label);
+            messageDiv.appendChild(bubble);
+            messagesDiv.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function resetChat() {
+            document.getElementById('chatContainer').classList.remove('active');
+            document.getElementById('setupForm').classList.add('active');
+            document.getElementById('messages').innerHTML = '';
+            conversationContext = null;
+        }
+    </script>
+</body>
+</html>

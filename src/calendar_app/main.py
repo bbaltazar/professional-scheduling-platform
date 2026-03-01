@@ -43,30 +43,31 @@ import jwt
 import csv
 import io
 
-try:
-    from .database import (
-        get_db,
-        Specialist,
-        ServiceDB,
-        AvailabilitySlot,
-        Booking,
-        CalendarEvent,
-        EventException,
-        WorkingHours,
-        SchedulingPreferences,
-        database,
-        VerificationCode,
-        Workplace,
-        specialist_workplace_association,
-        Consumer,
-        Referral,
-        ClientProfile,
-        ClientContactChangeLog,
-        AppointmentSession,
-    )
-    from .verification_service import verification_service
-    from .yelp_service import yelp_service, YelpAPIError
-    from .models import (
+from .database import (
+    get_db,
+    Specialist,
+    ServiceDB,
+    AvailabilitySlot,
+    Booking,
+    CalendarEvent,
+    EventException,
+    WorkingHours,
+    SchedulingPreferences,
+    database,
+    VerificationCode,
+    Workplace,
+    specialist_workplace_association,
+    Consumer,
+    Referral,
+    ClientProfile,
+    ClientContactChangeLog,
+    AppointmentSession,
+)
+from .verification_service import verification_service
+from .yelp_service import yelp_service, YelpAPIError
+from .ai_assistant import get_assistant
+from .sandbox_chat import SandboxChat
+from .models import (
         # Core service models
         Service,
         ServiceResponse,
@@ -133,100 +134,19 @@ try:
         # Error models
         ErrorResponse,
     )
-    from .auth import (
-        JWT_SECRET_KEY,
-        JWT_ALGORITHM,
-        ACCESS_TOKEN_EXPIRE_HOURS,
-        security,
-        create_access_token,
-        verify_token,
-        get_current_specialist,
-        require_authentication,
-        get_current_specialist_dep,
-        require_authentication_dep,
-    )
-    from .config import settings
-except ImportError:
-    from database import (
-        get_db,
-        Specialist,
-        ServiceDB,
-        AvailabilitySlot,
-        Booking,
-        CalendarEvent,
-        EventException,
-        WorkingHours,
-        SchedulingPreferences,
-        database,
-        VerificationCode,
-        Workplace,
-        specialist_workplace_association,
-        Consumer,
-        Referral,
-        ClientProfile,
-    )
-    from verification_service import verification_service
-    from models import (
-        # Core service models
-        Service,
-        ServiceResponse,
-        # Specialist models
-        SpecialistCreate,
-        SpecialistResponse,
-        SpecialistCatalogResponse,
-        # Availability models
-        AvailabilitySlotCreate,
-        AvailabilitySlotResponse,
-        TimeSlotResponse,
-        TimeRange,
-        AvailabilityQuery,
-        # Booking models
-        BookingCreate,
-        BookingResponse,
-        BookingWithServiceResponse,
-        BookingStatusUpdate,
-        # Calendar models
-        RecurrenceRule,
-        CalendarEventCreate,
-        CalendarEventResponse,
-        CalendarEventUpdate,
-        EventExceptionCreate,
-        EventExceptionResponse,
-        BulkEventOperation,
-        CalendarView,
-        # Working hours and preferences
-        WorkingHoursCreate,
-        WorkingHoursResponse,
-        SchedulingPreferencesCreate,
-        SchedulingPreferencesResponse,
-        # Smart scheduling
-        SmartSchedulingSuggestion,
-        # Authentication models
-        LoginRequest,
-        AuthResponse,
-        # Verification models
-        VerificationRequest,
-        VerificationResponse,
-        CodeVerificationRequest,
-        CodeVerificationResponse,
-        # Consumer models
-        ClientCreate,
-        # Error models
-        ErrorResponse,
-    )
-    from auth import (
-        JWT_SECRET_KEY,
-        JWT_ALGORITHM,
-        ACCESS_TOKEN_EXPIRE_HOURS,
-        security,
-        create_access_token,
-        verify_token,
-        get_current_specialist,
-        require_authentication,
-        get_current_specialist_dep,
-        require_authentication_dep,
-    )
-    from config import settings
+from .auth import (
+    JWT_SECRET_KEY,
+    JWT_ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_HOURS,
+    security,
+    create_access_token,
+    verify_token,
+    get_current_specialist,
+    require_authentication,
+    get_current_specialist_dep,
+    require_authentication_dep,
+)
+from .config import settings
 
 
 @asynccontextmanager
@@ -3212,10 +3132,14 @@ def get_specialist_bookings(specialist_id: int, db: Session = Depends(get_db)):
 
 @app.put("/booking/{booking_id}/status")
 def update_booking_status(
-    booking_id: int, status_update: BookingStatusUpdate, db: Session = Depends(get_db)
+    booking_id: int, 
+    status_update: BookingStatusUpdate, 
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(get_current_specialist_dep)
 ):
     """
     Update the status of a booking (e.g., completed, cancelled).
+    If status is changed to 'cancelled', automatically initiates customer conversation.
     """
     # Validate status
     valid_statuses = ["confirmed", "completed", "cancelled"]
@@ -3228,18 +3152,155 @@ def update_booking_status(
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Verify specialist owns this booking
+    if booking.specialist_id != current_specialist.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Update the status
     old_status = booking.status
     booking.status = status_update.status
     db.commit()
     db.refresh(booking)
+    
+    # If cancelled, trigger customer conversation in terminal
+    if status_update.status == "cancelled" and old_status != "cancelled":
+        try:
+            from .customer_chat import simulate_cancellation_chat
+            
+            print("\n" + "🔔" * 40)
+            print("CANCELLATION DETECTED - INITIATING CUSTOMER CONVERSATION")
+            print("🔔" * 40 + "\n")
+            
+            # Start the conversation
+            conversation_log = simulate_cancellation_chat(
+                db=db,
+                booking_id=booking_id,
+                specialist_name=current_specialist.name,
+                cancellation_reason=status_update.notes
+            )
+        except Exception as e:
+            print(f"\n⚠️ ERROR: Failed to initiate customer conversation: {str(e)}\n")
+            import traceback
+            traceback.print_exc()
 
     return {
         "message": f"Booking status updated from {old_status} to {status_update.status}",
         "booking_id": booking_id,
         "new_status": status_update.status,
     }
+
+
+# ==================== AI Assistant Endpoints ====================
+
+
+class DraftMessageRequest(BaseModel):
+    """Request model for AI message drafting."""
+    booking_id: int
+    message_type: str = "reschedule"  # "reschedule" or "confirmation"
+    reason: Optional[str] = None
+    suggested_alternatives: Optional[List[str]] = None
+
+
+class DraftMessageResponse(BaseModel):
+    """Response model for AI-generated messages."""
+    subject: str
+    message: str
+    booking_id: int
+
+
+@app.post(
+    "/specialist/{specialist_id}/draft-message",
+    response_model=DraftMessageResponse,
+)
+async def draft_message(
+    specialist_id: int,
+    request: DraftMessageRequest,
+    db: Session = Depends(get_db),
+    current_specialist: Specialist = Depends(require_authentication_dep),
+):
+    """
+    Use AI to draft a professional message for a booking.
+    Supports rescheduling and confirmation messages.
+    """
+    # Verify specialist access
+    if current_specialist.id != specialist_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get booking details
+    booking = db.query(Booking).filter(Booking.id == request.booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.specialist_id != specialist_id:
+        raise HTTPException(status_code=403, detail="Booking does not belong to this specialist")
+    
+    # Get service details
+    service = db.query(ServiceDB).filter(ServiceDB.id == booking.service_id).first()
+    service_name = service.name if service else "appointment"
+    
+    # Get client name
+    client_profile = db.query(ClientProfile).filter(
+        ClientProfile.specialist_id == specialist_id,
+        ClientProfile.email == booking.client_email
+    ).first()
+    client_name = client_profile.name if client_profile else booking.client_name or "there"
+    
+    # Format date and time
+    booking_date = booking.booking_date.strftime("%A, %B %d, %Y")
+    booking_time = booking.booking_time.strftime("%I:%M %p").lstrip("0")
+    
+    try:
+        assistant = get_assistant()
+        
+        if request.message_type == "reschedule":
+            result = await assistant.draft_reschedule_message(
+                client_name=client_name,
+                service_name=service_name,
+                current_date=booking_date,
+                current_time=booking_time,
+                professional_name=current_specialist.name,
+                reason=request.reason,
+                suggested_alternatives=request.suggested_alternatives
+            )
+        elif request.message_type == "confirmation":
+            workplace = None
+            if service and service.workplace_id:
+                wp = db.query(Workplace).filter(Workplace.id == service.workplace_id).first()
+                if wp:
+                    workplace = f"{wp.name}, {wp.address}"
+            
+            result = await assistant.draft_confirmation_message(
+                client_name=client_name,
+                service_name=service_name,
+                appointment_date=booking_date,
+                appointment_time=booking_time,
+                professional_name=current_specialist.name,
+                location=workplace
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid message_type. Must be 'reschedule' or 'confirmation'"
+            )
+        
+        return DraftMessageResponse(
+            subject=result["subject"],
+            message=result["message"],
+            booking_id=booking.id
+        )
+    
+    except ValueError as e:
+        # API key not configured
+        raise HTTPException(
+            status_code=500,
+            detail="AI assistant not configured. Please set GEMINI_API_KEY environment variable."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate message: {str(e)}"
+        )
 
 
 # ==================== Appointment Session Tracking Endpoints ====================
@@ -5570,3 +5631,69 @@ async def upload_clients_csv(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+
+
+# ==================== Sandbox Chat Endpoints ====================
+
+
+class SandboxStartRequest(BaseModel):
+    """Request to start a sandbox conversation."""
+    booking_id: int
+    specialist_name: str
+    cancellation_reason: Optional[str] = None
+
+
+class SandboxContinueRequest(BaseModel):
+    """Request to continue a sandbox conversation."""
+    customer_message: str
+    context: dict
+
+
+@app.get("/sandbox/chat", response_class=HTMLResponse)
+async def sandbox_chat_page(request: Request):
+    """
+    Render the sandbox chat testing interface.
+    No authentication required - this is for testing the conversational flow.
+    """
+    return templates.TemplateResponse("sandbox_chat.html", {"request": request})
+
+
+@app.post("/sandbox/chat/start")
+async def start_sandbox_chat(
+    request: SandboxStartRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Start a sandbox conversation for testing customer interactions.
+    No authentication required - this is for testing the conversational flow.
+    """
+    try:
+        chat = SandboxChat(db)
+        result = chat.start_conversation(
+            booking_id=request.booking_id,
+            specialist_name=request.specialist_name,
+            cancellation_reason=request.cancellation_reason
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error starting conversation: {str(e)}")
+
+
+@app.post("/sandbox/chat/continue")
+async def continue_sandbox_chat(
+    request: SandboxContinueRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Continue a sandbox conversation with customer's response.
+    Uses AI if GEMINI_API_KEY is set, otherwise provides simple responses.
+    """
+    try:
+        chat = SandboxChat(db)
+        result = chat.continue_conversation(
+            customer_message=request.customer_message,
+            context=request.context
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error continuing conversation: {str(e)}")

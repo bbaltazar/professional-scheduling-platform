@@ -245,7 +245,7 @@ class BookingCreate(BaseModel):
         return v.strip()
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "specialist_id": 1,
                 "service_id": 2,
@@ -303,6 +303,7 @@ class BookingWithServiceResponse(BaseModel):
 
 class BookingStatusUpdate(BaseModel):
     status: str
+    notes: Optional[str] = None  # Optional reason for status change (e.g., cancellation reason)
 
 
 # ==================== Appointment Session Tracking Models ====================
